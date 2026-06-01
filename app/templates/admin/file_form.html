@@ -1,0 +1,459 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{% if edit_mode %}Düzenle: {{ download.title }}{% else %}Yeni Dosya{% endif %}{% endblock %}
+
+{% block content %}
+
+<!-- Sayfa başlığı -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="breadcrumb mb-1">
+      <a href="/admin">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="text-slate-700">{% if edit_mode %}Düzenle{% else %}Yeni Dosya{% endif %}</span>
+    </div>
+    <h1 class="text-lg font-bold text-slate-900">
+      {% if edit_mode %}{{ download.title }}{% else %}Yeni İndirme Ekle{% endif %}
+    </h1>
+  </div>
+  <a href="/admin" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Geri
+  </a>
+</div>
+
+<!-- Hata mesajı -->
+{% if error %}
+<div class="flex items-start gap-2 px-3 py-2.5 mb-5 bg-red-50 border border-red-100 rounded-sm">
+  <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 shrink-0 mt-0.5"></i>
+  <p class="text-sm text-red-700">{{ error }}</p>
+</div>
+{% endif %}
+
+<form method="post"
+  action="{% if edit_mode %}/admin/downloads/{{ download.id }}/edit{% else %}/admin/downloads/new{% endif %}"
+  enctype="multipart/form-data"
+  class="space-y-5">
+
+  <!-- ── Temel Bilgiler ──────────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400"></i>
+      Temel Bilgiler
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <!-- Başlık -->
+      <div class="sm:col-span-2">
+        <label for="f-title" class="form-label">Başlık <span class="text-red-500">*</span></label>
+        <input id="f-title" name="title" type="text" required
+          value="{{ download.title if download else '' }}"
+          placeholder="Örn: Visual Studio Code"
+          class="form-input">
+      </div>
+
+      <!-- Sürüm -->
+      <div>
+        <label for="f-version" class="form-label">Sürüm</label>
+        <input id="f-version" name="version" type="text"
+          value="{{ download.version if download else '' }}"
+          placeholder="Örn: v2.1.0"
+          class="form-input">
+      </div>
+
+      <!-- İkon türü -->
+      <div>
+        <label for="f-icon-type" class="form-label">İkon Türü</label>
+        <select id="f-icon-type" name="icon_type" class="form-input">
+          {% for ic in ['auto', 'zip', 'pdf', 'link', 'image', 'exe', 'apk', 'dmg', 'deb'] %}
+          <option value="{{ ic }}" {% if download and download.icon_type.value == ic %}selected{% endif %}>
+            {{ ic | capitalize }}{% if ic == 'auto' %} (Otomatik){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <p class="form-hint">Otomatik: dosya/URL uzantısından tahmin edilir.</p>
+      </div>
+
+      <!-- Açıklama -->
+      <div class="sm:col-span-2">
+        <label for="f-description" class="form-label">Açıklama</label>
+        <textarea id="f-description" name="description" rows="3"
+          placeholder="Kısa bir açıklama yazın…"
+          class="form-input resize-y">{{ download.description if download else '' }}</textarea>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Uygulama İkonu ──────────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="image" class="w-3.5 h-3.5 text-slate-400"></i>
+      Uygulama İkonu
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <!-- Mevcut ikon önizleme -->
+      {% if download and (download.icon_image_path or download.icon_image_url) %}
+      <div class="sm:col-span-2">
+        <p class="form-label mb-2">Mevcut İkon</p>
+        <div class="flex items-center gap-3">
+          <img src="{{ download.icon_image_path or download.icon_image_url }}"
+            alt="Mevcut ikon" class="w-14 h-14 object-contain rounded-sm border border-slate-200 bg-slate-50 p-1">
+          <div class="text-xs text-slate-400">
+            {% if download.icon_image_path %}
+            <span class="flex items-center gap-1"><i data-lucide="hard-drive" class="w-3 h-3"></i> Yüklü dosya</span>
+            {% else %}
+            <span class="flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i> URL</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Dosya yükleme -->
+      <div>
+        <label for="f-icon-image-file" class="form-label">Görsel Yükle</label>
+        <input id="f-icon-image-file" name="icon_image_file" type="file"
+          accept="image/*"
+          class="form-input py-1.5 cursor-pointer">
+        <p class="form-hint">PNG, JPG, SVG, WebP. Yüklenirse URL'ye göre önceliklidir.</p>
+      </div>
+
+      <!-- URL ile belirtme -->
+      <div>
+        <label for="f-icon-image-url" class="form-label">veya Görsel URL</label>
+        <input id="f-icon-image-url" name="icon_image_url" type="url"
+          value="{{ download.icon_image_url if download else '' }}"
+          placeholder="https://example.com/logo.png"
+          class="form-input">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Dosya Kaynağı ───────────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-slate-400"></i>
+      Dosya Kaynağı
+    </h2>
+
+    <!-- Tür seçici -->
+    <div class="flex gap-3 mb-4">
+      <label id="type-external-label"
+        class="flex-1 flex items-center gap-2.5 p-3 border rounded-sm cursor-pointer transition-colors
+               {% if not download or download.file_type.value == 'external' %}border-blue-400 bg-blue-50{% else %}border-slate-200 hover:border-slate-300{% endif %}">
+        <input type="radio" name="file_type" value="external" id="type-external"
+          {% if not download or download.file_type.value == 'external' %}checked{% endif %}
+          class="text-blue-600 accent-blue-600">
+        <div>
+          <p class="text-sm font-medium text-slate-700">Dış Bağlantı</p>
+          <p class="text-xs text-slate-400">GitHub, resmi site vb.</p>
+        </div>
+      </label>
+      <label id="type-local-label"
+        class="flex-1 flex items-center gap-2.5 p-3 border rounded-sm cursor-pointer transition-colors
+               {% if download and download.file_type.value == 'local' %}border-blue-400 bg-blue-50{% else %}border-slate-200 hover:border-slate-300{% endif %}">
+        <input type="radio" name="file_type" value="local" id="type-local"
+          {% if download and download.file_type.value == 'local' %}checked{% endif %}
+          class="text-blue-600 accent-blue-600">
+        <div>
+          <p class="text-sm font-medium text-slate-700">Lokal Dosya</p>
+          <p class="text-xs text-slate-400">Sunucuya yükle</p>
+        </div>
+      </label>
+    </div>
+
+    <!-- Dış URL bölümü -->
+    <div id="section-external" class="space-y-3 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
+      <div>
+        <label for="f-external-url" class="form-label">Dış URL</label>
+        <input id="f-external-url" name="external_url" type="url"
+          value="{{ download.external_url if download else '' }}"
+          placeholder="https://example.com/download.exe"
+          class="form-input">
+        <p class="form-hint">
+          Kaynak alan adı (örn: github.com) kullanıcıya gösterilecek.
+          URL sonu <code class="bg-slate-100 px-1 rounded-sm">.exe</code>, <code class="bg-slate-100 px-1 rounded-sm">.dmg</code> gibi uzantı içeriyorsa ikon otomatik belirlenir.
+        </p>
+        <!-- Otomatik algılama göstergesi -->
+        <p id="url-ext-hint" class="text-xs text-blue-600 mt-1 hidden flex items-center gap-1">
+          <i data-lucide="zap" class="w-3 h-3"></i>
+          <span id="url-ext-text"></span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Lokal dosya bölümü -->
+    <div id="section-local" class="space-y-3 {% if not download or download.file_type.value == 'external' %}hidden{% endif %}">
+      <div>
+        <label for="f-upload" class="form-label">Dosya Yükle</label>
+        {% if download and download.file_path %}
+        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">
+          <i data-lucide="file" class="w-3 h-3"></i>
+          Mevcut: <code class="bg-slate-100 px-1 rounded-sm">{{ download.file_path }}</code>
+        </p>
+        {% endif %}
+        <input id="f-upload" name="upload_file" type="file" class="form-input py-1.5 cursor-pointer">
+        <!-- Otomatik algılama göstergesi -->
+        <p id="file-ext-hint" class="text-xs text-blue-600 mt-1 hidden flex items-center gap-1">
+          <i data-lucide="zap" class="w-3 h-3"></i>
+          <span id="file-ext-text"></span>
+        </p>
+        <p class="form-hint">Yeni dosya seçilirse üzerine yazılır.</p>
+      </div>
+    </div>
+
+    <!-- Dosya boyutu -->
+    <div class="mt-4">
+      <label for="f-size" class="form-label">Dosya Boyutu (byte)</label>
+      <input id="f-size" name="file_size_bytes" type="number" min="0"
+        value="{{ download.file_size_bytes if download else '' }}"
+        placeholder="Örn: 52428800 (50 MB)"
+        class="form-input">
+      <p class="form-hint">Boş bırakılabilir. Lokal yüklemede otomatik hesaplanamaz.</p>
+    </div>
+  </div>
+
+  <!-- ── İşletim Sistemi Uyumu ────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-400"></i>
+      İşletim Sistemi Uyumu
+    </h2>
+    <p class="text-xs text-slate-400 mb-3">Birden fazla seçilebilir.</p>
+
+    {% set current_os = [] %}
+    {% if download and download.os_compatibility %}
+      {% set current_os = download.os_compatibility.split(',') %}
+    {% endif %}
+
+    <div class="flex flex-wrap gap-3">
+      {% for os_val, os_label, os_icon in [
+        ('windows', 'Windows', 'monitor'),
+        ('macos', 'macOS', 'apple'),
+        ('linux', 'Linux', 'terminal'),
+        ('android', 'Android', 'smartphone'),
+        ('ios', 'iOS', 'tablet'),
+        ('web', 'Web / Tarayıcı', 'globe')
+      ] %}
+      <label class="flex items-center gap-2 px-3 py-2 border rounded-sm cursor-pointer transition-colors
+                    hover:border-blue-300 has-[:checked]:border-blue-400 has-[:checked]:bg-blue-50">
+        <input type="checkbox" name="os_tags" value="{{ os_val }}"
+          {% if os_val in current_os %}checked{% endif %}
+          class="accent-blue-600 rounded-sm">
+        <i data-lucide="{{ os_icon }}" class="w-3.5 h-3.5 text-slate-500"></i>
+        <span class="text-sm text-slate-700">{{ os_label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Sınıflandırma ────────────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-400"></i>
+      Sınıflandırma
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <!-- Kategori -->
+      <div>
+        <label for="f-category" class="form-label">Kategori</label>
+        <select id="f-category" name="category_id" class="form-input">
+          <option value="">— Seçiniz —</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if download and download.category_id == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Üst kayıt (sürüm ilişkisi) -->
+      <div>
+        <label for="f-parent" class="form-label">Üst Kayıt (Eski Sürüm İçin)</label>
+        <select id="f-parent" name="parent_id" class="form-input">
+          <option value="">— Bağımsız Kayıt —</option>
+          {% for d in all_downloads %}
+          {% if not download or d.id != download.id %}
+          <option value="{{ d.id }}" {% if download and download.parent_id == d.id %}selected{% endif %}>
+            {{ d.title }} {% if d.version %}({{ d.version }}){% endif %}
+          </option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <p class="form-hint">Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.</p>
+      </div>
+
+      <!-- Etiketler -->
+      <div class="sm:col-span-2">
+        <label class="form-label">Etiketler</label>
+        {% if tags %}
+        <div class="flex flex-wrap gap-2 p-3 border border-slate-200 rounded-sm bg-slate-50">
+          {% for t in tags %}
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" name="tag_ids" value="{{ t.id }}"
+              {% if download and t in download.tags %}checked{% endif %}
+              class="accent-blue-600 rounded-sm">
+            <span class="text-sm text-slate-700">#{{ t.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-400 p-3 border border-dashed border-slate-200 rounded-sm">
+          Henüz etiket yok. <a href="/admin/tags" class="text-blue-600 hover:underline">Etiket ekle →</a>
+        </p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Ayarlar ─────────────────────────────────────── -->
+  <div class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+      <i data-lucide="settings" class="w-3.5 h-3.5 text-slate-400"></i>
+      Ayarlar
+    </h2>
+
+    <div class="space-y-3">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" name="is_active" value="true"
+          {% if not download or download.is_active %}checked{% endif %}
+          class="accent-blue-600 w-4 h-4 rounded-sm">
+        <div>
+          <p class="text-sm font-medium text-slate-700">Aktif</p>
+          <p class="text-xs text-slate-400">Pasif dosyalar sitede görünmez.</p>
+        </div>
+      </label>
+
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" name="is_featured" value="true"
+          {% if download and download.is_featured %}checked{% endif %}
+          class="accent-blue-600 w-4 h-4 rounded-sm">
+        <div>
+          <p class="text-sm font-medium text-slate-700">Öne Çıkar</p>
+          <p class="text-xs text-slate-400">Ana sayfanın "Öne Çıkanlar" bölümünde gösterilir.</p>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Kaydet / İptal ──────────────────────────────── -->
+  <div class="flex items-center gap-3 justify-end">
+    <a href="/admin" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600
+       border border-slate-200 rounded-sm hover:bg-slate-50 transition-colors">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      İptal
+    </a>
+    {% if edit_mode %}
+    <button type="submit" class="btn-primary py-2 px-5">
+      <i data-lucide="save" class="w-4 h-4"></i>
+      Değişiklikleri Kaydet
+    </button>
+    {% else %}
+    <button type="submit" class="btn-primary py-2 px-5">
+      <i data-lucide="plus-circle" class="w-4 h-4"></i>
+      Dosyayı Ekle
+    </button>
+    {% endif %}
+  </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Dosya türü radio toggle ──────────────────────────
+  const radios   = document.querySelectorAll('input[name="file_type"]');
+  const secExt   = document.getElementById('section-external');
+  const secLocal = document.getElementById('section-local');
+  const lblExt   = document.getElementById('type-external-label');
+  const lblLocal = document.getElementById('type-local-label');
+
+  function updateFileType() {
+    const val = document.querySelector('input[name="file_type"]:checked')?.value;
+    const isExt = val === 'external';
+    secExt.classList.toggle('hidden', !isExt);
+    secLocal.classList.toggle('hidden', isExt);
+    lblExt.classList.toggle('border-blue-400', isExt);
+    lblExt.classList.toggle('bg-blue-50', isExt);
+    lblExt.classList.toggle('border-slate-200', !isExt);
+    lblLocal.classList.toggle('border-blue-400', !isExt);
+    lblLocal.classList.toggle('bg-blue-50', !isExt);
+    lblLocal.classList.toggle('border-slate-200', isExt);
+  }
+  radios.forEach(r => r.addEventListener('change', updateFileType));
+
+  // ── Uzantı → ikon otomatik algılama ─────────────────
+  const EXT_ICON = {
+    zip:'zip', gz:'zip', rar:'zip', '7z':'zip', tar:'zip',
+    pdf:'pdf',
+    exe:'exe', msi:'exe',
+    apk:'apk',
+    dmg:'dmg', pkg:'dmg',
+    deb:'deb', rpm:'deb',
+    png:'image', jpg:'image', jpeg:'image', svg:'image', gif:'image',
+  };
+  const ICON_LABELS = {
+    zip:'ZIP/Arşiv', pdf:'PDF', exe:'Uygulama (EXE)',
+    apk:'Android (APK)', dmg:'macOS (DMG)', deb:'Linux (DEB)', image:'Görsel',
+  };
+
+  const iconSelect = document.getElementById('f-icon-type');
+
+  function applyAutoIcon(ext) {
+    const detected = EXT_ICON[ext];
+    if (!detected) return;
+    if (iconSelect.value === 'auto') {
+      const hint = detected ? `Uzantı (.${ext}) → ${ICON_LABELS[detected] || detected} ikon seçilecek` : '';
+      return hint;
+    }
+    return null;
+  }
+
+  // Lokal dosya seçildiğinde
+  const uploadInput = document.getElementById('f-upload');
+  const fileHint    = document.getElementById('file-ext-hint');
+  const fileText    = document.getElementById('file-ext-text');
+
+  uploadInput?.addEventListener('change', () => {
+    const name = uploadInput.files[0]?.name || '';
+    const ext  = name.split('.').pop()?.toLowerCase();
+    const detected = EXT_ICON[ext];
+    if (detected && ext) {
+      fileText.textContent = `"${name}" → ${ICON_LABELS[detected] || detected} ikonu otomatik uygulanacak`;
+      fileHint.classList.remove('hidden');
+      // Eğer auto seçiliyse bilgilendirme; değilse dokunma
+    } else {
+      fileHint.classList.add('hidden');
+    }
+  });
+
+  // Dış URL değiştiğinde
+  const urlInput = document.getElementById('f-external-url');
+  const urlHint  = document.getElementById('url-ext-hint');
+  const urlText  = document.getElementById('url-ext-text');
+
+  urlInput?.addEventListener('input', () => {
+    try {
+      const path = new URL(urlInput.value).pathname;
+      const ext  = path.split('.').pop()?.toLowerCase();
+      const detected = EXT_ICON[ext];
+      if (detected && ext && ext.length < 6) {
+        urlText.textContent = `.${ext} uzantısı algılandı → ${ICON_LABELS[detected] || detected} ikonu uygulanacak`;
+        urlHint.classList.remove('hidden');
+      } else {
+        urlHint.classList.add('hidden');
+      }
+    } catch { urlHint.classList.add('hidden'); }
+  });
+
+  lucide.createIcons();
+</script>
+{% endblock %}

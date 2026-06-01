@@ -1,0 +1,37 @@
+Sen uzman bir Python (FastAPI) geliştiricisi ve UI/UX tasarımcısısın. Amacımız, kullanıcıyı yormayan, "tıkla ve indir" mantığıyla çalışan, yalın, temiz ve güvenilir bir indirme (download) sitesi yapmak.
+
+LÜTFEN DİKKAT: Projeyi tek seferde yazmaya çalışma. Ancak her satırı da tek tek sorma. Mantıksal, orta ölçekli parçalar halinde ilerle (Örn: Önce veritabanı şeması ve modeller, sonra backend core, ardından UI entegrasyonu). Her aşama bitiminde bana bilgi ver ve onay iste.
+
+Teknoloji Yığını:
+- Backend: Python 3.12+, FastAPI, SQLAlchemy (Asenkron)
+- Veritabanı: SQLite
+- Frontend: Jinja2 Templates, Tailwind CSS, Lucide Icons (SVG)
+
+Tasarım ve UI Kuralları:
+- Renk Paleti: Açık ve minimal mavi tonları (örn: slate-50 arka plan, blue-600 vurgular). Dark mode KULLANILMAYACAK.
+- Geometri: Keskin fakat çok hafif yumuşatılmış köşeler (Tailwind `rounded-sm`, yaklaşık 3-5px).
+- Düzen (Layout): Flexbox kullanılacak. İçerik alanı sol tarafta, arama çubuğu ve ilgili içerik/kategoriler sağ tarafta (Sidebar) yer alacak 2 sütunlu yapı.
+- Hero Alanı: Sitenin üstünde çok sade, abartısız bir karşılama alanı.
+- Breadcrumbs: Detay sayfalarında kesinlikle "Anasayfa > Kategori > Dosya" şeklinde olacak.
+
+Dosya ve İndirme Mantığı:
+- İki tür indirme esnekliği: Sunucudaki lokal dosya VEYA dış bağlantı (URL).
+- Dosya Detayları: Dosya boyutu, sürüm numarası, yüklenme tarihi, açıklama, ikon/görsel gösterilecek.
+- Kaynak Şeffaflığı: Dış link verilmişse URL'nin kök alan adı (örn: github.com) ana site butonuyla birlikte gösterilecek.
+- Akıllı İkonlar: Dosya türüne göre (zip, link, pdf vb.) otomatik Lucide ikonları atanacak.
+- Sürüm Geçmişi: Aynı uygulamanın önceki sürümleri detay sayfasında listelenecek.
+- İndirme Sayacı: Her dosya için tutulacak (Rate limiting ile spam engellenerek).
+
+Sistem Özellikleri:
+- Admin Paneli: Dosya ekleme, silme, güncelleme için şifre korumalı, yalın bir temel yönetim arayüzü.
+- Organizasyon: Etiketler (Tags), Kategoriler ve Sidebar'da arama çubuğu.
+- Performans/Sayfalandırma: Veritabanına yük bindirmeyen, URL parametresi tabanlı (`?page=2` şeklinde) akıllı sayfalandırma.
+- SEO & Güvenlik: Dinamik meta etiketleri ve temel form güvenliği (CSRF).
+
+Kodlama Standartları:
+- Kodlar temiz, modüler ve ileriye dönük (future-proof) olmalı.
+- Python Type Hinting (Tip belirteçleri) kesinlikle kullanılmalı.
+- İşlemler asenkron (async/await) yürütülmeli.
+
+Onaylıyorsan, lütfen önce klasör yapısını ve SQLite veritabanı şemasını (models.py) tasarlayarak başlayalım.
+Süreç ilerlemesi mutlaka belirtilmeli ve yapılması gerekenler belirtilmeli bir sonraki işlemler için.

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}429 — Çok Fazla İstek — {{ site_name }}{% endblock %}
+{% block meta_description %}İndirme limitinize ulaştınız.{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center py-20 text-center">
+
+  <div class="relative mb-6">
+    <span class="text-8xl font-black text-slate-100 select-none leading-none">429</span>
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="w-16 h-16 bg-white border border-amber-200 rounded-sm flex items-center justify-center">
+        <i data-lucide="clock" class="w-8 h-8 text-amber-400"></i>
+      </div>
+    </div>
+  </div>
+
+  <h1 class="text-xl font-bold text-slate-900 mb-2">Çok Fazla İstek</h1>
+  <p class="text-sm text-slate-500 max-w-sm mb-2">
+    Saatlik indirme limitinize ulaştınız.
+  </p>
+  <p class="text-xs text-slate-400 mb-8">
+    Spam'i önlemek amacıyla her IP adresi için saatlik indirme sınırı uygulanmaktadır.
+    Lütfen bir süre bekleyip tekrar deneyin.
+  </p>
+
+  <div class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-100 rounded-sm text-sm text-amber-700 mb-8">
+    <i data-lucide="info" class="w-4 h-4 text-amber-500 shrink-0"></i>
+    Limit 1 saat içinde sıfırlanacaktır.
+  </div>
+
+  <a href="/" class="btn-download">
+    <i data-lucide="home" class="w-3.5 h-3.5"></i>
+    Ana Sayfaya Dön
+  </a>
+
+</div>
+{% endblock %}

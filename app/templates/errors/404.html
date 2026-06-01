@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}404 — Sayfa Bulunamadı — {{ site_name }}{% endblock %}
+{% block meta_description %}Aradığınız sayfa bulunamadı.{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center py-20 text-center">
+
+  {# Büyük 404 #}
+  <div class="relative mb-6">
+    <span class="text-8xl font-black text-slate-100 select-none leading-none">404</span>
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="w-16 h-16 bg-white border border-slate-200 rounded-sm flex items-center justify-center">
+        <i data-lucide="search-x" class="w-8 h-8 text-slate-400"></i>
+      </div>
+    </div>
+  </div>
+
+  <h1 class="text-xl font-bold text-slate-900 mb-2">Sayfa Bulunamadı</h1>
+  <p class="text-sm text-slate-500 max-w-sm mb-8">
+    Aradığınız sayfa taşınmış, silinmiş ya da hiç var olmamış olabilir.
+  </p>
+
+  {# Arama önerisi #}
+  <form action="/search" method="get" class="w-full max-w-sm mb-6">
+    <div class="relative">
+      <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none"></i>
+      <input name="q" type="search" placeholder="Bir şey arayın…" autofocus
+        class="w-full pl-9 pr-24 py-2.5 text-sm border border-slate-200 rounded-sm bg-white
+               focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-50">
+      <button type="submit"
+        class="absolute right-1.5 top-1.5 px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
+        Ara
+      </button>
+    </div>
+  </form>
+
+  <div class="flex items-center gap-3">
+    <a href="/" class="btn-download">
+      <i data-lucide="home" class="w-3.5 h-3.5"></i>
+      Ana Sayfaya Dön
+    </a>
+  </div>
+
+</div>
+{% endblock %}

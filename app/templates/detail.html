@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block meta_description %}{{ meta_description }}{% endblock %}
+
+{% block content %}
+
+{# ================================================================
+   BREADCRUMB
+   ================================================================ #}
+<nav class="breadcrumb" aria-label="Sayfa yolu">
+  <a href="/">
+    <i data-lucide="home" class="w-3.5 h-3.5 inline-block -mt-0.5"></i>
+    Anasayfa
+  </a>
+  <span class="breadcrumb-sep">›</span>
+
+  {% if download.category %}
+  <a href="/category/{{ download.category.slug }}">{{ download.category.name }}</a>
+  <span class="breadcrumb-sep">›</span>
+  {% endif %}
+
+  {% if download.parent %}
+  <a href="/download/{{ download.parent.slug }}">{{ download.parent.title }}</a>
+  <span class="breadcrumb-sep">›</span>
+  {% endif %}
+
+  <span class="text-slate-700 font-medium truncate max-w-xs">{{ download.title }}</span>
+</nav>
+
+{# Eski sürüm uyarısı #}
+{% if download.parent %}
+<div class="flex items-start gap-2 px-3 py-2.5 mb-5 bg-amber-50 border border-amber-100 rounded-sm text-sm text-amber-700">
+  <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5 text-amber-500"></i>
+  <span>
+    Bu, <a href="/download/{{ download.parent.slug }}" class="font-medium underline underline-offset-2">{{ download.parent.title }}</a>
+    uygulamasının eski bir sürümüdür.
+    <a href="/download/{{ download.parent.slug }}" class="font-medium underline underline-offset-2">En güncel sürüme geç →</a>
+  </span>
+</div>
+{% endif %}
+
+{# ================================================================
+   BAŞLIK BÖLÜMÜ
+   ================================================================ #}
+<div class="bg-white border border-slate-200 rounded-sm p-5 mb-4">
+  <div class="flex items-start gap-4">
+
+    {# Büyük ikon #}
+    {% set icon_css = download.icon_type.value %}
+    <div class="icon-box {{ icon_css }} w-14 h-14 shrink-0 text-2xl">
+      <i data-lucide="{{ download.icon_type | icon_name(download.file_type) }}" class="w-7 h-7"></i>
+    </div>
+
+    {# Başlık ve meta #}
+    <div class="flex-1 min-w-0">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-xl font-bold text-slate-900 leading-tight">
+            {{ download.title }}
+          </h1>
+          {% if download.version %}
+          <span class="version-badge text-sm mt-1 inline-block">{{ download.version }}</span>
+          {% endif %}
+        </div>
+
+        {# İndirme butonu — üstte de göster #}
+        <a href="/dl/{{ download.slug }}"
+          id="download-btn-top"
+          class="btn-download shrink-0 py-2 px-4 text-sm">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          İndir
+        </a>
+      </div>
+
+      {# Kategori + etiketler #}
+      <div class="flex items-center flex-wrap gap-2 mt-3">
+        {% if download.category %}
+        <a href="/category/{{ download.category.slug }}" class="category-badge">
+          <i data-lucide="folder" class="w-3 h-3"></i>
+          {{ download.category.name }}
+        </a>
+        {% endif %}
+
+        {% for tag in download.tags %}
+        <a href="/tag/{{ tag.slug }}" class="tag-pill text-xs">#{{ tag.name }}</a>
+        {% endfor %}
+
+        <span class="flex-1"></span>
+
+        {# İndirme sayacı #}
+        <span class="text-xs text-slate-400 flex items-center gap-1">
+          <i data-lucide="download" class="w-3 h-3"></i>
+          {{ download.download_count | thousands }} kez indirildi
+        </span>
+      </div>
+    </div>
+  </div>
+
+  {# Açıklama #}
+  {% if download.description %}
+  <p class="mt-4 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4">
+    {{ download.description }}
+  </p>
+  {% endif %}
+</div>
+
+{# ================================================================
+   İNDİRME CTA KARTI
+   ================================================================ #}
+<div class="bg-blue-50 border border-blue-100 rounded-sm p-4 mb-4 flex flex-wrap items-center gap-4">
+
+  <a href="/dl/{{ download.slug }}"
+    id="download-btn-main"
+    class="btn-download py-2.5 px-6 text-base font-semibold">
+    <i data-lucide="download" class="w-4.5 h-4.5"></i>
+    Şimdi İndir
+  </a>
+
+  <div class="flex flex-col gap-0.5 text-sm">
+    {% if download.file_type.value == 'external' and download.source_domain %}
+    <span class="text-slate-500 flex items-center gap-1.5">
+      <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-400"></i>
+      Kaynak:
+      <a href="{{ download.external_url }}" target="_blank" rel="noopener noreferrer"
+        class="text-blue-600 hover:underline underline-offset-2 font-medium">
+        {{ download.source_domain }}
+      </a>
+    </span>
+    {% endif %}
+
+    {% if download.file_size_human %}
+    <span class="text-slate-500 flex items-center gap-1.5">
+      <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400"></i>
+      Dosya boyutu: <strong class="text-slate-700">{{ download.file_size_human }}</strong>
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="flex-1"></div>
+
+  {# Güven göstergesi #}
+  <span class="text-xs text-slate-400 flex items-center gap-1">
+    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500"></i>
+    Güvenli indirme
+  </span>
+</div>
+
+{# ================================================================
+   DOSYA BİLGİLERİ GRID
+   ================================================================ #}
+<div class="bg-white border border-slate-200 rounded-sm p-4 mb-4">
+  <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+    <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+    Dosya Bilgileri
+  </h2>
+
+  <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+
+    {% if download.version %}
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Sürüm</dt>
+      <dd class="font-medium text-slate-700">{{ download.version }}</dd>
+    </div>
+    {% endif %}
+
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Tür</dt>
+      <dd class="font-medium text-slate-700 flex items-center gap-1">
+        {% if download.file_type.value == 'external' %}
+        <i data-lucide="external-link" class="w-3.5 h-3.5 text-blue-500"></i>
+        Dış Bağlantı
+        {% else %}
+        <i data-lucide="server" class="w-3.5 h-3.5 text-green-500"></i>
+        Lokal Dosya
+        {% endif %}
+      </dd>
+    </div>
+
+    {% if download.file_size_human %}
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Boyut</dt>
+      <dd class="font-medium text-slate-700">{{ download.file_size_human }}</dd>
+    </div>
+    {% endif %}
+
+    {% if download.source_domain %}
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Kaynak</dt>
+      <dd class="font-medium text-blue-600">
+        <a href="{{ download.external_url }}" target="_blank" rel="noopener" class="hover:underline flex items-center gap-1">
+          {{ download.source_domain }}
+          <i data-lucide="external-link" class="w-3 h-3"></i>
+        </a>
+      </dd>
+    </div>
+    {% endif %}
+
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">İndirme</dt>
+      <dd class="font-medium text-slate-700">{{ download.download_count | thousands }} kez</dd>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Eklendi</dt>
+      <dd class="font-medium text-slate-700">{{ download.created_at | format_date }}</dd>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50">
+      <dt class="text-slate-400 shrink-0">Güncellendi</dt>
+      <dd class="font-medium text-slate-700">{{ download.updated_at | format_date }}</dd>
+    </div>
+
+  </dl>
+</div>
+
+{# ================================================================
+   SÜRÜM GEÇMİŞİ
+   ================================================================ #}
+{% if download.versions %}
+<div class="bg-white border border-slate-200 rounded-sm p-4 mb-4">
+  <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+    <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
+    Önceki Sürümler
+  </h2>
+
+  <ul class="space-y-1">
+    {% for v in download.versions %}
+    <li class="flex items-center justify-between gap-3 px-2.5 py-2 rounded-sm hover:bg-slate-50 transition-colors group">
+      <div class="flex items-center gap-2 min-w-0">
+        <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-300 shrink-0"></i>
+        <span class="text-sm font-medium text-slate-700">
+          {{ v.version or v.title }}
+        </span>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="text-xs text-slate-400">{{ v.created_at | format_date }}</span>
+        <a href="/download/{{ v.slug }}"
+          class="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          Görüntüle <i data-lucide="arrow-right" class="w-3 h-3"></i>
+        </a>
+        <a href="/dl/{{ v.slug }}"
+          class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+          title="Bu sürümü indir">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{# ================================================================
+   AYNI KATEGORİDEKİ DİĞER İNDİRMELER (sidebar zaten gösteriyor,
+   buraya küçük bir "ilgili" bölümü eklenebilir — şimdilik placeholder)
+   ================================================================ #}
+
+{% endblock %}

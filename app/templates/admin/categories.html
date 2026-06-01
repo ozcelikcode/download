@@ -1,0 +1,159 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Kategoriler{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-lg font-bold text-slate-900">Kategoriler</h1>
+  <span class="text-xs text-slate-400">{{ categories | length }} kategori</span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+  <!-- Sol: Ekle formu -->
+  <div class="lg:col-span-1">
+    <div class="bg-white border border-slate-200 rounded-sm p-5 sticky top-20">
+      <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
+        <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-slate-400"></i>
+        Yeni Kategori
+      </h2>
+
+      {% if error %}
+      <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-red-50 border border-red-100 rounded-sm">
+        <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-500 shrink-0"></i>
+        <p class="text-xs text-red-700">{{ error }}</p>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/admin/categories" class="space-y-3">
+        <div>
+          <label for="cat-name" class="form-label">Ad <span class="text-red-500">*</span></label>
+          <input id="cat-name" name="name" type="text" required
+            placeholder="Örn: Geliştirici Araçları"
+            class="form-input">
+        </div>
+        <div>
+          <label for="cat-desc" class="form-label">Açıklama</label>
+          <input id="cat-desc" name="description" type="text"
+            placeholder="Kısa açıklama (opsiyonel)"
+            class="form-input">
+        </div>
+        <button type="submit" class="btn-primary w-full justify-center">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          Ekle
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sağ: Kategori listesi -->
+  <div class="lg:col-span-2">
+    <div class="bg-white border border-slate-200 rounded-sm overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-700">Mevcut Kategoriler</h2>
+      </div>
+
+      {% if categories %}
+      <ul class="divide-y divide-slate-50">
+        {% for c in categories %}
+        <li class="px-4 py-3 hover:bg-slate-50/50 transition-colors group" id="cat-row-{{ c.id }}">
+
+          <!-- Normal görünüm -->
+          <div id="cat-view-{{ c.id }}" class="flex items-center gap-3">
+
+            <div class="w-8 h-8 bg-blue-50 rounded-sm flex items-center justify-center shrink-0">
+              <i data-lucide="folder" class="w-4 h-4 text-blue-500"></i>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-slate-800">{{ c.name }}</p>
+              <p class="text-xs text-slate-400 flex items-center gap-2">
+                <span class="font-mono">{{ c.slug }}</span>
+                {% set cnt = category_counts.get(c.id, 0) %}
+                {% if cnt %}
+                <span class="flex items-center gap-0.5">
+                  <i data-lucide="package" class="w-3 h-3"></i>{{ cnt }} dosya
+                </span>
+                {% endif %}
+                {% if c.description %}
+                <span>· {{ c.description }}</span>
+                {% endif %}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <!-- Düzenle -->
+              <button type="button"
+                onclick="toggleEdit({{ c.id }})"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600
+                       border border-slate-200 rounded-sm hover:bg-slate-100 transition-colors">
+                <i data-lucide="pencil" class="w-3 h-3"></i>
+                Düzenle
+              </button>
+              <!-- Sil -->
+              <form method="post" action="/admin/categories/{{ c.id }}/delete" class="inline">
+                <button type="submit"
+                  onclick="return confirm('{{ c.name }} silinecek. İçindeki dosyalar kategorisiz kalacak. Onaylıyor musunuz?')"
+                  class="btn-danger py-1.5 px-2.5">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Düzenleme formu (gizli) -->
+          <form id="cat-edit-{{ c.id }}" method="post"
+            action="/admin/categories/{{ c.id }}/edit"
+            class="hidden mt-3 pt-3 border-t border-slate-100 space-y-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="form-label text-xs">Ad</label>
+                <input name="name" type="text" required value="{{ c.name }}" class="form-input text-sm">
+              </div>
+              <div>
+                <label class="form-label text-xs">Açıklama</label>
+                <input name="description" type="text" value="{{ c.description or '' }}" class="form-input text-sm"
+                  placeholder="Kısa açıklama">
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button type="submit" class="btn-primary py-1.5 px-3 text-xs">
+                <i data-lucide="save" class="w-3 h-3"></i> Kaydet
+              </button>
+              <button type="button" onclick="toggleEdit({{ c.id }})"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600
+                       border border-slate-200 rounded-sm hover:bg-slate-50 transition-colors">
+                <i data-lucide="x" class="w-3 h-3"></i> İptal
+              </button>
+            </div>
+          </form>
+
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="py-10 text-center">
+        <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+        <p class="text-sm text-slate-400">Henüz kategori yok.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleEdit(id) {
+  const view = document.getElementById('cat-view-' + id);
+  const form = document.getElementById('cat-edit-' + id);
+  view.classList.toggle('hidden');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    form.querySelector('input[name="name"]').focus();
+  }
+}
+lucide.createIcons();
+</script>
+{% endblock %}

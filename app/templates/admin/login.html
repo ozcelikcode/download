@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Girişi — {{ site_name }}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          borderRadius: { sm: '3px', DEFAULT: '3px' }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4">
+
+<div class="w-full max-w-sm">
+
+  <!-- Kart -->
+  <div class="bg-white border border-slate-200 rounded-sm p-8">
+
+    <!-- Logo -->
+    <div class="flex flex-col items-center mb-8">
+      <div class="w-12 h-12 bg-blue-50 border border-blue-100 rounded-sm flex items-center justify-center mb-3">
+        <i data-lucide="download-cloud" class="w-6 h-6 text-blue-600"></i>
+      </div>
+      <h1 class="text-lg font-bold text-slate-900">Admin Girişi</h1>
+      <p class="text-xs text-slate-400 mt-0.5">{{ site_name }}</p>
+    </div>
+
+    <!-- Hata mesajı -->
+    {% if error %}
+    <div class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-red-50 border border-red-100 rounded-sm">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 shrink-0"></i>
+      <p class="text-sm text-red-700">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" action="/admin/login" class="space-y-4">
+
+      <div>
+        <label for="login-username" class="form-label">Kullanıcı Adı</label>
+        <div class="relative">
+          <i data-lucide="user" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
+          <input
+            id="login-username"
+            type="text"
+            name="username"
+            autocomplete="username"
+            autofocus
+            required
+            placeholder="admin"
+            class="form-input pl-8">
+        </div>
+      </div>
+
+      <div>
+        <label for="login-password" class="form-label">Şifre</label>
+        <div class="relative">
+          <i data-lucide="lock" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none"></i>
+          <input
+            id="login-password"
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            required
+            placeholder="••••••••"
+            class="form-input pl-8">
+        </div>
+      </div>
+
+      <button id="login-submit" type="submit" class="btn-primary w-full justify-center py-2.5 mt-2">
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        Giriş Yap
+      </button>
+    </form>
+
+  </div>
+
+  <!-- Alt link -->
+  <p class="text-center text-xs text-slate-400 mt-4">
+    <a href="/" class="hover:text-blue-600 transition-colors">← Ana Siteye Dön</a>
+  </p>
+
+</div>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

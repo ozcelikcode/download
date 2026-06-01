@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}500 — Sunucu Hatası — {{ site_name }}{% endblock %}
+{% block meta_description %}Beklenmedik bir sunucu hatası oluştu.{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center py-20 text-center">
+
+  <div class="relative mb-6">
+    <span class="text-8xl font-black text-slate-100 select-none leading-none">500</span>
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="w-16 h-16 bg-white border border-slate-200 rounded-sm flex items-center justify-center">
+        <i data-lucide="server-crash" class="w-8 h-8 text-red-400"></i>
+      </div>
+    </div>
+  </div>
+
+  <h1 class="text-xl font-bold text-slate-900 mb-2">Sunucu Hatası</h1>
+  <p class="text-sm text-slate-500 max-w-sm mb-8">
+    Beklenmedik bir hata oluştu. Sunucumuz bu hatayı kayıt altına aldı.
+    Lütfen birkaç saniye bekleyip tekrar deneyin.
+  </p>
+
+  <div class="flex items-center gap-3">
+    <a href="javascript:window.location.reload()"
+      class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium
+             border border-slate-200 rounded-sm bg-white text-slate-600
+             hover:bg-slate-50 hover:border-slate-300 transition-colors">
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+      Yenile
+    </a>
+    <a href="/" class="btn-download">
+      <i data-lucide="home" class="w-3.5 h-3.5"></i>
+      Ana Sayfaya Dön
+    </a>
+  </div>
+
+</div>
+{% endblock %}
