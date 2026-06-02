@@ -87,6 +87,48 @@ def _int_or_none(value: Optional[str]) -> Optional[int]:
         return None
 
 
+def _parse_file_size_to_bytes(value_str: Optional[str], unit: str) -> Optional[int]:
+    """Sayısal değer ve birim (B, KB, MB, GB) ikilisini byte değerine dönüştürür."""
+    if not value_str:
+        return None
+    s = str(value_str).strip()
+    if not s:
+        return None
+    try:
+        val = float(s)
+        if val <= 0:
+            return None
+        unit = str(unit).upper().strip()
+        if unit == "KB":
+            return int(val * 1024)
+        elif unit == "MB":
+            return int(val * 1024 * 1024)
+        elif unit == "GB":
+            return int(val * 1024 * 1024 * 1024)
+        else:
+            return int(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def _deconstruct_file_size(bytes_val: Optional[int]) -> tuple[Optional[float], str]:
+    """Byte değerini en uygun birim (B, KB, MB, GB) ve sayısal değere geri çözer."""
+    if bytes_val is None:
+        return None, "MB"
+    val = float(bytes_val)
+    if val >= 1024 * 1024 * 1024:
+        res = val / (1024 * 1024 * 1024)
+        return int(res) if res.is_integer() else round(res, 2), "GB"
+    elif val >= 1024 * 1024:
+        res = val / (1024 * 1024)
+        return int(res) if res.is_integer() else round(res, 2), "MB"
+    elif val >= 1024:
+        res = val / 1024
+        return int(res) if res.is_integer() else round(res, 2), "KB"
+    return int(bytes_val), "B"
+
+
+
 async def _save_upload(file: UploadFile) -> str:
     """Yüklenen dosyayı UPLOAD_DIR'e kaydeder, yolu döndürür."""
     upload_dir = settings.upload_path
@@ -171,6 +213,7 @@ async def dashboard(
     total_pages = max(1, math.ceil(total / 20))
     categories = await crud.get_categories(session)
     tags = await crud.get_tags(session)
+    flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
@@ -183,6 +226,7 @@ async def dashboard(
             "categories": categories,
             "tags": tags,
             "admin_user": _admin,
+            "flash_message": flash_message,
         },
     )
 
@@ -202,6 +246,7 @@ async def download_new_get(
     all_downloads, _ = await crud.get_downloads_paginated(
         session, page=1, page_size=200, include_inactive=True
     )
+    flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
         "admin/file_form.html",
@@ -213,6 +258,7 @@ async def download_new_get(
             "edit_mode": False,
             "download": None,
             "admin_user": _admin,
+            "flash_message": flash_message,
         },
     )
 
@@ -227,8 +273,8 @@ async def download_new_post(
     version: Optional[str] = Form(None),
     file_type: str = Form(...),
     external_url: Optional[str] = Form(None),
-    # Boş string parse hatası vermemesi için str olarak al:
-    file_size_bytes: Optional[str] = Form(None),
+    file_size_value: Optional[str] = Form(None),
+    file_size_unit: str = Form("MB"),
     icon_type: str = Form("auto"),
     icon_image_url: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
@@ -253,7 +299,7 @@ async def download_new_post(
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id     = _int_or_none(category_id)
     par_id     = _int_or_none(parent_id)
-    size_bytes = _int_or_none(file_size_bytes)
+    size_bytes = _parse_file_size_to_bytes(file_size_value, file_size_unit)
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
     try:
@@ -293,13 +339,16 @@ async def download_new_post(
                 "all_downloads": all_dl,
                 "edit_mode": False,
                 "download": None,
+                "file_size_val": file_size_value,
+                "file_size_unit": file_size_unit,
                 "error": str(exc),
                 "admin_user": _admin,
             },
             status_code=422,
         )
 
-    return _redirect(f"/admin/downloads/{download.id}/edit")
+    request.session["flash_message"] = f"\"{download.title}\" başarıyla eklendi."
+    return _redirect("/admin")
 
 
 # ---------------------------------------------------------------------------
@@ -322,6 +371,8 @@ async def download_edit_get(
     all_downloads, _ = await crud.get_downloads_paginated(
         session, page=1, page_size=200, include_inactive=True
     )
+    flash_message = request.session.pop("flash_message", None)
+    file_size_val, file_size_unit = _deconstruct_file_size(download.file_size_bytes)
 
     return templates.TemplateResponse(
         "admin/file_form.html",
@@ -333,6 +384,9 @@ async def download_edit_get(
             "edit_mode": True,
             "download": download,
             "admin_user": _admin,
+            "flash_message": flash_message,
+            "file_size_val": file_size_val,
+            "file_size_unit": file_size_unit,
         },
     )
 
@@ -348,8 +402,8 @@ async def download_edit_post(
     version: Optional[str] = Form(None),
     file_type: Optional[str] = Form(None),
     external_url: Optional[str] = Form(None),
-    # Boş string parse hatası vermemesi için str olarak al:
-    file_size_bytes: Optional[str] = Form(None),
+    file_size_value: Optional[str] = Form(None),
+    file_size_unit: str = Form("MB"),
     icon_type: Optional[str] = Form(None),
     icon_image_url: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
@@ -378,7 +432,7 @@ async def download_edit_post(
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id      = _int_or_none(category_id)
     par_id      = _int_or_none(parent_id)
-    size_bytes  = _int_or_none(file_size_bytes)
+    size_bytes  = _parse_file_size_to_bytes(file_size_value, file_size_unit)
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
     try:
@@ -418,12 +472,15 @@ async def download_edit_post(
                 "all_downloads": all_dl,
                 "edit_mode": True,
                 "download": download,
+                "file_size_val": file_size_value,
+                "file_size_unit": file_size_unit,
                 "error": str(exc),
                 "admin_user": _admin,
             },
             status_code=422,
         )
 
+    request.session["flash_message"] = "Değişiklikler başarıyla kaydedildi."
     return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
@@ -457,6 +514,7 @@ async def categories_view(
 ):
     categories = await crud.get_categories(session)
     counts = await crud.get_category_download_counts(session)
+    flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
         "admin/categories.html",
         {
@@ -464,6 +522,7 @@ async def categories_view(
             "categories": categories,
             "category_counts": counts,
             "admin_user": _admin,
+            "flash_message": flash_message,
         },
     )
 
@@ -520,9 +579,10 @@ async def tags_view(
     _admin: str = Depends(require_admin),
 ):
     tags = await crud.get_tags(session)
+    flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
         "admin/tags.html",
-        {"request": request, "tags": tags, "admin_user": _admin},
+        {"request": request, "tags": tags, "admin_user": _admin, "flash_message": flash_message},
     )
 
 

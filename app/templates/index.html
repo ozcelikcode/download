@@ -97,8 +97,12 @@
     <a href="/download/{{ d.slug }}"
       class="flex items-center gap-3 px-3 py-2.5 bg-white border border-slate-200 rounded-sm
              hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
-      <div class="icon-box {{ icon_css }} w-8 h-8 shrink-0">
-        <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4 h-4"></i>
+      <div class="icon-box {{ icon_css }} w-8 h-8 shrink-0 overflow-hidden flex items-center justify-center bg-slate-50">
+        {% if d.icon_type.value == 'image' and (d.icon_image_path or d.icon_image_url) %}
+          <img src="{{ d.icon_image_path or d.icon_image_url }}" alt="" class="w-full h-full object-contain p-0.5">
+        {% else %}
+          <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4 h-4"></i>
+        {% endif %}
       </div>
       <div class="min-w-0 flex-1">
         <p class="text-sm font-medium text-slate-800 group-hover:text-blue-700 truncate">{{ d.title }}</p>
@@ -125,8 +129,12 @@
   <article class="download-card{% if d.is_featured %} is-featured{% endif %}" id="dl-{{ d.id }}">
 
     {# İkon #}
-    <div class="icon-box {{ icon_css }}">
-      <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4.5 h-4.5"></i>
+    <div class="icon-box {{ icon_css }} overflow-hidden flex items-center justify-center bg-slate-50">
+      {% if d.icon_type.value == 'image' and (d.icon_image_path or d.icon_image_url) %}
+        <img src="{{ d.icon_image_path or d.icon_image_url }}" alt="" class="w-full h-full object-contain p-0.5">
+      {% else %}
+        <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4.5 h-4.5"></i>
+      {% endif %}
     </div>
 
     {# İçerik #}

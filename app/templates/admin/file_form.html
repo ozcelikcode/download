@@ -65,13 +65,55 @@
       <div>
         <label for="f-icon-type" class="form-label">İkon Türü</label>
         <select id="f-icon-type" name="icon_type" class="form-input">
-          {% for ic in ['auto', 'zip', 'pdf', 'link', 'image', 'exe', 'apk', 'dmg', 'deb'] %}
-          <option value="{{ ic }}" {% if download and download.icon_type.value == ic %}selected{% endif %}>
-            {{ ic | capitalize }}{% if ic == 'auto' %} (Otomatik){% endif %}
-          </option>
-          {% endfor %}
+          <option value="auto" {% if (download and download.icon_type.value == 'auto') or not download %}selected{% endif %}>Otomatik (Tahmin Et)</option>
+          <option value="image" {% if download and download.icon_type.value == 'image' %}selected{% endif %}>Görsel / Resim</option>
+          <option value="zip" {% if download and download.icon_type.value == 'zip' %}selected{% endif %}>ZIP/Arşiv</option>
+          <option value="pdf" {% if download and download.icon_type.value == 'pdf' %}selected{% endif %}>PDF</option>
+          <option value="exe" {% if download and download.icon_type.value == 'exe' %}selected{% endif %}>Windows (EXE)</option>
+          <option value="apk" {% if download and download.icon_type.value == 'apk' %}selected{% endif %}>Android (APK)</option>
+          <option value="dmg" {% if download and download.icon_type.value == 'dmg' %}selected{% endif %}>macOS (DMG)</option>
+          <option value="deb" {% if download and download.icon_type.value == 'deb' %}selected{% endif %}>Linux (DEB)</option>
+          <option value="link" {% if download and download.icon_type.value == 'link' %}selected{% endif %}>Web Bağlantısı</option>
         </select>
-        <p class="form-hint">Otomatik: dosya/URL uzantısından tahmin edilir.</p>
+        <p class="form-hint">İndirme listesinde gösterilecek ikonu seçin.</p>
+      </div>
+
+      <!-- İkon detayları (Sadece 'Resim' seçildiğinde açılır) -->
+      <div id="section-icon-image" class="sm:col-span-2 space-y-3 bg-slate-50 border border-slate-200 rounded-sm p-4 hidden">
+        <p class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="image" class="w-3.5 h-3.5 text-slate-400"></i>
+          Uygulama Görseli / Resmi
+        </p>
+
+        <!-- Mevcut görsel önizleme -->
+        {% if download and (download.icon_image_path or download.icon_image_url) %}
+        <div class="flex items-center gap-3">
+          <img src="{{ download.icon_image_path or download.icon_image_url }}"
+            alt="Mevcut ikon" class="w-12 h-12 object-contain rounded-sm border border-slate-200 bg-white p-1">
+          <span class="text-xs text-slate-400">
+            Mevcut Görsel ({% if download.icon_image_path %}Sunucudaki dosya{% else %}Dış URL{% endif %})
+          </span>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Görsel Dosyası Yükleme -->
+          <div>
+            <label for="f-icon-image-file" class="form-label text-xs">Görsel Yükle</label>
+            <input id="f-icon-image-file" name="icon_image_file" type="file" accept="image/*"
+              class="form-input py-1 bg-white cursor-pointer text-xs">
+            <p class="form-hint text-[10px]">PNG, JPG, SVG, WebP. Seçilirse URL yerine geçer.</p>
+          </div>
+          
+          <!-- Görsel URL'si -->
+          <div>
+            <label for="f-icon-image-url" class="form-label text-xs">veya Görsel URL</label>
+            <input id="f-icon-image-url" name="icon_image_url" type="url"
+              value="{{ download.icon_image_url if download else '' }}"
+              placeholder="https://example.com/logo.png"
+              class="form-input py-1 bg-white text-xs">
+          </div>
+        </div>
       </div>
 
       <!-- Açıklama -->
@@ -85,49 +127,7 @@
     </div>
   </div>
 
-  <!-- ── Uygulama İkonu ──────────────────────────────── -->
-  <div class="bg-white border border-slate-200 rounded-sm p-5">
-    <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
-      <i data-lucide="image" class="w-3.5 h-3.5 text-slate-400"></i>
-      Uygulama İkonu
-    </h2>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-      <!-- Mevcut ikon önizleme -->
-      {% if download and (download.icon_image_path or download.icon_image_url) %}
-      <div class="sm:col-span-2">
-        <p class="form-label mb-2">Mevcut İkon</p>
-        <div class="flex items-center gap-3">
-          <img src="{{ download.icon_image_path or download.icon_image_url }}"
-            alt="Mevcut ikon" class="w-14 h-14 object-contain rounded-sm border border-slate-200 bg-slate-50 p-1">
-          <p class="text-xs text-slate-400">
-            {% if download.icon_image_path %}Yüklü dosya{% else %}URL{% endif %}
-          </p>
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- Dosya yükleme -->
-      <div>
-        <label for="f-icon-image-file" class="form-label">Görsel Yükle</label>
-        <input id="f-icon-image-file" name="icon_image_file" type="file"
-          accept="image/*"
-          class="form-input py-1.5 cursor-pointer">
-        <p class="form-hint">PNG, JPG, SVG, WebP. Yüklenirse URL'ye göre önceliklidir.</p>
-      </div>
-
-      <!-- URL ile belirtme -->
-      <div>
-        <label for="f-icon-image-url" class="form-label">veya Görsel URL</label>
-        <input id="f-icon-image-url" name="icon_image_url" type="url"
-          value="{{ download.icon_image_url if download else '' }}"
-          placeholder="https://example.com/logo.png"
-          class="form-input">
-      </div>
-
-    </div>
-  </div>
 
   <!-- ── Dosya Kaynağı ───────────────────────────────── -->
   <div class="bg-white border border-slate-200 rounded-sm p-5">
@@ -199,11 +199,19 @@
 
     <!-- Dosya boyutu -->
     <div class="mt-4">
-      <label for="f-size" class="form-label">Dosya Boyutu (byte)</label>
-      <input id="f-size" name="file_size_bytes" type="number" min="0"
-        value="{{ download.file_size_bytes if download else '' }}"
-        placeholder="Örn: 52428800  →  50 MB"
-        class="form-input">
+      <label for="f-size" class="form-label">Dosya Boyutu</label>
+      <div class="flex gap-2">
+        <input id="f-size" name="file_size_value" type="number" min="0" step="any"
+          value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
+          placeholder="Örn: 50"
+          class="form-input flex-1">
+        <select name="file_size_unit" class="form-input w-24">
+          <option value="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>MB</option>
+          <option value="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>KB</option>
+          <option value="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>GB</option>
+          <option value="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
+        </select>
+      </div>
       <p class="form-hint">Boş bırakılabilir.</p>
     </div>
   </div>
@@ -441,6 +449,22 @@
         urlHint.classList.add('hidden');
       }
     });
+  }
+
+  // ── İkon Türü 'resim' seçildiğinde detay panelini aç/kapat ──────────
+  const iconTypeSelect = document.getElementById('f-icon-type');
+  const iconImgSection = document.getElementById('section-icon-image');
+
+  function updateIconImageSection() {
+    if (iconTypeSelect && iconImgSection) {
+      const showImageFields = (iconTypeSelect.value === 'image');
+      iconImgSection.classList.toggle('hidden', !showImageFields);
+    }
+  }
+
+  if (iconTypeSelect) {
+    iconTypeSelect.addEventListener('change', updateIconImageSection);
+    updateIconImageSection(); // Sayfa yüklendiğinde çalıştır
   }
 </script>
 {% endblock %}

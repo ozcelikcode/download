@@ -46,8 +46,12 @@
 
     {# Büyük ikon #}
     {% set icon_css = download.icon_type.value %}
-    <div class="icon-box {{ icon_css }} w-14 h-14 shrink-0 text-2xl">
-      <i data-lucide="{{ download.icon_type | icon_name(download.file_type) }}" class="w-7 h-7"></i>
+    <div class="icon-box {{ icon_css }} w-14 h-14 shrink-0 text-2xl overflow-hidden flex items-center justify-center bg-slate-50">
+      {% if download.icon_type.value == 'image' and (download.icon_image_path or download.icon_image_url) %}
+        <img src="{{ download.icon_image_path or download.icon_image_url }}" alt="" class="w-full h-full object-contain p-1">
+      {% else %}
+        <i data-lucide="{{ download.icon_type | icon_name(download.file_type) }}" class="w-7 h-7"></i>
+      {% endif %}
     </div>
 
     {# Başlık ve meta #}
