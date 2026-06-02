@@ -49,14 +49,14 @@
   <!-- Sağ: Kategori listesi -->
   <div class="lg:col-span-2">
     <div class="bg-white border border-slate-200 rounded-sm overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+      <div class="px-4 py-3 border-b border-slate-100">
         <h2 class="text-sm font-semibold text-slate-700">Mevcut Kategoriler</h2>
       </div>
 
       {% if categories %}
       <ul class="divide-y divide-slate-50">
         {% for c in categories %}
-        <li class="px-4 py-3 hover:bg-slate-50/50 transition-colors group" id="cat-row-{{ c.id }}">
+        <li class="px-4 py-3 hover:bg-slate-50/50 transition-colors group">
 
           <!-- Normal görünüm -->
           <div id="cat-view-{{ c.id }}" class="flex items-center gap-3">
@@ -67,33 +67,24 @@
 
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-slate-800">{{ c.name }}</p>
-              <p class="text-xs text-slate-400 flex items-center gap-2">
+              <p class="text-xs text-slate-400">
                 <span class="font-mono">{{ c.slug }}</span>
                 {% set cnt = category_counts.get(c.id, 0) %}
-                {% if cnt %}
-                <span class="flex items-center gap-0.5">
-                  <i data-lucide="package" class="w-3 h-3"></i>{{ cnt }} dosya
-                </span>
-                {% endif %}
-                {% if c.description %}
-                <span>· {{ c.description }}</span>
-                {% endif %}
+                {% if cnt %} · {{ cnt }} dosya{% endif %}
+                {% if c.description %} · {{ c.description }}{% endif %}
               </p>
             </div>
 
             <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <!-- Düzenle -->
-              <button type="button"
-                onclick="toggleEdit({{ c.id }})"
+              <button type="button" onclick="toggleCatEdit({{ c.id }})"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600
                        border border-slate-200 rounded-sm hover:bg-slate-100 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 Düzenle
               </button>
-              <!-- Sil -->
               <form method="post" action="/admin/categories/{{ c.id }}/delete" class="inline">
                 <button type="submit"
-                  onclick="return confirm('{{ c.name }} silinecek. İçindeki dosyalar kategorisiz kalacak. Onaylıyor musunuz?')"
+                  onclick="return confirm('{{ c.name }} silinecek. Onaylıyor musunuz?')"
                   class="btn-danger py-1.5 px-2.5">
                   <i data-lucide="trash-2" class="w-3 h-3"></i>
                 </button>
@@ -112,15 +103,15 @@
               </div>
               <div>
                 <label class="form-label text-xs">Açıklama</label>
-                <input name="description" type="text" value="{{ c.description or '' }}" class="form-input text-sm"
-                  placeholder="Kısa açıklama">
+                <input name="description" type="text" value="{{ c.description or '' }}"
+                  class="form-input text-sm" placeholder="Kısa açıklama">
               </div>
             </div>
             <div class="flex gap-2">
               <button type="submit" class="btn-primary py-1.5 px-3 text-xs">
                 <i data-lucide="save" class="w-3 h-3"></i> Kaydet
               </button>
-              <button type="button" onclick="toggleEdit({{ c.id }})"
+              <button type="button" onclick="toggleCatEdit({{ c.id }})"
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600
                        border border-slate-200 rounded-sm hover:bg-slate-50 transition-colors">
                 <i data-lucide="x" class="w-3 h-3"></i> İptal
@@ -145,15 +136,16 @@
 
 {% block scripts %}
 <script>
-function toggleEdit(id) {
-  const view = document.getElementById('cat-view-' + id);
-  const form = document.getElementById('cat-edit-' + id);
+function toggleCatEdit(id) {
+  var view = document.getElementById('cat-view-' + id);
+  var form = document.getElementById('cat-edit-' + id);
+  var vHidden = view.classList.contains('hidden');
   view.classList.toggle('hidden');
   form.classList.toggle('hidden');
-  if (!form.classList.contains('hidden')) {
-    form.querySelector('input[name="name"]').focus();
+  if (!vHidden) {
+    var input = form.querySelector('input[name="name"]');
+    if (input) { input.focus(); }
   }
 }
-lucide.createIcons();
 </script>
 {% endblock %}

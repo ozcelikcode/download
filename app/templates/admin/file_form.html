@@ -101,13 +101,9 @@
         <div class="flex items-center gap-3">
           <img src="{{ download.icon_image_path or download.icon_image_url }}"
             alt="Mevcut ikon" class="w-14 h-14 object-contain rounded-sm border border-slate-200 bg-slate-50 p-1">
-          <div class="text-xs text-slate-400">
-            {% if download.icon_image_path %}
-            <span class="flex items-center gap-1"><i data-lucide="hard-drive" class="w-3 h-3"></i> Yüklü dosya</span>
-            {% else %}
-            <span class="flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i> URL</span>
-            {% endif %}
-          </div>
+          <p class="text-xs text-slate-400">
+            {% if download.icon_image_path %}Yüklü dosya{% else %}URL{% endif %}
+          </p>
         </div>
       </div>
       {% endif %}
@@ -175,12 +171,10 @@
           placeholder="https://example.com/download.exe"
           class="form-input">
         <p class="form-hint">
-          Kaynak alan adı (örn: github.com) kullanıcıya gösterilecek.
-          URL sonu <code class="bg-slate-100 px-1 rounded-sm">.exe</code>, <code class="bg-slate-100 px-1 rounded-sm">.dmg</code> gibi uzantı içeriyorsa ikon otomatik belirlenir.
+          Kaynak alan adı kullanıcıya gösterilecek.
+          URL sonu <code class="bg-slate-100 px-1 rounded-sm">.exe</code>, <code class="bg-slate-100 px-1 rounded-sm">.dmg</code> vb. içeriyorsa ikon otomatik belirlenir.
         </p>
-        <!-- Otomatik algılama göstergesi -->
-        <p id="url-ext-hint" class="text-xs text-blue-600 mt-1 hidden flex items-center gap-1">
-          <i data-lucide="zap" class="w-3 h-3"></i>
+        <p id="url-ext-hint" class="text-xs text-blue-600 mt-1 hidden">
           <span id="url-ext-text"></span>
         </p>
       </div>
@@ -191,15 +185,12 @@
       <div>
         <label for="f-upload" class="form-label">Dosya Yükle</label>
         {% if download and download.file_path %}
-        <p class="text-xs text-slate-500 mb-1.5 flex items-center gap-1">
-          <i data-lucide="file" class="w-3 h-3"></i>
+        <p class="text-xs text-slate-500 mb-1.5">
           Mevcut: <code class="bg-slate-100 px-1 rounded-sm">{{ download.file_path }}</code>
         </p>
         {% endif %}
         <input id="f-upload" name="upload_file" type="file" class="form-input py-1.5 cursor-pointer">
-        <!-- Otomatik algılama göstergesi -->
-        <p id="file-ext-hint" class="text-xs text-blue-600 mt-1 hidden flex items-center gap-1">
-          <i data-lucide="zap" class="w-3 h-3"></i>
+        <p id="file-ext-hint" class="text-xs text-blue-600 mt-1 hidden">
           <span id="file-ext-text"></span>
         </p>
         <p class="form-hint">Yeni dosya seçilirse üzerine yazılır.</p>
@@ -211,9 +202,9 @@
       <label for="f-size" class="form-label">Dosya Boyutu (byte)</label>
       <input id="f-size" name="file_size_bytes" type="number" min="0"
         value="{{ download.file_size_bytes if download else '' }}"
-        placeholder="Örn: 52428800 (50 MB)"
+        placeholder="Örn: 52428800  →  50 MB"
         class="form-input">
-      <p class="form-hint">Boş bırakılabilir. Lokal yüklemede otomatik hesaplanamaz.</p>
+      <p class="form-hint">Boş bırakılabilir.</p>
     </div>
   </div>
 
@@ -239,11 +230,12 @@
         ('ios', 'iOS', 'tablet'),
         ('web', 'Web / Tarayıcı', 'globe')
       ] %}
-      <label class="flex items-center gap-2 px-3 py-2 border rounded-sm cursor-pointer transition-colors
-                    hover:border-blue-300 has-[:checked]:border-blue-400 has-[:checked]:bg-blue-50">
+      <label class="flex items-center gap-2 px-3 py-2 border rounded-sm cursor-pointer transition-colors border-slate-200 hover:border-blue-300
+                    {% if os_val in current_os %}border-blue-400 bg-blue-50{% endif %}">
         <input type="checkbox" name="os_tags" value="{{ os_val }}"
           {% if os_val in current_os %}checked{% endif %}
-          class="accent-blue-600 rounded-sm">
+          class="accent-blue-600 rounded-sm"
+          onchange="this.parentElement.classList.toggle('bg-blue-50', this.checked); this.parentElement.classList.toggle('border-blue-400', this.checked); this.parentElement.classList.toggle('border-slate-200', !this.checked);">
         <i data-lucide="{{ os_icon }}" class="w-3.5 h-3.5 text-slate-500"></i>
         <span class="text-sm text-slate-700">{{ os_label }}</span>
       </label>
@@ -377,83 +369,78 @@
   const lblLocal = document.getElementById('type-local-label');
 
   function updateFileType() {
-    const val = document.querySelector('input[name="file_type"]:checked')?.value;
-    const isExt = val === 'external';
+    const checked = document.querySelector('input[name="file_type"]:checked');
+    const isExt   = checked ? checked.value === 'external' : true;
+
     secExt.classList.toggle('hidden', !isExt);
     secLocal.classList.toggle('hidden', isExt);
+
     lblExt.classList.toggle('border-blue-400', isExt);
     lblExt.classList.toggle('bg-blue-50', isExt);
     lblExt.classList.toggle('border-slate-200', !isExt);
+
     lblLocal.classList.toggle('border-blue-400', !isExt);
     lblLocal.classList.toggle('bg-blue-50', !isExt);
     lblLocal.classList.toggle('border-slate-200', isExt);
   }
-  radios.forEach(r => r.addEventListener('change', updateFileType));
+  radios.forEach(function(r) { r.addEventListener('change', updateFileType); });
 
   // ── Uzantı → ikon otomatik algılama ─────────────────
-  const EXT_ICON = {
+  var EXT_ICON = {
     zip:'zip', gz:'zip', rar:'zip', '7z':'zip', tar:'zip',
-    pdf:'pdf',
-    exe:'exe', msi:'exe',
-    apk:'apk',
-    dmg:'dmg', pkg:'dmg',
-    deb:'deb', rpm:'deb',
-    png:'image', jpg:'image', jpeg:'image', svg:'image', gif:'image',
+    pdf:'pdf', exe:'exe', msi:'exe', apk:'apk',
+    dmg:'dmg', pkg:'dmg', deb:'deb', rpm:'deb',
+    png:'image', jpg:'image', jpeg:'image', svg:'image', gif:'image'
   };
-  const ICON_LABELS = {
+  var ICON_LABELS = {
     zip:'ZIP/Arşiv', pdf:'PDF', exe:'Uygulama (EXE)',
-    apk:'Android (APK)', dmg:'macOS (DMG)', deb:'Linux (DEB)', image:'Görsel',
+    apk:'Android (APK)', dmg:'macOS (DMG)', deb:'Linux (DEB)', image:'Görsel'
   };
-
-  const iconSelect = document.getElementById('f-icon-type');
-
-  function applyAutoIcon(ext) {
-    const detected = EXT_ICON[ext];
-    if (!detected) return;
-    if (iconSelect.value === 'auto') {
-      const hint = detected ? `Uzantı (.${ext}) → ${ICON_LABELS[detected] || detected} ikon seçilecek` : '';
-      return hint;
-    }
-    return null;
-  }
 
   // Lokal dosya seçildiğinde
-  const uploadInput = document.getElementById('f-upload');
-  const fileHint    = document.getElementById('file-ext-hint');
-  const fileText    = document.getElementById('file-ext-text');
+  var uploadInput = document.getElementById('f-upload');
+  var fileHint    = document.getElementById('file-ext-hint');
+  var fileText    = document.getElementById('file-ext-text');
 
-  uploadInput?.addEventListener('change', () => {
-    const name = uploadInput.files[0]?.name || '';
-    const ext  = name.split('.').pop()?.toLowerCase();
-    const detected = EXT_ICON[ext];
-    if (detected && ext) {
-      fileText.textContent = `"${name}" → ${ICON_LABELS[detected] || detected} ikonu otomatik uygulanacak`;
-      fileHint.classList.remove('hidden');
-      // Eğer auto seçiliyse bilgilendirme; değilse dokunma
-    } else {
-      fileHint.classList.add('hidden');
-    }
-  });
+  if (uploadInput) {
+    uploadInput.addEventListener('change', function() {
+      var fname = uploadInput.files[0] ? uploadInput.files[0].name : '';
+      if (!fname) { fileHint.classList.add('hidden'); return; }
+      var parts = fname.split('.');
+      var ext   = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+      var detected = EXT_ICON[ext];
+      if (detected) {
+        fileText.textContent = '"' + fname + '" → ' + (ICON_LABELS[detected] || detected) + ' ikonu otomatik uygulanacak';
+        fileHint.classList.remove('hidden');
+      } else {
+        fileHint.classList.add('hidden');
+      }
+    });
+  }
 
   // Dış URL değiştiğinde
-  const urlInput = document.getElementById('f-external-url');
-  const urlHint  = document.getElementById('url-ext-hint');
-  const urlText  = document.getElementById('url-ext-text');
+  var urlInput = document.getElementById('f-external-url');
+  var urlHint  = document.getElementById('url-ext-hint');
+  var urlText  = document.getElementById('url-ext-text');
 
-  urlInput?.addEventListener('input', () => {
-    try {
-      const path = new URL(urlInput.value).pathname;
-      const ext  = path.split('.').pop()?.toLowerCase();
-      const detected = EXT_ICON[ext];
-      if (detected && ext && ext.length < 6) {
-        urlText.textContent = `.${ext} uzantısı algılandı → ${ICON_LABELS[detected] || detected} ikonu uygulanacak`;
-        urlHint.classList.remove('hidden');
-      } else {
+  if (urlInput) {
+    urlInput.addEventListener('input', function() {
+      try {
+        var u    = new URL(urlInput.value);
+        var path = u.pathname;
+        var parts = path.split('.');
+        var ext   = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+        var detected = ext.length < 6 ? EXT_ICON[ext] : null;
+        if (detected) {
+          urlText.textContent = '.' + ext + ' uzantısı algılandı → ' + (ICON_LABELS[detected] || detected) + ' ikonu uygulanacak';
+          urlHint.classList.remove('hidden');
+        } else {
+          urlHint.classList.add('hidden');
+        }
+      } catch(e) {
         urlHint.classList.add('hidden');
       }
-    } catch { urlHint.classList.add('hidden'); }
-  });
-
-  lucide.createIcons();
+    });
+  }
 </script>
 {% endblock %}

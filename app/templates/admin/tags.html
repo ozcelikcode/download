@@ -51,7 +51,7 @@
       {% if tags %}
       <ul class="divide-y divide-slate-50">
         {% for t in tags %}
-        <li class="px-4 py-3 hover:bg-slate-50/50 transition-colors group" id="tag-row-{{ t.id }}">
+        <li class="px-4 py-3 hover:bg-slate-50/50 transition-colors group">
 
           <!-- Normal görünüm -->
           <div id="tag-view-{{ t.id }}" class="flex items-center gap-3">
@@ -66,15 +66,12 @@
             </div>
 
             <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <!-- Düzenle -->
-              <button type="button"
-                onclick="toggleTagEdit({{ t.id }})"
+              <button type="button" onclick="toggleTagEdit({{ t.id }})"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600
                        border border-slate-200 rounded-sm hover:bg-slate-100 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 Düzenle
               </button>
-              <!-- Sil -->
               <form method="post" action="/admin/tags/{{ t.id }}/delete" class="inline">
                 <button type="submit"
                   onclick="return confirm('#{{ t.name }} etiketi silinecek. Onaylıyor musunuz?')"
@@ -122,15 +119,15 @@
 {% block scripts %}
 <script>
 function toggleTagEdit(id) {
-  const view = document.getElementById('tag-view-' + id);
-  const form = document.getElementById('tag-edit-' + id);
+  var view = document.getElementById('tag-view-' + id);
+  var form = document.getElementById('tag-edit-' + id);
+  var vHidden = view.classList.contains('hidden');
   view.classList.toggle('hidden');
   form.classList.toggle('hidden');
-  if (!form.classList.contains('hidden')) {
-    form.querySelector('input[name="name"]').focus();
-    form.querySelector('input[name="name"]').select();
+  if (!vHidden) {
+    var input = form.querySelector('input[name="name"]');
+    if (input) { input.focus(); input.select(); }
   }
 }
-lucide.createIcons();
 </script>
 {% endblock %}

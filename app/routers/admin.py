@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-from pathlib import Path
 from typing import List, Optional
 
 from fastapi import (
@@ -77,10 +76,13 @@ def _redirect(path: str) -> RedirectResponse:
 
 def _int_or_none(value: Optional[str]) -> Optional[int]:
     """Form'dan gelen boş string veya None → None, geçerli sayı → int."""
-    if not value or not str(value).strip():
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
         return None
     try:
-        return int(value)
+        return int(s)
     except (ValueError, TypeError):
         return None
 
@@ -88,6 +90,7 @@ def _int_or_none(value: Optional[str]) -> Optional[int]:
 async def _save_upload(file: UploadFile) -> str:
     """Yüklenen dosyayı UPLOAD_DIR'e kaydeder, yolu döndürür."""
     upload_dir = settings.upload_path
+    upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / file.filename
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
@@ -96,7 +99,7 @@ async def _save_upload(file: UploadFile) -> str:
 
 
 async def _save_icon_upload(file: UploadFile) -> str:
-    """İkon görselini icons/ alt dizinine kaydeder."""
+    """İkon görselini icons/ alt dizinine kaydeder, web yolunu döndürür."""
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
     dest = icons_dir / file.filename
@@ -196,7 +199,9 @@ async def download_new_get(
 ):
     categories = await crud.get_categories(session)
     tags = await crud.get_tags(session)
-    all_downloads, _ = await crud.get_downloads_paginated(session, page=1, page_size=200, include_inactive=True)
+    all_downloads, _ = await crud.get_downloads_paginated(
+        session, page=1, page_size=200, include_inactive=True
+    )
 
     return templates.TemplateResponse(
         "admin/file_form.html",
@@ -222,31 +227,33 @@ async def download_new_post(
     version: Optional[str] = Form(None),
     file_type: str = Form(...),
     external_url: Optional[str] = Form(None),
-    file_size_bytes: Optional[str] = Form(None),   # boş string güvenli
+    # Boş string parse hatası vermemesi için str olarak al:
+    file_size_bytes: Optional[str] = Form(None),
     icon_type: str = Form("auto"),
     icon_image_url: Optional[str] = Form(None),
-    # parent_id ve category_id: boş string sorununu önlemek için str alıyoruz
     category_id: Optional[str] = Form(None),
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
-    is_active: bool = Form(True),
+    is_active: bool = Form(False),
     is_featured: bool = Form(False),
     tag_ids: List[str] = Form(default_factory=list),
     upload_file: Optional[UploadFile] = File(None),
     icon_image_file: Optional[UploadFile] = File(None),
 ):
+    # ── Dosya yükleme ────────────────────────────────────────────────────
     file_path: Optional[str] = None
     if file_type == "local" and upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
-    # İkon görseli
+    # ── İkon görseli ──────────────────────────────────────────────────────
     icon_img_path: Optional[str] = None
     if icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
 
-    # Tip dönüşümleri
-    cat_id = _int_or_none(category_id)
-    par_id = _int_or_none(parent_id)
+    # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
+    cat_id     = _int_or_none(category_id)
+    par_id     = _int_or_none(parent_id)
+    size_bytes = _int_or_none(file_size_bytes)
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
     try:
@@ -268,11 +275,15 @@ async def download_new_post(
             is_featured=is_featured,
             tag_ids=tag_id_list,
         )
+        download = await crud.create_download(session, data)
     except Exception as exc:
+        await session.rollback()
         logger.error("Download oluşturma hatası: %s", exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
-        all_dl, _ = await crud.get_downloads_paginated(session, page=1, page_size=200, include_inactive=True)
+        all_dl, _ = await crud.get_downloads_paginated(
+            session, page=1, page_size=200, include_inactive=True
+        )
         return templates.TemplateResponse(
             "admin/file_form.html",
             {
@@ -288,7 +299,6 @@ async def download_new_post(
             status_code=422,
         )
 
-    download = await crud.create_download(session, data)
     return _redirect(f"/admin/downloads/{download.id}/edit")
 
 
@@ -309,7 +319,9 @@ async def download_edit_get(
 
     categories = await crud.get_categories(session)
     tags = await crud.get_tags(session)
-    all_downloads, _ = await crud.get_downloads_paginated(session, page=1, page_size=200, include_inactive=True)
+    all_downloads, _ = await crud.get_downloads_paginated(
+        session, page=1, page_size=200, include_inactive=True
+    )
 
     return templates.TemplateResponse(
         "admin/file_form.html",
@@ -336,13 +348,14 @@ async def download_edit_post(
     version: Optional[str] = Form(None),
     file_type: Optional[str] = Form(None),
     external_url: Optional[str] = Form(None),
-    file_size_bytes: Optional[str] = Form(None),   # boş string güvenli
+    # Boş string parse hatası vermemesi için str olarak al:
+    file_size_bytes: Optional[str] = Form(None),
     icon_type: Optional[str] = Form(None),
     icon_image_url: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
-    is_active: bool = Form(True),
+    is_active: bool = Form(False),
     is_featured: bool = Form(False),
     tag_ids: List[str] = Form(default_factory=list),
     upload_file: Optional[UploadFile] = File(None),
@@ -352,39 +365,65 @@ async def download_edit_post(
     if not download:
         raise HTTPException(status_code=404, detail="Download bulunamadı.")
 
+    # ── Dosya yükleme ────────────────────────────────────────────────────
     file_path: Optional[str] = None
     if upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
-    # İkon görseli
+    # ── İkon görseli ──────────────────────────────────────────────────────
     icon_img_path: Optional[str] = download.icon_image_path
     if icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
 
-    cat_id = _int_or_none(category_id)
-    par_id = _int_or_none(parent_id)
+    # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
+    cat_id      = _int_or_none(category_id)
+    par_id      = _int_or_none(parent_id)
+    size_bytes  = _int_or_none(file_size_bytes)
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
-    data = DownloadUpdate(
-        title=title,
-        description=description or None,
-        version=version or None,
-        file_type=FileType(file_type) if file_type else None,
-        file_path=file_path or download.file_path,
-        external_url=external_url or None,
-        file_size_bytes=size_bytes,
-        icon_type=IconType(icon_type) if icon_type else None,
-        icon_image_path=icon_img_path,
-        icon_image_url=icon_image_url or None,
-        os_compatibility=os_tags,
-        category_id=cat_id,
-        parent_id=par_id,
-        is_active=is_active,
-        is_featured=is_featured,
-        tag_ids=tag_id_list,
-    )
+    try:
+        data = DownloadUpdate(
+            title=title,
+            description=description or None,
+            version=version or None,
+            file_type=FileType(file_type) if file_type else None,
+            file_path=file_path or download.file_path,
+            external_url=external_url or None,
+            file_size_bytes=size_bytes,
+            icon_type=IconType(icon_type) if icon_type else None,
+            icon_image_path=icon_img_path,
+            icon_image_url=icon_image_url or None,
+            os_compatibility=os_tags,
+            category_id=cat_id,
+            parent_id=par_id,
+            is_active=is_active,
+            is_featured=is_featured,
+            tag_ids=tag_id_list,
+        )
+        await crud.update_download(session, download, data)
+    except Exception as exc:
+        await session.rollback()
+        logger.error("Download güncelleme hatası: %s", exc)
+        categories = await crud.get_categories(session)
+        tags = await crud.get_tags(session)
+        all_dl, _ = await crud.get_downloads_paginated(
+            session, page=1, page_size=200, include_inactive=True
+        )
+        return templates.TemplateResponse(
+            "admin/file_form.html",
+            {
+                "request": request,
+                "categories": categories,
+                "tags": tags,
+                "all_downloads": all_dl,
+                "edit_mode": True,
+                "download": download,
+                "error": str(exc),
+                "admin_user": _admin,
+            },
+            status_code=422,
+        )
 
-    await crud.update_download(session, download, data)
     return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
@@ -505,15 +544,12 @@ async def tag_edit(
     _admin: str = Depends(require_admin),
     name: str = Form(...),
 ):
-    from app.schemas import TagCreate as TagUpdate
+    from slugify import slugify
     tag = await crud.get_tag_by_id(session, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag bulunamadı.")
-    # Tag adını güncelle — slug yeniden üret
-    from slugify import slugify
     tag.name = name
     tag.slug = slugify(name, allow_unicode=False, separator="-")
-    from sqlalchemy.ext.asyncio import AsyncSession as _AS
     await session.commit()
     await session.refresh(tag)
     return _redirect("/admin/tags")
