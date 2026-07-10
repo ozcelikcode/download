@@ -5,7 +5,7 @@ Async SQLAlchemy engine ve session factory.
 import logging
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,

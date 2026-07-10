@@ -8,21 +8,22 @@ Dış slug üretimi python-slugify ile yapılır.
 from __future__ import annotations
 
 import logging
-import math
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from slugify import slugify
-from sqlalchemy import func, or_, select, delete
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Category, Download, DownloadLog, DownloadTag, FileType, IconType, Tag
+from app.models import Category, Download, DownloadLog, DownloadTag, FileType, IconType, MenuItem, Tag
 from app.schemas import (
     CategoryCreate,
     CategoryUpdate,
     DownloadCreate,
     DownloadUpdate,
+    MenuItemCreate,
+    MenuItemUpdate,
     TagCreate,
 )
 
@@ -153,6 +154,67 @@ async def create_tag(session: AsyncSession, data: TagCreate) -> Tag:
 
 async def delete_tag(session: AsyncSession, tag: Tag) -> None:
     await session.delete(tag)
+    await session.commit()
+
+
+# ===========================================================================
+# MenuItem CRUD
+# ===========================================================================
+
+async def get_menu_items(session: AsyncSession, active_only: bool = False) -> List[MenuItem]:
+    stmt = select(MenuItem).order_by(MenuItem.position, MenuItem.id)
+    if active_only:
+        stmt = stmt.where(MenuItem.is_active.is_(True))
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_menu_item_by_id(session: AsyncSession, menu_item_id: int) -> Optional[MenuItem]:
+    result = await session.execute(select(MenuItem).where(MenuItem.id == menu_item_id))
+    return result.scalar_one_or_none()
+
+
+async def create_menu_item(session: AsyncSession, data: MenuItemCreate) -> MenuItem:
+    max_position = await session.scalar(select(func.max(MenuItem.position)))
+    item = MenuItem(
+        label=data.label,
+        url=data.url,
+        icon=data.icon or None,
+        is_active=data.is_active,
+        open_in_new_tab=data.open_in_new_tab,
+        position=(max_position or 0) + 1,
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    logger.info("Menü öğesi oluşturuldu: id=%d label=%r", item.id, item.label)
+    return item
+
+
+async def update_menu_item(
+    session: AsyncSession, item: MenuItem, data: MenuItemUpdate
+) -> MenuItem:
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(item, field, value)
+    await session.commit()
+    await session.refresh(item)
+    logger.info("Menü öğesi güncellendi: id=%d", item.id)
+    return item
+
+
+async def delete_menu_item(session: AsyncSession, item: MenuItem) -> None:
+    await session.delete(item)
+    await session.commit()
+    logger.info("Menü öğesi silindi: id=%d", item.id)
+
+
+async def reorder_menu_items(session: AsyncSession, ordered_ids: List[int]) -> None:
+    """Verilen id sırasına göre position alanlarını 0'dan başlayarak yeniden yazar."""
+    for position, item_id in enumerate(ordered_ids):
+        await session.execute(
+            update(MenuItem).where(MenuItem.id == item_id).values(position=position)
+        )
     await session.commit()
 
 

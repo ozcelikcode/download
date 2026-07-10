@@ -1,0 +1,265 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Medya Arşivi{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Medya Arşivi</h1>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Sisteme yüklenen tüm resim ve dosyalar</p>
+  </div>
+</div>
+
+<!-- Kopyalama geri bildirimi -->
+<div id="media-copy-toast" class="fixed top-4 left-4 z-50 hidden">
+  <div class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-2.5">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"></i>
+    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Bağlantı kopyalandı</span>
+  </div>
+</div>
+
+<!-- Sekmeler -->
+<div class="flex items-center gap-1 mb-5 border-b border-slate-200 dark:border-slate-800">
+  <button type="button" data-tab-btn="images"
+    class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
+           border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium">
+    <i data-lucide="image" class="w-3.5 h-3.5"></i>
+    Resim Arşivi
+    <span class="text-xs text-slate-400 dark:text-slate-500">({{ images | length }})</span>
+  </button>
+  <button type="button" data-tab-btn="files"
+    class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
+           border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
+    <i data-lucide="file" class="w-3.5 h-3.5"></i>
+    Dosya Arşivi
+    <span class="text-xs text-slate-400 dark:text-slate-500">({{ files | length }})</span>
+  </button>
+</div>
+
+<!-- ================================================================
+     RESİM ARŞİVİ
+     ================================================================ -->
+<div id="tab-panel-images" data-tab-panel>
+
+  <div class="flex items-center justify-between mb-3">
+    <p class="text-xs text-slate-400 dark:text-slate-500">{{ images | length }} görsel</p>
+    <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+      <button type="button" data-view-btn="grid" data-view-target="images"
+        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+        <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+      </button>
+      <button type="button" data-view-btn="list" data-view-target="images"
+        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+        <i data-lucide="list" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div id="images-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    {% for img in images %}
+    <div class="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
+      <div class="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
+        <img src="{{ img.url }}" alt="{{ img.name }}" class="max-w-full max-h-full object-contain">
+      </div>
+      <div class="p-2">
+        <p class="text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ img.name }}">{{ img.name }}</p>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ img.size_human }}</p>
+      </div>
+      <button type="button"
+        class="media-copy-btn absolute top-1.5 right-1.5 p-1.5 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        data-copy-url="{{ img.url }}" title="Bağlantıyı kopyala">
+        <i data-lucide="link" class="w-3 h-3 text-slate-600 dark:text-slate-300"></i>
+      </button>
+    </div>
+    {% else %}
+    <p class="col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Liste -->
+  <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
+    {% for img in images %}
+    <div class="flex items-center gap-3 px-4 py-2.5">
+      <img src="{{ img.url }}" alt="" class="w-9 h-9 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-0.5 shrink-0">
+      <div class="min-w-0 flex-1">
+        <p class="text-sm text-slate-700 dark:text-slate-300 truncate">{{ img.name }}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500">{{ img.size_human }} · {{ img.modified | format_date('%d.%m.%Y %H:%M') }}</p>
+      </div>
+      <button type="button"
+        class="media-copy-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+        data-copy-url="{{ img.url }}">
+        <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+      </button>
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ================================================================
+     DOSYA ARŞİVİ
+     ================================================================ -->
+<div id="tab-panel-files" data-tab-panel class="hidden">
+
+  <div class="flex items-center justify-between mb-3">
+    <p class="text-xs text-slate-400 dark:text-slate-500">{{ files | length }} dosya</p>
+    <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+      <button type="button" data-view-btn="grid" data-view-target="files"
+        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+        <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+      </button>
+      <button type="button" data-view-btn="list" data-view-target="files"
+        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+        <i data-lucide="list" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div id="files-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    {% for f in files %}
+    <div class="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
+      <div class="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+        {% if f.is_image %}
+        <img src="{{ f.url }}" alt="{{ f.name }}" class="max-w-full max-h-full object-contain p-2">
+        {% else %}
+        <i data-lucide="{{ f.icon }}" class="w-8 h-8 text-slate-400 dark:text-slate-500"></i>
+        {% endif %}
+      </div>
+      <div class="p-2">
+        <p class="text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ f.name }}">{{ f.name }}</p>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ f.size_human }}</p>
+      </div>
+      <button type="button"
+        class="media-copy-btn absolute top-1.5 right-1.5 p-1.5 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        data-copy-url="{{ f.url }}" title="Bağlantıyı kopyala">
+        <i data-lucide="link" class="w-3 h-3 text-slate-600 dark:text-slate-300"></i>
+      </button>
+    </div>
+    {% else %}
+    <p class="col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Liste -->
+  <div id="files-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
+    {% for f in files %}
+    <div class="flex items-center gap-3 px-4 py-2.5">
+      <div class="w-9 h-9 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+        {% if f.is_image %}
+        <img src="{{ f.url }}" alt="" class="w-full h-full object-contain p-0.5">
+        {% else %}
+        <i data-lucide="{{ f.icon }}" class="w-4 h-4 text-slate-400 dark:text-slate-500"></i>
+        {% endif %}
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm text-slate-700 dark:text-slate-300 truncate">{{ f.name }}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500">{{ f.size_human }} · {{ f.modified | format_date('%d.%m.%Y %H:%M') }}</p>
+      </div>
+      <button type="button"
+        class="media-copy-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+        data-copy-url="{{ f.url }}">
+        <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+      </button>
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Sekme geçişi ─────────────────────────────────────────
+  (function () {
+    const tabBtns   = document.querySelectorAll('[data-tab-btn]');
+    const tabPanels = document.querySelectorAll('[data-tab-panel]');
+
+    function activateTab(name) {
+      tabBtns.forEach(function (btn) {
+        const isActive = btn.dataset.tabBtn === name;
+        btn.classList.toggle('border-blue-600', isActive);
+        btn.classList.toggle('dark:border-blue-400', isActive);
+        btn.classList.toggle('text-blue-700', isActive);
+        btn.classList.toggle('dark:text-blue-400', isActive);
+        btn.classList.toggle('font-medium', isActive);
+        btn.classList.toggle('border-transparent', !isActive);
+        btn.classList.toggle('text-slate-500', !isActive);
+        btn.classList.toggle('dark:text-slate-400', !isActive);
+      });
+      tabPanels.forEach(function (panel) {
+        panel.classList.toggle('hidden', panel.id !== 'tab-panel-' + name);
+      });
+    }
+
+    tabBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () { activateTab(btn.dataset.tabBtn); });
+    });
+  })();
+
+  // ── Grid / Liste görünüm değiştirici (localStorage'da kalıcı) ────────
+  (function () {
+    const viewBtns = document.querySelectorAll('[data-view-btn]');
+
+    function applyView(target, mode) {
+      const gridEl = document.getElementById(target + '-grid-view');
+      const listEl = document.getElementById(target + '-list-view');
+      if (gridEl) gridEl.classList.toggle('hidden', mode !== 'grid');
+      if (listEl) listEl.classList.toggle('hidden', mode !== 'list');
+      viewBtns.forEach(function (btn) {
+        if (btn.dataset.viewTarget !== target) return;
+        const isActive = btn.dataset.viewBtn === mode;
+        btn.classList.toggle('bg-blue-50', isActive);
+        btn.classList.toggle('dark:bg-blue-500/10', isActive);
+        btn.classList.toggle('text-blue-600', isActive);
+        btn.classList.toggle('dark:text-blue-400', isActive);
+        btn.classList.toggle('text-slate-500', !isActive);
+        btn.classList.toggle('dark:text-slate-400', !isActive);
+      });
+      localStorage.setItem('media-view-' + target, mode);
+    }
+
+    ['images', 'files'].forEach(function (target) {
+      const saved = localStorage.getItem('media-view-' + target) || 'grid';
+      applyView(target, saved);
+    });
+
+    viewBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyView(btn.dataset.viewTarget, btn.dataset.viewBtn);
+      });
+    });
+  })();
+
+  // ── Bağlantı kopyalama ───────────────────────────────────
+  (function () {
+    const toast = document.getElementById('media-copy-toast');
+    let toastTimer = null;
+
+    function showCopyToast() {
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1600);
+    }
+
+    document.querySelectorAll('.media-copy-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const url = window.location.origin + btn.dataset.copyUrl;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(showCopyToast).catch(function () {
+            window.prompt('Bağlantıyı kopyalayın:', url);
+          });
+        } else {
+          window.prompt('Bağlantıyı kopyalayın:', url);
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -118,6 +118,30 @@ class Tag(Base):
 
 
 # ---------------------------------------------------------------------------
+# MenuItem — site üst navigasyon menüsü (admin panelinden düzenlenir)
+# ---------------------------------------------------------------------------
+class MenuItem(Base):
+    __tablename__ = "menu_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    open_in_new_tab: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<MenuItem id={self.id} label={self.label!r} position={self.position}>"
+
+
+# ---------------------------------------------------------------------------
 # Download (Ana tablo)
 # ---------------------------------------------------------------------------
 class Download(Base):

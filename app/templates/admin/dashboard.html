@@ -6,8 +6,8 @@
 <!-- Sayfa başlığı + Yeni dosya butonu -->
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h1 class="text-lg font-bold text-slate-900">Dashboard</h1>
-    <p class="text-xs text-slate-400 mt-0.5">Tüm indirmeler, kategoriler ve etiketler</p>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Tüm indirmeler, kategoriler ve etiketler</p>
   </div>
   <a href="/admin/downloads/new" class="btn-primary">
     <i data-lucide="plus" class="w-4 h-4"></i>
@@ -17,64 +17,64 @@
 
 <!-- İstatistik kartları -->
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-  <div class="bg-white border border-slate-200 rounded-sm p-4">
-    <p class="text-xs text-slate-400 mb-1">Toplam İndirme</p>
-    <p class="text-2xl font-bold text-slate-900">{{ total }}</p>
-    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">Toplam İndirme</p>
+    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ total }}</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
       <i data-lucide="package" class="w-3 h-3"></i> dosya
     </p>
   </div>
-  <div class="bg-white border border-slate-200 rounded-sm p-4">
-    <p class="text-xs text-slate-400 mb-1">Kategoriler</p>
-    <p class="text-2xl font-bold text-slate-900">{{ categories | length }}</p>
-    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">Kategoriler</p>
+    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ categories | length }}</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
       <i data-lucide="folder" class="w-3 h-3"></i> kategori
     </p>
   </div>
-  <div class="bg-white border border-slate-200 rounded-sm p-4">
-    <p class="text-xs text-slate-400 mb-1">Etiketler</p>
-    <p class="text-2xl font-bold text-slate-900">{{ tags | length }}</p>
-    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">Etiketler</p>
+    <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ tags | length }}</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
       <i data-lucide="tag" class="w-3 h-3"></i> etiket
     </p>
   </div>
-  <div class="bg-white border border-slate-200 rounded-sm p-4">
-    <p class="text-xs text-slate-400 mb-1">Toplam İndirme</p>
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-1">Toplam İndirme</p>
     {% set total_dl = downloads | sum(attribute='download_count') %}
-    <p class="text-2xl font-bold text-blue-600">{{ total_dl }}</p>
-    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ total_dl }}</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
       <i data-lucide="download" class="w-3 h-3"></i> kez
     </p>
   </div>
 </div>
 
 <!-- İndirme tablosu -->
-<div class="bg-white border border-slate-200 rounded-sm overflow-hidden">
-  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-    <h2 class="text-sm font-semibold text-slate-700">İndirmeler</h2>
-    <span class="text-xs text-slate-400">{{ total }} kayıt · Sayfa {{ page }}/{{ total_pages }}</span>
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">İndirmeler</h2>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ total }} kayıt · Sayfa {{ page }}/{{ total_pages }}</span>
   </div>
 
   {% if downloads %}
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
-        <tr class="border-b border-slate-100 bg-slate-50">
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 w-8">#</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500">Başlık</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 hidden md:table-cell">Kategori</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 hidden sm:table-cell">Tür</th>
-          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 hidden lg:table-cell">İndirme</th>
-          <th class="text-center px-4 py-2.5 text-xs font-semibold text-slate-500">Durum</th>
-          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">İşlem</th>
+        <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Başlık</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden md:table-cell">Kategori</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">Tür</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden lg:table-cell">İndirme</th>
+          <th class="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Durum</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">İşlem</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-50">
+      <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
         {% for d in downloads %}
-        <tr class="hover:bg-slate-50/50 transition-colors group">
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
 
           <!-- ID -->
-          <td class="px-4 py-3 text-xs text-slate-400 tabular-nums">{{ d.id }}</td>
+          <td class="px-4 py-3 text-xs text-slate-400 dark:text-slate-500 tabular-nums">{{ d.id }}</td>
 
           <!-- Başlık + sürüm -->
           <td class="px-4 py-3">
@@ -85,11 +85,11 @@
               </div>
               <div class="min-w-0">
                 <a href="/download/{{ d.slug }}" target="_blank"
-                  class="font-medium text-slate-800 hover:text-blue-600 transition-colors truncate block max-w-xs">
+                  class="font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate block max-w-xs">
                   {{ d.title }}
                 </a>
                 {% if d.version %}
-                <span class="text-xs text-slate-400">{{ d.version }}</span>
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ d.version }}</span>
                 {% endif %}
               </div>
             </div>
@@ -100,41 +100,41 @@
             {% if d.category %}
             <span class="category-badge">{{ d.category.name }}</span>
             {% else %}
-            <span class="text-slate-300 text-xs">—</span>
+            <span class="text-slate-300 dark:text-slate-600 text-xs">—</span>
             {% endif %}
           </td>
 
           <!-- Tür -->
           <td class="px-4 py-3 hidden sm:table-cell">
             {% if d.file_type.value == 'external' %}
-            <span class="inline-flex items-center gap-1 text-xs text-blue-600">
+            <span class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
               <i data-lucide="external-link" class="w-3 h-3"></i> Dış Link
             </span>
             {% else %}
-            <span class="inline-flex items-center gap-1 text-xs text-green-600">
+            <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
               <i data-lucide="server" class="w-3 h-3"></i> Lokal
             </span>
             {% endif %}
           </td>
 
           <!-- İndirme sayısı -->
-          <td class="px-4 py-3 hidden lg:table-cell text-right text-xs text-slate-500 tabular-nums">
+          <td class="px-4 py-3 hidden lg:table-cell text-right text-xs text-slate-500 dark:text-slate-400 tabular-nums">
             {{ d.download_count }}
           </td>
 
           <!-- Durum badge -->
           <td class="px-4 py-3 text-center">
             {% if d.is_active %}
-            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-green-50 text-green-700 border border-green-100">
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20">
               <i data-lucide="check" class="w-3 h-3"></i> Aktif
             </span>
             {% else %}
-            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-slate-100 text-slate-500">
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
               Pasif
             </span>
             {% endif %}
             {% if d.is_featured %}
-            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 text-amber-700 border border-amber-100 ml-1">
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 ml-1">
               <i data-lucide="star" class="w-3 h-3"></i>
             </span>
             {% endif %}
@@ -144,8 +144,8 @@
           <td class="px-4 py-3">
             <div class="flex items-center justify-end gap-1">
               <a href="/admin/downloads/{{ d.id }}/edit"
-                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600
-                       border border-slate-200 rounded-sm hover:bg-slate-100 transition-colors">
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+                       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 Düzenle
               </a>
@@ -166,8 +166,8 @@
 
   <!-- Sayfalama -->
   {% if total_pages > 1 %}
-  <div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-    <span class="text-xs text-slate-400">Sayfa {{ page }} / {{ total_pages }}</span>
+  <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ page }} / {{ total_pages }}</span>
     <div class="pagination">
       {% if page > 1 %}
       <a href="?page={{ page - 1 }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
@@ -183,8 +183,8 @@
   {% endif %}
 
   {% else %}
-  <div class="py-12 text-center text-slate-400">
-    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+  <div class="py-12 text-center text-slate-400 dark:text-slate-500">
+    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
     <p class="text-sm">Henüz indirme kaydı yok.</p>
     <a href="/admin/downloads/new" class="btn-primary mt-3 inline-flex">
       <i data-lucide="plus" class="w-3.5 h-3.5"></i> İlk dosyayı ekle

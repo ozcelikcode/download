@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models import FileType, IconType
 
@@ -88,6 +88,37 @@ class TagCreate(TagBase):
 class TagRead(TagBase):
     id: int
     slug: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ===========================================================================
+# MenuItem
+# ===========================================================================
+
+class MenuItemBase(BaseModel):
+    label: str = Field(..., min_length=1, max_length=100)
+    url: str = Field(..., min_length=1, max_length=500)
+    icon: Optional[str] = Field(None, max_length=50)
+    is_active: bool = True
+    open_in_new_tab: bool = False
+
+
+class MenuItemCreate(MenuItemBase):
+    pass
+
+
+class MenuItemUpdate(BaseModel):
+    label: Optional[str] = Field(None, min_length=1, max_length=100)
+    url: Optional[str] = Field(None, min_length=1, max_length=500)
+    icon: Optional[str] = Field(None, max_length=50)
+    is_active: Optional[bool] = None
+    open_in_new_tab: Optional[bool] = None
+
+
+class MenuItemRead(MenuItemBase):
+    id: int
+    position: int
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,0 +1,321 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Menü Düzenleme{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="breadcrumb mb-1">
+      <a href="/admin">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="text-slate-700 dark:text-slate-300">Ayarlar</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="text-slate-700 dark:text-slate-300">Menü Düzenleme</span>
+    </div>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Menü Düzenleme</h1>
+  </div>
+</div>
+
+<!-- ================================================================
+     Canlı Önizleme
+     ================================================================ -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-6 transition-colors">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+    <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    Canlı Önizleme
+  </h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">
+    Sitenin üst menüsünde bu sırayla görünecek.
+    {% if not menu_items %}Şu an özel bir menü tanımlı değil — site otomatik kategori menüsünü kullanmaya devam ediyor.{% endif %}
+  </p>
+
+  <div id="menu-preview" class="flex items-center gap-1 flex-wrap p-3 bg-slate-50 dark:bg-slate-950 rounded-sm border border-slate-100 dark:border-slate-800 min-h-[3rem]">
+    {% for item in menu_items %}
+    <span class="menu-preview-item inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap text-slate-600 dark:text-slate-400 {% if not item.is_active %}opacity-40{% endif %}"
+      data-item-id="{{ item.id }}">
+      {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
+      {{ item.label }}
+    </span>
+    {% else %}
+    <p class="text-xs text-slate-400 dark:text-slate-500">Önizlenecek menü öğesi yok.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ================================================================
+     Liste + Detay Paneli
+     ================================================================ -->
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+  <!-- Sol: sürüklenebilir liste -->
+  <div class="lg:col-span-3">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Menü Öğeleri ({{ menu_items | length }})</h2>
+      <button type="button" id="menu-add-btn" class="btn-primary py-1.5 px-3 text-xs">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
+      </button>
+    </div>
+
+    {% if menu_items %}
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
+      <i data-lucide="move" class="w-3 h-3"></i>
+      Sıralamayı değiştirmek için sürükleyin, düzenlemek için bir öğeye tıklayın.
+    </p>
+    {% endif %}
+
+    <ul id="menu-item-list" class="space-y-1.5">
+      {% for item in menu_items %}
+      <li class="menu-row group flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2.5 cursor-pointer transition-colors hover:border-blue-200 dark:hover:border-blue-500/40"
+        draggable="true"
+        data-id="{{ item.id }}"
+        data-label="{{ item.label }}"
+        data-url="{{ item.url }}"
+        data-icon="{{ item.icon or '' }}"
+        data-active="{{ '1' if item.is_active else '0' }}"
+        data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
+        <i data-lucide="grip-vertical" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 cursor-grab active:cursor-grabbing"></i>
+        <div class="w-8 h-8 rounded-sm bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0">
+          <i data-lucide="{{ item.icon or 'link' }}" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{{ item.label }}</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500 truncate">{{ item.url }}</p>
+        </div>
+        {% if not item.is_active %}
+        <span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shrink-0">Pasif</span>
+        {% endif %}
+        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-blue-400 dark:group-hover:text-blue-400 transition-colors"></i>
+      </li>
+      {% else %}
+      <li class="text-sm text-slate-400 dark:text-slate-500 text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
+        Henüz menü öğesi yok. Sağ üstteki <strong>"Yeni Ekle"</strong> ile başlayın.
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Sağ: detay paneli -->
+  <div class="lg:col-span-2">
+    <div id="menu-detail-panel" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 sticky top-20 transition-colors hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="menu-detail-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+          Menü Öğesini Düzenle
+        </h2>
+        <button type="button" id="menu-detail-close" class="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="menu-detail-form" method="post" class="space-y-3">
+        <div>
+          <label for="menu-field-label" class="form-label">Etiket <span class="text-red-500">*</span></label>
+          <input id="menu-field-label" name="label" type="text" required class="form-input" placeholder="Örn: Blog">
+        </div>
+
+        <div>
+          <label for="menu-field-url" class="form-label">Bağlantı <span class="text-red-500">*</span></label>
+          <input id="menu-field-url" name="url" type="text" required class="form-input" placeholder="/category/oyunlar veya https://…">
+          <p class="form-hint">İç sayfa yolu (<code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">/category/oyunlar</code>) veya tam bir dış URL girin.</p>
+        </div>
+
+        <div>
+          <label for="menu-field-icon" class="form-label">İkon</label>
+          <div class="flex items-center gap-2">
+            <div id="menu-icon-preview-wrap" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+              <i data-lucide="link" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+            </div>
+            <input id="menu-field-icon" name="icon" type="text" class="form-input flex-1" placeholder="Örn: home, folder, tag">
+          </div>
+          <p class="form-hint">
+            <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
+            üzerinden bir ikon adı seçin (opsiyonel).
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4 pt-1">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="menu-field-active" name="is_active" type="checkbox" value="true" class="accent-blue-600 rounded-sm" checked>
+            <span class="text-sm text-slate-700 dark:text-slate-300">Aktif</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="menu-field-new-tab" name="open_in_new_tab" type="checkbox" value="true" class="accent-blue-600 rounded-sm">
+            <span class="text-sm text-slate-700 dark:text-slate-300">Yeni sekmede aç</span>
+          </label>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button type="submit" class="btn-primary py-2 px-4 text-sm flex-1 justify-center">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet
+          </button>
+          <button type="button" id="menu-detail-delete" class="btn-danger py-2 px-3 text-sm hidden">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="menu-detail-empty" class="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm p-8 text-center transition-colors">
+      <i data-lucide="mouse-pointer-click" class="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
+      <p class="text-sm text-slate-400 dark:text-slate-500">
+        Düzenlemek için soldan bir menü öğesi seçin,<br>ya da "Yeni Ekle" ile başlayın.
+      </p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const list        = document.getElementById('menu-item-list');
+    const preview     = document.getElementById('menu-preview');
+    const detailPanel = document.getElementById('menu-detail-panel');
+    const detailEmpty = document.getElementById('menu-detail-empty');
+    const detailForm  = document.getElementById('menu-detail-form');
+    const detailTitle = document.getElementById('menu-detail-title');
+    const fieldLabel  = document.getElementById('menu-field-label');
+    const fieldUrl    = document.getElementById('menu-field-url');
+    const fieldIcon   = document.getElementById('menu-field-icon');
+    const fieldActive = document.getElementById('menu-field-active');
+    const fieldNewTab = document.getElementById('menu-field-new-tab');
+    const iconWrap    = document.getElementById('menu-icon-preview-wrap');
+    const deleteBtn   = document.getElementById('menu-detail-delete');
+    const closeBtn    = document.getElementById('menu-detail-close');
+    const addBtn      = document.getElementById('menu-add-btn');
+
+    let currentDeleteUrl = null;
+
+    function rows() {
+      return Array.from(list.querySelectorAll('.menu-row'));
+    }
+
+    function setIconPreview(name) {
+      iconWrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function clearSelection() {
+      rows().forEach(function (r) {
+        r.classList.remove('border-blue-300', 'dark:border-blue-500/50', 'ring-2', 'ring-blue-100', 'dark:ring-blue-500/20');
+      });
+    }
+
+    function openDetailFor(row) {
+      detailEmpty.classList.add('hidden');
+      detailPanel.classList.remove('hidden');
+      detailTitle.innerHTML = '<i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Menü Öğesini Düzenle';
+      fieldLabel.value = row.dataset.label || '';
+      fieldUrl.value = row.dataset.url || '';
+      fieldIcon.value = row.dataset.icon || '';
+      fieldActive.checked = row.dataset.active === '1';
+      fieldNewTab.checked = row.dataset.newTab === '1';
+      setIconPreview(row.dataset.icon);
+      detailForm.action = '/admin/settings/menu/' + row.dataset.id + '/edit';
+      deleteBtn.classList.remove('hidden');
+      currentDeleteUrl = '/admin/settings/menu/' + row.dataset.id + '/delete';
+      clearSelection();
+      row.classList.add('border-blue-300', 'dark:border-blue-500/50', 'ring-2', 'ring-blue-100', 'dark:ring-blue-500/20');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function openDetailForNew() {
+      detailEmpty.classList.add('hidden');
+      detailPanel.classList.remove('hidden');
+      detailTitle.innerHTML = '<i data-lucide="plus-circle" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Yeni Menü Öğesi';
+      fieldLabel.value = '';
+      fieldUrl.value = '';
+      fieldIcon.value = '';
+      fieldActive.checked = true;
+      fieldNewTab.checked = false;
+      setIconPreview('link');
+      detailForm.action = '/admin/settings/menu';
+      deleteBtn.classList.add('hidden');
+      currentDeleteUrl = null;
+      clearSelection();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    rows().forEach(function (row) {
+      row.addEventListener('click', function () { openDetailFor(row); });
+    });
+
+    addBtn.addEventListener('click', openDetailForNew);
+
+    closeBtn.addEventListener('click', function () {
+      detailPanel.classList.add('hidden');
+      detailEmpty.classList.remove('hidden');
+      clearSelection();
+    });
+
+    fieldIcon.addEventListener('input', function () { setIconPreview(fieldIcon.value); });
+
+    deleteBtn.addEventListener('click', function () {
+      if (!currentDeleteUrl) return;
+      if (!confirm('Bu menü öğesi silinecek. Onaylıyor musunuz?')) return;
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.action = currentDeleteUrl;
+      document.body.appendChild(form);
+      form.submit();
+    });
+
+    // ── Sürükle-bırak ile sıralama ────────────────────────────────────
+    let dragEl = null;
+
+    function updatePreviewOrder() {
+      if (!preview) return;
+      rows().forEach(function (row) {
+        const el = preview.querySelector('[data-item-id="' + row.dataset.id + '"]');
+        if (el) preview.appendChild(el);
+      });
+    }
+
+    function rowAfter(y) {
+      let closest = { offset: -Infinity, element: null };
+      rows().filter(function (r) { return r !== dragEl; }).forEach(function (el) {
+        const box = el.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          closest = { offset: offset, element: el };
+        }
+      });
+      return closest.element;
+    }
+
+    function persistOrder() {
+      const ids = rows().map(function (r) { return parseInt(r.dataset.id, 10); });
+      fetch('/admin/settings/menu/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ids }),
+      }).catch(function () {});
+    }
+
+    rows().forEach(function (row) {
+      row.addEventListener('dragstart', function (e) {
+        dragEl = row;
+        row.classList.add('opacity-40');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', function () {
+        row.classList.remove('opacity-40');
+        dragEl = null;
+        persistOrder();
+      });
+      row.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (!dragEl) return;
+        const after = rowAfter(e.clientY);
+        if (after == null) {
+          list.appendChild(dragEl);
+        } else if (after !== dragEl) {
+          list.insertBefore(dragEl, after);
+        }
+        updatePreviewOrder();
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -10,10 +10,14 @@
    ------------------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Safari için <details><summary> ok işaretini gizler (Tailwind list-none diğer tarayıcılarda yeterli) */
+summary::-webkit-details-marker { display: none; }
+
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ------------------------------------------------------------
@@ -23,6 +27,10 @@ body {
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.dark ::-webkit-scrollbar-track { background: #1e293b; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 /* ------------------------------------------------------------
    Download Card
@@ -35,7 +43,7 @@ body {
   display: flex;
   gap: 0.875rem;
   align-items: flex-start;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 .download-card:hover {
   border-color: #93c5fd;
@@ -44,6 +52,9 @@ body {
 .download-card.is-featured {
   border-left: 3px solid #2563eb;
 }
+.dark .download-card { background: #0f172a; border-color: #1e293b; }
+.dark .download-card:hover { border-color: #1e40af; box-shadow: 0 1px 6px rgba(59, 130, 246, 0.15); }
+.dark .download-card.is-featured { border-left-color: #3b82f6; }
 
 /* ------------------------------------------------------------
    File Type Icon Box
@@ -56,6 +67,7 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 .icon-box.zip   { background: #fff7ed; color: #ea580c; }
 .icon-box.pdf   { background: #fef2f2; color: #dc2626; }
@@ -66,6 +78,16 @@ body {
 .icon-box.dmg   { background: #f0f9ff; color: #0284c7; }
 .icon-box.deb   { background: #fefce8; color: #ca8a04; }
 .icon-box.auto  { background: #f8fafc; color: #64748b; }
+
+.dark .icon-box.zip   { background: rgba(234, 88, 12, 0.15); color: #fb923c; }
+.dark .icon-box.pdf   { background: rgba(220, 38, 38, 0.15); color: #f87171; }
+.dark .icon-box.link  { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+.dark .icon-box.image { background: rgba(22, 163, 74, 0.15); color: #4ade80; }
+.dark .icon-box.exe   { background: rgba(147, 51, 234, 0.15); color: #c084fc; }
+.dark .icon-box.apk   { background: rgba(5, 150, 105, 0.15); color: #34d399; }
+.dark .icon-box.dmg   { background: rgba(2, 132, 199, 0.15); color: #38bdf8; }
+.dark .icon-box.deb   { background: rgba(202, 138, 4, 0.15); color: #facc15; }
+.dark .icon-box.auto  { background: #1e293b; color: #94a3b8; }
 
 /* ------------------------------------------------------------
    Version Badge
@@ -83,6 +105,7 @@ body {
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
+.dark .version-badge { background: #1e293b; color: #cbd5e1; }
 
 /* ------------------------------------------------------------
    Download Button
@@ -103,6 +126,8 @@ body {
   flex-shrink: 0;
 }
 .btn-download:hover { background: #1d4ed8; }
+.dark .btn-download { background: #3b82f6; }
+.dark .btn-download:hover { background: #2563eb; }
 
 /* ------------------------------------------------------------
    Category Badge
@@ -121,6 +146,8 @@ body {
   transition: background-color 0.15s ease;
 }
 .category-badge:hover { background: #dbeafe; }
+.dark .category-badge { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+.dark .category-badge:hover { background: rgba(37, 99, 235, 0.25); }
 
 /* ------------------------------------------------------------
    Tag Pill
@@ -132,6 +159,8 @@ body {
   transition: color 0.15s ease;
 }
 .tag-pill:hover { color: #2563eb; }
+.dark .tag-pill { color: #94a3b8; }
+.dark .tag-pill:hover { color: #60a5fa; }
 
 /* ------------------------------------------------------------
    Hero Section
@@ -157,8 +186,9 @@ body {
   border-radius: 3px;
   background: #ffffff;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease, color 0.2s ease;
   font-family: inherit;
+  color: inherit;
 }
 .hero-search-input:focus {
   border-color: #2563eb;
@@ -172,6 +202,10 @@ body {
   color: #94a3b8;
   pointer-events: none;
 }
+.dark .hero-section { background: linear-gradient(135deg, #0f172a 0%, #0c1a2e 100%); border-color: #1e293b; }
+.dark .hero-search-input { background: #0f172a; border-color: #1e3a8a; color: #e2e8f0; }
+.dark .hero-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+.dark .hero-search-icon { color: #64748b; }
 
 /* ------------------------------------------------------------
    Stat Pill
@@ -188,6 +222,7 @@ body {
   border: 1px solid #e2e8f0;
   color: #475569;
 }
+.dark .stat-pill { background: #0f172a; border-color: #1e293b; color: #cbd5e1; }
 
 /* ------------------------------------------------------------
    Pagination
@@ -211,6 +246,9 @@ body {
 .page-btn:hover { border-color: #93c5fd; color: #2563eb; background: #eff6ff; }
 .page-btn.active { background: #2563eb; color: #ffffff; border-color: #2563eb; font-weight: 500; }
 .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+.dark .page-btn { background: #0f172a; border-color: #1e293b; color: #cbd5e1; }
+.dark .page-btn:hover { border-color: #3b82f6; color: #60a5fa; background: rgba(37, 99, 235, 0.1); }
+.dark .page-btn.active { background: #3b82f6; color: #ffffff; border-color: #3b82f6; }
 
 /* ------------------------------------------------------------
    Breadcrumb
@@ -226,6 +264,10 @@ body {
 .breadcrumb a { color: #64748b; text-decoration: none; }
 .breadcrumb a:hover { color: #2563eb; }
 .breadcrumb-sep { color: #cbd5e1; }
+.dark .breadcrumb { color: #64748b; }
+.dark .breadcrumb a { color: #94a3b8; }
+.dark .breadcrumb a:hover { color: #60a5fa; }
+.dark .breadcrumb-sep { color: #475569; }
 
 /* ------------------------------------------------------------
    Admin — Yardımcı Stiller
@@ -239,11 +281,16 @@ body {
   background: #ffffff;
   outline: none;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.2s ease, color 0.2s ease;
+  color: inherit;
 }
 .form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.08); }
 .form-label { display: block; font-size: 0.8125rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
 .form-hint  { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
+.dark .form-input { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }
+.dark .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.dark .form-label { color: #cbd5e1; }
+.dark .form-hint  { color: #64748b; }
 
 .btn-primary {
   display: inline-flex; align-items: center; gap: 0.375rem;
@@ -261,3 +308,7 @@ body {
   transition: background 0.15s ease;
 }
 .btn-danger:hover { background: #fee2e2; }
+.dark .btn-primary { background: #3b82f6; }
+.dark .btn-primary:hover { background: #2563eb; }
+.dark .btn-danger { background: rgba(220, 38, 38, 0.15); color: #f87171; border-color: rgba(220, 38, 38, 0.3); }
+.dark .btn-danger:hover { background: rgba(220, 38, 38, 0.25); }

@@ -12,9 +12,8 @@ import logging
 from typing import Optional
 
 import bcrypt
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Cookie, HTTPException, Request, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db  # noqa: F401 — re-export

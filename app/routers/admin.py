@@ -19,14 +19,27 @@ Rotalar:
   POST /admin/tags                   → Tag oluştur
   POST /admin/tags/{id}/edit         → Tag güncelle
   POST /admin/tags/{id}/delete       → Tag sil
+  GET  /admin/media                  → Medya arşivi (resim + dosya)
+  GET  /admin/settings/menu           → Menü düzenleme
+  POST /admin/settings/menu           → Menü öğesi oluştur
+  POST /admin/settings/menu/{id}/edit → Menü öğesi güncelle
+  POST /admin/settings/menu/{id}/delete → Menü öğesi sil
+  POST /admin/settings/menu/reorder   → Menü sırasını güncelle (AJAX)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import mimetypes
 import shutil
+import uuid
+from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
+from urllib.parse import quote
 
+import httpx
 from fastapi import (
     APIRouter,
     Depends,
@@ -38,6 +51,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
@@ -55,6 +69,8 @@ from app.schemas import (
     CategoryUpdate,
     DownloadCreate,
     DownloadUpdate,
+    MenuItemCreate,
+    MenuItemUpdate,
     TagCreate,
 )
 from app.templating import templates
@@ -140,15 +156,199 @@ async def _save_upload(file: UploadFile) -> str:
     return str(dest)
 
 
+def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str:
+    """Çakışmaları önlemek için orijinal ada kısa bir uuid ön eki ekler."""
+    safe_name = Path(original_name or "").name
+    ext = Path(safe_name).suffix or fallback_ext
+    return f"{uuid.uuid4().hex[:12]}{ext}"
+
+
 async def _save_icon_upload(file: UploadFile) -> str:
-    """İkon görselini icons/ alt dizinine kaydeder, web yolunu döndürür."""
+    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, web yolunu döndürür."""
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
-    dest = icons_dir / file.filename
+    filename = _unique_icon_filename(file.filename)
+    dest = icons_dir / filename
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
     logger.info("İkon yüklendi: %s", dest)
-    return f"/static/uploads/icons/{file.filename}"
+    return f"/static/uploads/icons/{filename}"
+
+
+def _delete_icon_file(path: str) -> None:
+    """Verilen web yoluna karşılık gelen ikon dosyasını (varsa) diskten siler."""
+    filename = Path(path or "").name
+    if not filename:
+        return
+    full = settings.upload_path / "icons" / filename
+    if full.exists() and full.is_file():
+        try:
+            full.unlink()
+        except OSError as exc:
+            logger.error("İkon silme hatası: %s", exc)
+
+
+# İlerleme durumu: {token: {"percent": int, "done": bool, "error": str|None, "path": str|None}}
+# Tek worker'lı geliştirme sunucusu için bellek-içi; çoklu worker'da paylaşılmaz.
+_icon_fetch_progress: dict[str, dict] = {}
+
+
+async def _fetch_icon_from_url(url: str, token: str) -> None:
+    """Dış URL'deki görseli akış halinde indirip icons/ dizinine kaydeder, ilerlemeyi günceller."""
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+            async with client.stream("GET", url) as resp:
+                resp.raise_for_status()
+                content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
+                if not content_type.startswith("image/"):
+                    raise ValueError("Bağlantı bir görsel dosyası döndürmüyor.")
+
+                total = int(resp.headers.get("content-length") or 0)
+                ext = mimetypes.guess_extension(content_type) or ".jpg"
+                icons_dir = settings.upload_path / "icons"
+                icons_dir.mkdir(parents=True, exist_ok=True)
+                filename = f"{uuid.uuid4().hex[:12]}{ext}"
+                dest = icons_dir / filename
+
+                received = 0
+                with dest.open("wb") as out:
+                    async for chunk in resp.aiter_bytes(chunk_size=65536):
+                        out.write(chunk)
+                        received += len(chunk)
+                        percent = min(99, int(received * 100 / total)) if total else 99
+                        _icon_fetch_progress[token]["percent"] = percent
+
+        _icon_fetch_progress[token].update(
+            {"percent": 100, "done": True, "path": f"/static/uploads/icons/{filename}"}
+        )
+        logger.info("Dış görsel indirildi: %s -> %s", url, dest)
+    except Exception as exc:
+        logger.error("Dış görsel indirme hatası (%s): %s", url, exc)
+        _icon_fetch_progress[token].update({"done": True, "error": str(exc)})
+
+
+# ---------------------------------------------------------------------------
+# Medya Arşivi — sisteme yüklenmiş tüm resim ve dosyaların listesi
+# ---------------------------------------------------------------------------
+
+_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"}
+
+_MEDIA_ICON_MAP = {
+    "zip": "archive", "rar": "archive", "7z": "archive", "tar": "archive", "gz": "archive",
+    "pdf": "file-text", "txt": "file-text", "doc": "file-text", "docx": "file-text",
+    "exe": "monitor", "msi": "monitor",
+    "apk": "smartphone",
+    "dmg": "apple", "pkg": "apple",
+    "deb": "terminal", "rpm": "terminal",
+    "mp4": "video", "mov": "video", "avi": "video", "mkv": "video",
+    "mp3": "music", "wav": "music",
+}
+
+
+def _media_human_size(num_bytes: int) -> str:
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} TB"
+
+
+def _guess_media_icon(ext: str) -> str:
+    ext = ext.lower().lstrip(".")
+    if ext in _IMAGE_EXTS:
+        return "image"
+    return _MEDIA_ICON_MAP.get(ext, "file")
+
+
+def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
+    """Bir dizindeki tüm dosyaları (alt dizinler hariç) listeler."""
+    items: List[dict] = []
+    if directory.exists():
+        for p in directory.iterdir():
+            if not p.is_file():
+                continue
+            stat = p.stat()
+            ext = p.suffix.lstrip(".").lower()
+            items.append(
+                {
+                    "name": p.name,
+                    "url": f"{url_prefix}/{quote(p.name)}",
+                    "size_human": _media_human_size(stat.st_size),
+                    "modified": datetime.fromtimestamp(stat.st_mtime),
+                    "ext": ext,
+                    "icon": _guess_media_icon(ext),
+                    "is_image": ext in _IMAGE_EXTS,
+                }
+            )
+    items.sort(key=lambda x: x["modified"], reverse=True)
+    return items
+
+
+@router.get("/media", name="admin_media")
+async def media_view(request: Request, _admin: str = Depends(require_admin)):
+    upload_root = settings.upload_path
+    icons_dir = upload_root / "icons"
+
+    images = _list_media_files(icons_dir, "/static/uploads/icons")
+    files = _list_media_files(upload_root, "/static/uploads")
+    flash_message = request.session.pop("flash_message", None)
+
+    return templates.TemplateResponse(
+        "admin/media.html",
+        {
+            "request": request,
+            "images": images,
+            "files": files,
+            "admin_user": _admin,
+            "flash_message": flash_message,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# İkon görseli — AJAX yükleme / dış URL indirme / ilerleme / silme
+# ---------------------------------------------------------------------------
+
+@router.post("/upload/icon-image", name="admin_upload_icon_image")
+async def upload_icon_image(
+    _admin: str = Depends(require_admin),
+    file: UploadFile = File(...),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Sadece görsel dosyaları yüklenebilir.")
+    path = await _save_icon_upload(file)
+    return {"path": path}
+
+
+@router.post("/upload/icon-image-url", name="admin_upload_icon_image_url")
+async def upload_icon_image_url(
+    _admin: str = Depends(require_admin),
+    url: str = Form(...),
+    token: str = Form(...),
+):
+    _icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None, "path": None}
+    asyncio.create_task(_fetch_icon_from_url(url, token))
+    return {"started": True, "token": token}
+
+
+@router.get("/upload/progress/{token}", name="admin_upload_progress")
+async def upload_progress(token: str, _admin: str = Depends(require_admin)):
+    data = _icon_fetch_progress.get(token)
+    if not data:
+        raise HTTPException(status_code=404, detail="Bilinmeyen işlem.")
+    if data.get("done"):
+        _icon_fetch_progress.pop(token, None)
+    return data
+
+
+@router.post("/upload/icon-image-delete", name="admin_upload_icon_image_delete")
+async def delete_icon_image(
+    _admin: str = Depends(require_admin),
+    path: str = Form(...),
+):
+    _delete_icon_file(path)
+    return {"deleted": True}
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +477,7 @@ async def download_new_post(
     file_size_unit: str = Form("MB"),
     icon_type: str = Form("auto"),
     icon_image_url: Optional[str] = Form(None),
+    icon_image_final_path: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
@@ -292,8 +493,13 @@ async def download_new_post(
         file_path = await _save_upload(upload_file)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
+    # Öncelik: AJAX ile önceden yüklenmiş/indirilmiş yerel dosya yolu.
     icon_img_path: Optional[str] = None
-    if icon_image_file and icon_image_file.filename:
+    icon_img_url: Optional[str] = icon_image_url or None
+    if icon_image_final_path:
+        icon_img_path = icon_image_final_path
+        icon_img_url = None
+    elif icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
@@ -313,7 +519,7 @@ async def download_new_post(
             file_size_bytes=size_bytes,
             icon_type=IconType(icon_type),
             icon_image_path=icon_img_path,
-            icon_image_url=icon_image_url or None,
+            icon_image_url=icon_img_url,
             os_compatibility=os_tags,
             category_id=cat_id,
             parent_id=par_id,
@@ -406,6 +612,8 @@ async def download_edit_post(
     file_size_unit: str = Form("MB"),
     icon_type: Optional[str] = Form(None),
     icon_image_url: Optional[str] = Form(None),
+    icon_image_final_path: Optional[str] = Form(None),
+    icon_image_cleared: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
@@ -425,8 +633,17 @@ async def download_edit_post(
         file_path = await _save_upload(upload_file)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
+    # Öncelik: (1) kullanıcı görseli sildi  (2) AJAX ile önceden yüklenmiş/
+    # indirilmiş yerel dosya yolu  (3) form ile birlikte gelen dosya.
     icon_img_path: Optional[str] = download.icon_image_path
-    if icon_image_file and icon_image_file.filename:
+    icon_img_url: Optional[str] = icon_image_url or None
+    if icon_image_cleared == "1":
+        icon_img_path = None
+        icon_img_url = None
+    elif icon_image_final_path:
+        icon_img_path = icon_image_final_path
+        icon_img_url = None
+    elif icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
@@ -446,7 +663,7 @@ async def download_edit_post(
             file_size_bytes=size_bytes,
             icon_type=IconType(icon_type) if icon_type else None,
             icon_image_path=icon_img_path,
-            icon_image_url=icon_image_url or None,
+            icon_image_url=icon_img_url,
             os_compatibility=os_tags,
             category_id=cat_id,
             parent_id=par_id,
@@ -626,3 +843,97 @@ async def tag_delete(
         raise HTTPException(status_code=404, detail="Tag bulunamadı.")
     await crud.delete_tag(session, tag)
     return _redirect("/admin/tags")
+
+
+# ---------------------------------------------------------------------------
+# Ayarlar — Menü Düzenleme
+# ---------------------------------------------------------------------------
+
+@router.get("/settings/menu", name="admin_settings_menu")
+async def settings_menu_view(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    menu_items = await crud.get_menu_items(session)
+    flash_message = request.session.pop("flash_message", None)
+    return templates.TemplateResponse(
+        "admin/menu_editor.html",
+        {
+            "request": request,
+            "menu_items": menu_items,
+            "admin_user": _admin,
+            "flash_message": flash_message,
+        },
+    )
+
+
+@router.post("/settings/menu", name="admin_menu_item_create")
+async def menu_item_create(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    label: str = Form(...),
+    url: str = Form(...),
+    icon: Optional[str] = Form(None),
+    is_active: bool = Form(False),
+    open_in_new_tab: bool = Form(False),
+):
+    data = MenuItemCreate(
+        label=label, url=url, icon=icon or None,
+        is_active=is_active, open_in_new_tab=open_in_new_tab,
+    )
+    await crud.create_menu_item(session, data)
+    request.session["flash_message"] = f"\"{label}\" menü öğesi eklendi."
+    return _redirect("/admin/settings/menu")
+
+
+@router.post("/settings/menu/{item_id}/edit", name="admin_menu_item_edit")
+async def menu_item_edit(
+    item_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    label: str = Form(...),
+    url: str = Form(...),
+    icon: Optional[str] = Form(None),
+    is_active: bool = Form(False),
+    open_in_new_tab: bool = Form(False),
+):
+    item = await crud.get_menu_item_by_id(session, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menü öğesi bulunamadı.")
+    data = MenuItemUpdate(
+        label=label, url=url, icon=icon or None,
+        is_active=is_active, open_in_new_tab=open_in_new_tab,
+    )
+    await crud.update_menu_item(session, item, data)
+    request.session["flash_message"] = "Menü öğesi güncellendi."
+    return _redirect("/admin/settings/menu")
+
+
+@router.post("/settings/menu/{item_id}/delete", name="admin_menu_item_delete")
+async def menu_item_delete(
+    item_id: int,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    item = await crud.get_menu_item_by_id(session, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Menü öğesi bulunamadı.")
+    await crud.delete_menu_item(session, item)
+    return _redirect("/admin/settings/menu")
+
+
+class _MenuReorderPayload(BaseModel):
+    ids: List[int]
+
+
+@router.post("/settings/menu/reorder", name="admin_menu_reorder")
+async def menu_reorder(
+    payload: _MenuReorderPayload,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    await crud.reorder_menu_items(session, payload.ids)
+    return {"ok": True}

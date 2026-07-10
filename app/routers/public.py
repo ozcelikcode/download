@@ -41,10 +41,12 @@ async def _sidebar_context(session: AsyncSession) -> dict:
     categories = await crud.get_categories(session)
     tags = await crud.get_tags(session)
     counts = await crud.get_category_download_counts(session)
+    menu_items = await crud.get_menu_items(session, active_only=True)
     return {
         "sidebar_categories": categories,
         "sidebar_tags": tags,
         "category_counts": counts,
+        "menu_items": menu_items,
     }
 
 
