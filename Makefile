@@ -1,4 +1,4 @@
-.PHONY: dev migrate seed install hash
+.PHONY: dev migrate seed install install-dev hash test
 
 # Geliştirme sunucusu (hot-reload)
 dev:
@@ -22,9 +22,19 @@ install:
 	.venv/bin/pip install -U pip
 	.venv/bin/pip install -r requirements.txt
 
+# Test bağımlılıkları dahil kur (geliştirme ortamı)
+install-dev:
+	python3 -m venv .venv
+	.venv/bin/pip install -U pip
+	.venv/bin/pip install -r requirements-dev.txt
+
 # requirements.txt güncelle
 freeze:
 	.venv/bin/pip freeze > requirements.txt
+
+# Test paketini çalıştır (tests/ — izole, geçici SQLite; download.db'ye dokunmaz)
+test:
+	.venv/bin/pytest -v
 
 # Admin şifre hash'i üret
 # Kullanım: make hash pw=yenisifre

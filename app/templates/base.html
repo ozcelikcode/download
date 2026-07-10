@@ -49,39 +49,20 @@
       <span>{{ site_name }}</span>
     </a>
 
-    <!-- Nav (desktop) — özel menü tanımlıysa onu, yoksa otomatik kategori menüsünü göster -->
+    <!-- Nav (desktop) — /admin/settings/menu üzerinden yönetilir -->
     <nav class="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto">
-      {% if menu_items | default([]) %}
-      {% for item in menu_items %}
+      {% for item in menu_items | default([]) %}
       <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
         class="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap transition-colors
-        text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800">
+        {% if request.url.path == item.url %}
+          text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 font-medium
+        {% else %}
+          text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800
+        {% endif %}">
         {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
         {{ item.label }}
       </a>
       {% endfor %}
-      {% else %}
-      <a href="/"
-        class="text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap transition-colors
-        {% if request.url.path == '/' and not request.query_params.get('q') and not current_category %}
-          text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        Tümü
-      </a>
-      {% for cat in sidebar_categories[:7] | default([]) %}
-      <a href="/category/{{ cat.slug }}"
-        class="text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap transition-colors
-        {% if current_category and current_category.slug == cat.slug %}
-          text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        {{ cat.name }}
-      </a>
-      {% endfor %}
-      {% endif %}
     </nav>
 
     <!-- Tema değiştirici -->
@@ -100,24 +81,15 @@
     </button>
   </div>
 
-  <!-- Mobile dropdown menu -->
+  <!-- Mobile dropdown menu — /admin/settings/menu üzerinden yönetilir -->
   <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
-    {% if menu_items | default([]) %}
-    {% for item in menu_items %}
+    {% for item in menu_items | default([]) %}
     <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
       class="flex items-center gap-1.5 px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm">
       {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
       {{ item.label }}
     </a>
     {% endfor %}
-    {% else %}
-    <a href="/" class="block px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm">Tümü</a>
-    {% for cat in sidebar_categories %}
-    <a href="/category/{{ cat.slug }}" class="block px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm">
-      {{ cat.name }}
-    </a>
-    {% endfor %}
-    {% endif %}
   </div>
 </header>
 

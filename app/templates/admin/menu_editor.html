@@ -19,26 +19,34 @@
 <!-- ================================================================
      Canlı Önizleme
      ================================================================ -->
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-6 transition-colors">
+<div class="mb-6">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
     <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
     Canlı Önizleme
   </h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">
-    Sitenin üst menüsünde bu sırayla görünecek.
-    {% if not menu_items %}Şu an özel bir menü tanımlı değil — site otomatik kategori menüsünü kullanmaya devam ediyor.{% endif %}
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
+    Sitenin üst menüsü — sürükleyip bıraktıkça anında güncellenir.
   </p>
 
-  <div id="menu-preview" class="flex items-center gap-1 flex-wrap p-3 bg-slate-50 dark:bg-slate-950 rounded-sm border border-slate-100 dark:border-slate-800 min-h-[3rem]">
-    {% for item in menu_items %}
-    <span class="menu-preview-item inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap text-slate-600 dark:text-slate-400 {% if not item.is_active %}opacity-40{% endif %}"
-      data-item-id="{{ item.id }}">
-      {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
-      {{ item.label }}
-    </span>
-    {% else %}
-    <p class="text-xs text-slate-400 dark:text-slate-500">Önizlenecek menü öğesi yok.</p>
-    {% endfor %}
+  <!-- Gerçek site header'ının birebir kopyası -->
+  <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+    <div class="bg-white dark:bg-slate-900 px-4 sm:px-6 h-14 flex items-center gap-5">
+      <div class="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 shrink-0">
+        <i data-lucide="download-cloud" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+        <span>{{ site_name }}</span>
+      </div>
+      <nav id="menu-preview" class="flex items-center gap-0.5 flex-1 overflow-x-auto">
+        {% for item in menu_items %}
+        <span class="menu-preview-item inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap text-slate-600 dark:text-slate-400 {% if not item.is_active %}opacity-30{% endif %}"
+          data-item-id="{{ item.id }}">
+          {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
+          {{ item.label }}
+        </span>
+        {% else %}
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Menü boş — soldan bir öğe ekleyin.</span>
+        {% endfor %}
+      </nav>
+    </div>
   </div>
 </div>
 
@@ -125,11 +133,31 @@
             <div id="menu-icon-preview-wrap" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
               <i data-lucide="link" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
             </div>
-            <input id="menu-field-icon" name="icon" type="text" class="form-input flex-1" placeholder="Örn: home, folder, tag">
+            <input id="menu-field-icon" name="icon" type="text" class="form-input flex-1" placeholder="Örn: home, folder, tag" autocomplete="off">
+            <button type="button" id="menu-icon-clear-btn"
+              class="shrink-0 p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400
+                     border border-slate-200 dark:border-slate-800 rounded-sm hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
+              title="İkonu kaldır">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
+
+          <!-- Hızlı ikon seçici -->
+          <div id="menu-icon-picker" class="flex flex-wrap gap-1 mt-2">
+            {% for icon_name in ['home','layers','folder','tag','link','star','image','file','settings','mail','globe','shield','download','heart','bookmark','grid-3x3','list','monitor','smartphone','newspaper'] %}
+            <button type="button" data-icon-pick="{{ icon_name }}"
+              class="menu-icon-pick-btn p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
+                     hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="{{ icon_name }}">
+              <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
+            </button>
+            {% endfor %}
+          </div>
+
           <p class="form-hint">
+            Yukarıdan bir ikon seçin veya
             <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
-            üzerinden bir ikon adı seçin (opsiyonel).
+            üzerinden bir ad yazın. İkon opsiyoneldir.
           </p>
         </div>
 
@@ -250,6 +278,19 @@
     });
 
     fieldIcon.addEventListener('input', function () { setIconPreview(fieldIcon.value); });
+
+    document.getElementById('menu-icon-clear-btn').addEventListener('click', function () {
+      fieldIcon.value = '';
+      setIconPreview('');
+      fieldIcon.focus();
+    });
+
+    document.querySelectorAll('.menu-icon-pick-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        fieldIcon.value = btn.dataset.iconPick;
+        setIconPreview(btn.dataset.iconPick);
+      });
+    });
 
     deleteBtn.addEventListener('click', function () {
       if (!currentDeleteUrl) return;
