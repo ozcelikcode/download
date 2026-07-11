@@ -151,20 +151,12 @@
           <span class="version-badge">{{ d.version }}</span>
           {% endif %}
         </div>
-        {# İndirme / bağlantı butonu #}
-        {% if d.file_type.value == 'external' %}
-        <a href="/dl/{{ d.slug }}" class="btn-download" id="download-btn-{{ d.id }}"
-          title="Bağlantıya Git — {{ d.title }}">
-          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          Bağlantıya Git
-        </a>
-        {% else %}
-        <a href="/dl/{{ d.slug }}" class="btn-download" id="download-btn-{{ d.id }}"
+        {# İndirme sayfasına git — asıl indirme/bağlantı eylemi orada gösterilir #}
+        <a href="/download/{{ d.slug }}" class="btn-download" id="download-btn-{{ d.id }}"
           title="İndir — {{ d.title }}">
           <i data-lucide="download" class="w-3.5 h-3.5"></i>
           İndir
         </a>
-        {% endif %}
       </div>
 
       {# Açıklama #}

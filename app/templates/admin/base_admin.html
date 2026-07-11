@@ -8,9 +8,9 @@
   <!-- Tema — FOUC önleyici (Tailwind'den önce çalışmalı) -->
   <script>
     (function () {
-      var stored = localStorage.getItem('theme');
-      var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      if (theme === 'dark') document.documentElement.classList.add('dark');
+      var stored = localStorage.getItem('theme') || 'system';
+      var isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) document.documentElement.classList.add('dark');
     })();
   </script>
 
@@ -46,13 +46,30 @@
   </div>
   {% endif %}
 
-  <!-- Tema değiştirici -->
-  <button type="button" data-theme-toggle
-    class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors shrink-0"
-    aria-label="Temayı değiştir">
-    <span data-icon-sun><i data-lucide="sun" class="w-4 h-4"></i></span>
-    <span data-icon-moon class="hidden"><i data-lucide="moon" class="w-4 h-4"></i></span>
-  </button>
+  <!-- Tema seçici: Aydınlık / Karanlık / Sistem -->
+  <div class="relative shrink-0" id="theme-menu-wrap">
+    <button type="button" id="theme-toggle-btn"
+      class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
+      aria-label="Tema seç">
+      <span data-theme-icon="light"><i data-lucide="sun" class="w-4 h-4"></i></span>
+      <span data-theme-icon="dark" class="hidden"><i data-lucide="moon" class="w-4 h-4"></i></span>
+      <span data-theme-icon="system" class="hidden"><i data-lucide="monitor" class="w-4 h-4"></i></span>
+    </button>
+    <div id="theme-menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
+      <button type="button" data-theme-option="light"
+        class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <i data-lucide="sun" class="w-3.5 h-3.5"></i> Aydınlık
+      </button>
+      <button type="button" data-theme-option="dark"
+        class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <i data-lucide="moon" class="w-3.5 h-3.5"></i> Karanlık
+      </button>
+      <button type="button" data-theme-option="system"
+        class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <i data-lucide="monitor" class="w-3.5 h-3.5"></i> Sistem
+      </button>
+    </div>
+  </div>
 
   <!-- Siteye dön -->
   <a href="/" target="_blank"
@@ -180,27 +197,56 @@
 <script>
   lucide.createIcons();
 
-  // Tema (karanlık/aydınlık) değiştirici
+  // Tema seçici: Aydınlık / Karanlık / Sistem
   (function () {
-    const toggleBtns = document.querySelectorAll('[data-theme-toggle]');
-    function applyTheme(theme) {
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-      localStorage.setItem('theme', theme);
-      toggleBtns.forEach((btn) => {
-        const sun = btn.querySelector('[data-icon-sun]');
-        const moon = btn.querySelector('[data-icon-moon]');
-        if (sun && moon) {
-          sun.classList.toggle('hidden', theme === 'dark');
-          moon.classList.toggle('hidden', theme !== 'dark');
-        }
+    const menuWrap = document.getElementById('theme-menu-wrap');
+    if (!menuWrap) return;
+    const btn = document.getElementById('theme-toggle-btn');
+    const menu = document.getElementById('theme-menu');
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function isDarkFor(mode) {
+      return mode === 'dark' || (mode === 'system' && mql.matches);
+    }
+
+    function applyTheme(mode, persist) {
+      document.documentElement.classList.toggle('dark', isDarkFor(mode));
+      if (persist) localStorage.setItem('theme', mode);
+
+      btn.querySelectorAll('[data-theme-icon]').forEach((el) => el.classList.add('hidden'));
+      const activeIcon = btn.querySelector('[data-theme-icon="' + mode + '"]');
+      if (activeIcon) activeIcon.classList.remove('hidden');
+
+      document.querySelectorAll('.theme-option-btn').forEach((opt) => {
+        const active = opt.dataset.themeOption === mode;
+        opt.classList.toggle('text-blue-600', active);
+        opt.classList.toggle('dark:text-blue-400', active);
+        opt.classList.toggle('bg-blue-50', active);
+        opt.classList.toggle('dark:bg-blue-500/10', active);
       });
     }
-    applyTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-    toggleBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        applyTheme(next);
+
+    applyTheme(localStorage.getItem('theme') || 'system', false);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!menuWrap.contains(e.target)) menu.classList.add('hidden');
+    });
+    document.querySelectorAll('.theme-option-btn').forEach((opt) => {
+      opt.addEventListener('click', () => {
+        applyTheme(opt.dataset.themeOption, true);
+        menu.classList.add('hidden');
       });
+    });
+
+    // Sistem teması değişirse ve seçili mod 'system' ise anında yansıt.
+    mql.addEventListener('change', () => {
+      if ((localStorage.getItem('theme') || 'system') === 'system') {
+        applyTheme('system', false);
+      }
     });
   })();
 </script>
