@@ -119,4 +119,9 @@ make migrate                # Bekleyen migrasyonları uygula
 make migration msg="açıklama" # Yeni migrasyon oluştur
 make hash pw=şifreniz       # Admin şifre hash'i üret
 make freeze                 # requirements.txt güncelle
+make test                   # Test paketini çalıştır (tests/)
+make css                    # Tailwind CSS'i yeniden derle (şablon class değişikliğinden sonra)
+make css-watch              # Şablonları izleyip Tailwind CSS'i otomatik derle
 ```
+
+> **Not:** Tailwind CSS, performans için `cdn.tailwindcss.com` yerine önceden derlenmiş statik bir dosyadan (`app/static/css/tailwind.css`) servis edilir. Şablonlarda yeni bir Tailwind class'ı kullandıysanız `make css` çalıştırmayı unutmayın — aksi halde yeni class sitede görünmez. `make install` bunu ilk kurulumda otomatik yapar.

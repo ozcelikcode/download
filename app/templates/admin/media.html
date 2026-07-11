@@ -1,6 +1,11 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Medya Arşivi{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+<script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js" defer></script>
+{% endblock %}
+
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
@@ -18,6 +23,61 @@
   </div>
 </div>
 
+<!-- Yükleme ilerleme çubuğu (Progress Bar) -->
+<div id="media-upload-toast" class="fixed top-4 right-4 z-50 hidden">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 w-72">
+    <div class="flex items-center justify-between mb-2 gap-2">
+      <span id="media-upload-label" class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">Yükleniyor…</span>
+      <span id="media-upload-percent" class="text-xs text-slate-400 dark:text-slate-500 shrink-0">0%</span>
+    </div>
+    <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+      <div id="media-upload-bar" class="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-[width] duration-150" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Görsel kırpma / boyutlandırma modalı -->
+<div id="media-crop-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-lg p-5">
+    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+      <i data-lucide="crop" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Görseli Düzenle
+    </h3>
+
+    <div class="bg-slate-100 dark:bg-slate-950 rounded-sm overflow-hidden mb-4" style="max-height:360px; overflow:hidden;">
+      <img id="media-crop-target" src="" alt="" style="max-width:100%; display:block;">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="form-label text-xs">Genişlik (px)</label>
+        <input id="media-crop-width" type="number" min="16" class="form-input text-sm">
+      </div>
+      <div>
+        <label class="form-label text-xs">Yükseklik (px)</label>
+        <input id="media-crop-height" type="number" min="16" class="form-input text-sm">
+      </div>
+    </div>
+
+    <label class="inline-flex items-center gap-2 mb-4 cursor-pointer select-none">
+      <input type="checkbox" id="media-crop-lock-ratio" class="accent-blue-600 rounded-sm" checked>
+      <span class="text-xs text-slate-600 dark:text-slate-400">En-boy oranını kilitle</span>
+    </label>
+
+    <div class="flex items-center justify-end gap-2">
+      <button type="button" id="media-crop-cancel"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
+               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+        İptal
+      </button>
+      <button type="button" id="media-crop-save" class="btn-primary py-1.5 px-3 text-xs">
+        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+        Kaydet
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Sekmeler -->
 <div class="flex items-center gap-1 mb-5 border-b border-slate-200 dark:border-slate-800">
   <button type="button" data-tab-btn="images"
@@ -25,14 +85,14 @@
            border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium">
     <i data-lucide="image" class="w-3.5 h-3.5"></i>
     Resim Arşivi
-    <span class="text-xs text-slate-400 dark:text-slate-500">({{ images | length }})</span>
+    <span data-tab-count class="text-xs text-slate-400 dark:text-slate-500">({{ images | length }})</span>
   </button>
   <button type="button" data-tab-btn="files"
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
            border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
     <i data-lucide="file" class="w-3.5 h-3.5"></i>
     Dosya Arşivi
-    <span class="text-xs text-slate-400 dark:text-slate-500">({{ files | length }})</span>
+    <span data-tab-count class="text-xs text-slate-400 dark:text-slate-500">({{ files | length }})</span>
   </button>
 </div>
 
@@ -41,60 +101,93 @@
      ================================================================ -->
 <div id="tab-panel-images" data-tab-panel>
 
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
     <p class="text-xs text-slate-400 dark:text-slate-500">{{ images | length }} görsel</p>
-    <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
-      <button type="button" data-view-btn="grid" data-view-target="images"
-        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
-        <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+    <div class="flex items-center gap-2">
+      <button type="button" id="images-upload-btn" class="btn-primary py-1.5 px-3 text-xs">
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
       </button>
-      <button type="button" data-view-btn="list" data-view-target="images"
-        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
-        <i data-lucide="list" class="w-3.5 h-3.5"></i>
-      </button>
+      <input type="file" id="images-upload-input" accept="image/*" multiple class="hidden">
+      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+        <button type="button" data-view-btn="grid" data-view-target="images"
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+          <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-view-btn="list" data-view-target="images"
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+          <i data-lucide="list" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
     </div>
   </div>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
+    Yüklenen görseller otomatik olarak sıkıştırılır. Kare ikona dönüştürmek için
+    <i data-lucide="wand-2" class="w-3 h-3 inline-block"></i> ikonuna tıklayın.
+  </p>
 
   <!-- Grid -->
   <div id="images-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for img in images %}
-    <div class="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
-      <div class="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
+    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors"
+      data-media-path="{{ img.url }}" data-media-kind="image">
+      <div class="relative aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
         <img src="{{ img.url }}" alt="{{ img.name }}" class="max-w-full max-h-full object-contain">
+        <div class="absolute top-0 inset-x-0 flex items-center justify-end gap-0.5 p-1 bg-gradient-to-b from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Düzenle">
+            <i data-lucide="crop" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+          <button type="button" data-action="autocrop" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="İkon Olarak Ayarla">
+            <i data-lucide="wand-2" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Bağlantıyı kopyala">
+            <i data-lucide="link" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Sil">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+        </div>
       </div>
       <div class="p-2">
         <p class="text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ img.name }}">{{ img.name }}</p>
         <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ img.size_human }}</p>
       </div>
-      <button type="button"
-        class="media-copy-btn absolute top-1.5 right-1.5 p-1.5 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
-        data-copy-url="{{ img.url }}" title="Bağlantıyı kopyala">
-        <i data-lucide="link" class="w-3 h-3 text-slate-600 dark:text-slate-300"></i>
-      </button>
     </div>
     {% else %}
-    <p class="col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
     {% endfor %}
   </div>
 
   <!-- Liste -->
   <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for img in images %}
-    <div class="flex items-center gap-3 px-4 py-2.5">
+    <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image">
       <img src="{{ img.url }}" alt="" class="w-9 h-9 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-0.5 shrink-0">
       <div class="min-w-0 flex-1">
         <p class="text-sm text-slate-700 dark:text-slate-300 truncate">{{ img.name }}</p>
         <p class="text-xs text-slate-400 dark:text-slate-500">{{ img.size_human }} · {{ img.modified | format_date('%d.%m.%Y %H:%M') }}</p>
       </div>
-      <button type="button"
-        class="media-copy-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
-               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-        data-copy-url="{{ img.url }}">
-        <i data-lucide="link" class="w-3 h-3"></i> Kopyala
-      </button>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" data-action="edit"
+          class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Düzenle">
+          <i data-lucide="crop" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-action="autocrop"
+          class="p-1.5 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="İkon Olarak Ayarla">
+          <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-action="copy"
+          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+                 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+        </button>
+        <button type="button" data-action="delete"
+          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Sil">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
     </div>
     {% else %}
-    <p class="text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
     {% endfor %}
   </div>
 </div>
@@ -104,50 +197,60 @@
      ================================================================ -->
 <div id="tab-panel-files" data-tab-panel class="hidden">
 
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
     <p class="text-xs text-slate-400 dark:text-slate-500">{{ files | length }} dosya</p>
-    <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
-      <button type="button" data-view-btn="grid" data-view-target="files"
-        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
-        <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+    <div class="flex items-center gap-2">
+      <button type="button" id="files-upload-btn" class="btn-primary py-1.5 px-3 text-xs">
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
       </button>
-      <button type="button" data-view-btn="list" data-view-target="files"
-        class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
-        <i data-lucide="list" class="w-3.5 h-3.5"></i>
-      </button>
+      <input type="file" id="files-upload-input" multiple class="hidden">
+      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+        <button type="button" data-view-btn="grid" data-view-target="files"
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+          <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-view-btn="list" data-view-target="files"
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+          <i data-lucide="list" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Grid -->
   <div id="files-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for f in files %}
-    <div class="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
-      <div class="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors"
+      data-media-path="{{ f.url }}" data-media-kind="file">
+      <div class="relative aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
         {% if f.is_image %}
         <img src="{{ f.url }}" alt="{{ f.name }}" class="max-w-full max-h-full object-contain p-2">
         {% else %}
         <i data-lucide="{{ f.icon }}" class="w-8 h-8 text-slate-400 dark:text-slate-500"></i>
         {% endif %}
+        <div class="absolute top-0 inset-x-0 flex items-center justify-end gap-0.5 p-1 bg-gradient-to-b from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Bağlantıyı kopyala">
+            <i data-lucide="link" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Sil">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-white"></i>
+          </button>
+        </div>
       </div>
       <div class="p-2">
         <p class="text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ f.name }}">{{ f.name }}</p>
         <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ f.size_human }}</p>
       </div>
-      <button type="button"
-        class="media-copy-btn absolute top-1.5 right-1.5 p-1.5 bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
-        data-copy-url="{{ f.url }}" title="Bağlantıyı kopyala">
-        <i data-lucide="link" class="w-3 h-3 text-slate-600 dark:text-slate-300"></i>
-      </button>
     </div>
     {% else %}
-    <p class="col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
     {% endfor %}
   </div>
 
   <!-- Liste -->
   <div id="files-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for f in files %}
-    <div class="flex items-center gap-3 px-4 py-2.5">
+    <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ f.url }}" data-media-kind="file">
       <div class="w-9 h-9 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
         {% if f.is_image %}
         <img src="{{ f.url }}" alt="" class="w-full h-full object-contain p-0.5">
@@ -159,15 +262,20 @@
         <p class="text-sm text-slate-700 dark:text-slate-300 truncate">{{ f.name }}</p>
         <p class="text-xs text-slate-400 dark:text-slate-500">{{ f.size_human }} · {{ f.modified | format_date('%d.%m.%Y %H:%M') }}</p>
       </div>
-      <button type="button"
-        class="media-copy-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
-               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-        data-copy-url="{{ f.url }}">
-        <i data-lucide="link" class="w-3 h-3"></i> Kopyala
-      </button>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" data-action="copy"
+          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+                 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+        </button>
+        <button type="button" data-action="delete"
+          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Sil">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
     </div>
     {% else %}
-    <p class="text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
     {% endfor %}
   </div>
 </div>
@@ -242,23 +350,304 @@
     const toast = document.getElementById('media-copy-toast');
     let toastTimer = null;
 
-    function showCopyToast() {
-      toast.classList.remove('hidden');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1600);
+    window.__copyMediaLink = function (path) {
+      const url = window.location.origin + path;
+      function done() {
+        toast.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(function () {
+          window.prompt('Bağlantıyı kopyalayın:', url);
+        });
+      } else {
+        window.prompt('Bağlantıyı kopyalayın:', url);
+      }
+    };
+  })();
+
+  // ── Yükleme ilerleme çubuğu + upload/edit/autocrop/delete ────────────
+  (function () {
+    const uploadToast   = document.getElementById('media-upload-toast');
+    const uploadBar     = document.getElementById('media-upload-bar');
+    const uploadPercent = document.getElementById('media-upload-percent');
+    const uploadLabel   = document.getElementById('media-upload-label');
+
+    function showUploadProgress(label) {
+      uploadLabel.textContent = label;
+      setUploadProgress(0);
+      uploadToast.classList.remove('hidden');
+    }
+    function setUploadProgress(pct) {
+      pct = Math.max(0, Math.min(100, Math.round(pct)));
+      uploadBar.style.width = pct + '%';
+      uploadPercent.textContent = pct + '%';
+    }
+    function hideUploadProgress() {
+      uploadToast.classList.add('hidden');
     }
 
-    document.querySelectorAll('.media-copy-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const url = window.location.origin + btn.dataset.copyUrl;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(url).then(showCopyToast).catch(function () {
-            window.prompt('Bağlantıyı kopyalayın:', url);
-          });
-        } else {
-          window.prompt('Bağlantıyı kopyalayın:', url);
+    function uploadOne(url, file, label) {
+      return new Promise(function (resolve, reject) {
+        showUploadProgress(label);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+
+        // İkon görselleri sunucuda sıkıştırılır; yanıt gelene kadar çubuk
+        // boş görünmesin diye %85-97 arasında yavaşça ilerleyen bir
+        // "sıkıştırılıyor" aşaması gösterilir. Genel dosya yüklemede
+        // (Dosya Arşivi) sıkıştırma yapılmadığı için bu aşama atlanır.
+        const willCompress = url === '/admin/upload/icon-image';
+        let compressTimer = null;
+        function startCompressPhase() {
+          if (compressTimer || !willCompress) return;
+          uploadLabel.textContent = 'Görsel sıkıştırılıyor…';
+          let fakePct = 85;
+          compressTimer = setInterval(function () {
+            fakePct = Math.min(fakePct + 2, 97);
+            setUploadProgress(fakePct);
+          }, 150);
         }
+        function stopCompressPhase() {
+          if (compressTimer) { clearInterval(compressTimer); compressTimer = null; }
+        }
+
+        xhr.upload.onprogress = function (e) {
+          if (!e.lengthComputable) return;
+          setUploadProgress((e.loaded / e.total) * (willCompress ? 85 : 100));
+          if (e.loaded >= e.total) startCompressPhase();
+        };
+        xhr.onload = function () {
+          stopCompressPhase();
+          setUploadProgress(100);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch (err) { reject(err); }
+          } else {
+            reject(new Error('Yükleme başarısız oldu (' + xhr.status + ').'));
+          }
+        };
+        xhr.onerror = function () {
+          stopCompressPhase();
+          reject(new Error('Ağ hatası — yükleme başarısız oldu.'));
+        };
+        const fd = new FormData();
+        fd.append('file', file);
+        xhr.send(fd);
       });
+    }
+
+    async function uploadQueue(endpoint, fileList) {
+      const files = Array.from(fileList);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          await uploadOne(endpoint, file, 'Yükleniyor (' + (i + 1) + '/' + files.length + '): ' + file.name);
+        } catch (e) {
+          hideUploadProgress();
+          alert(file.name + ': ' + (e.message || 'yüklenemedi.'));
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // ── Resim Arşivi yükleme ──────────────────────────────────
+    const imagesUploadBtn   = document.getElementById('images-upload-btn');
+    const imagesUploadInput = document.getElementById('images-upload-input');
+    if (imagesUploadBtn && imagesUploadInput) {
+      imagesUploadBtn.addEventListener('click', function () { imagesUploadInput.click(); });
+      imagesUploadInput.addEventListener('change', async function () {
+        if (!imagesUploadInput.files.length) return;
+        const ok = await uploadQueue('/admin/upload/icon-image', imagesUploadInput.files);
+        hideUploadProgress();
+        if (ok) window.location.reload();
+        imagesUploadInput.value = '';
+      });
+    }
+
+    // ── Dosya Arşivi yükleme ──────────────────────────────────
+    const filesUploadBtn   = document.getElementById('files-upload-btn');
+    const filesUploadInput = document.getElementById('files-upload-input');
+    if (filesUploadBtn && filesUploadInput) {
+      filesUploadBtn.addEventListener('click', function () { filesUploadInput.click(); });
+      filesUploadInput.addEventListener('change', async function () {
+        if (!filesUploadInput.files.length) return;
+        const ok = await uploadQueue('/admin/media/upload-file', filesUploadInput.files);
+        hideUploadProgress();
+        if (ok) window.location.reload();
+        filesUploadInput.value = '';
+      });
+    }
+
+    // ── Kırpma modalı ──────────────────────────────────────────
+    const modal      = document.getElementById('media-crop-modal');
+    const cropImg    = document.getElementById('media-crop-target');
+    const cropWidth  = document.getElementById('media-crop-width');
+    const cropHeight = document.getElementById('media-crop-height');
+    const lockRatio  = document.getElementById('media-crop-lock-ratio');
+    const cropCancel = document.getElementById('media-crop-cancel');
+    const cropSave   = document.getElementById('media-crop-save');
+    let cropper = null;
+    let cropTargetPath = null;
+
+    function openCropModal(path) {
+      cropTargetPath = path;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (cropper) { cropper.destroy(); cropper = null; }
+      cropImg.onload = function () {
+        cropper = new Cropper(cropImg, {
+          viewMode: 1,
+          dragMode: 'move',
+          autoCropArea: 0.8,
+          background: false,
+          aspectRatio: NaN,
+          movable: true,
+          zoomable: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          crop: function (e) {
+            cropWidth.value = Math.round(e.detail.width);
+            cropHeight.value = Math.round(e.detail.height);
+          },
+        });
+      };
+      cropImg.crossOrigin = 'anonymous';
+      cropImg.src = path;
+    }
+
+    function closeCropModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      if (cropper) { cropper.destroy(); cropper = null; }
+      cropTargetPath = null;
+    }
+
+    cropCancel.addEventListener('click', closeCropModal);
+
+    lockRatio.addEventListener('change', function () {
+      if (!cropper) return;
+      if (lockRatio.checked) {
+        const data = cropper.getData();
+        cropper.setAspectRatio(data.height ? data.width / data.height : NaN);
+      } else {
+        cropper.setAspectRatio(NaN);
+      }
+    });
+
+    cropWidth.addEventListener('input', function () {
+      if (!cropper) return;
+      const w = parseInt(cropWidth.value, 10);
+      if (!w) return;
+      const data = cropper.getData();
+      let h = data.height;
+      if (lockRatio.checked && data.width) {
+        h = w * (data.height / data.width);
+        cropHeight.value = Math.round(h);
+      }
+      cropper.setData({ width: w, height: h });
+    });
+
+    cropHeight.addEventListener('input', function () {
+      if (!cropper) return;
+      const h = parseInt(cropHeight.value, 10);
+      if (!h) return;
+      const data = cropper.getData();
+      let w = data.width;
+      if (lockRatio.checked && data.height) {
+        w = h * (data.width / data.height);
+        cropWidth.value = Math.round(w);
+      }
+      cropper.setData({ width: w, height: h });
+    });
+
+    cropSave.addEventListener('click', function () {
+      if (!cropper || !cropTargetPath) return;
+      const canvas = cropper.getCroppedCanvas();
+      if (!canvas) { alert('Görsel işlenemedi.'); return; }
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        const oldPath = cropTargetPath;
+        const file = new File([blob], 'cropped.png', { type: 'image/png' });
+        uploadOne('/admin/upload/icon-image', file, 'Kırpılan görsel kaydediliyor…')
+          .then(function (data) {
+            hideUploadProgress();
+            closeCropModal();
+            if (oldPath !== data.path) {
+              const fd = new FormData();
+              fd.append('path', oldPath);
+              fetch('/admin/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
+            }
+            window.location.reload();
+          })
+          .catch(function (e) {
+            hideUploadProgress();
+            alert(e.message || 'Kaydedilemedi.');
+          });
+      }, 'image/png');
+    });
+
+    // ── İkon Olarak Ayarla (otomatik kare kırpma) ───────────────
+    function handleAutoCrop(path) {
+      showUploadProgress('İkon otomatik oluşturuluyor…');
+      const fd = new FormData();
+      fd.append('path', path);
+      fd.append('size', '256');
+      fetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
+        .then(function (r) { if (!r.ok) throw new Error('İşlem başarısız oldu.'); return r.json(); })
+        .then(function (data) {
+          if (path === data.path) return;
+          const delFd = new FormData();
+          delFd.append('path', path);
+          return fetch('/admin/upload/icon-image-delete', { method: 'POST', body: delFd }).catch(function () {});
+        })
+        .then(function () {
+          hideUploadProgress();
+          window.location.reload();
+        })
+        .catch(function (e) {
+          hideUploadProgress();
+          alert(e.message || 'İşlem başarısız oldu.');
+        });
+    }
+
+    // ── Silme ────────────────────────────────────────────────
+    function handleDelete(path, kind) {
+      if (!confirm('Bu öğe silinecek. Onaylıyor musunuz?')) return;
+      const endpoint = kind === 'image' ? '/admin/upload/icon-image-delete' : '/admin/media/delete-file';
+      const fd = new FormData();
+      fd.append('path', path);
+      fetch(endpoint, { method: 'POST', body: fd })
+        .then(function () { window.location.reload(); })
+        .catch(function () { alert('Silinemedi.'); });
+    }
+
+    // ── Eylem butonları için tek bir delegasyon dinleyicisi ─────
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const card = btn.closest('[data-media-path]');
+      if (!card) return;
+
+      const path = card.dataset.mediaPath;
+      const kind = card.dataset.mediaKind;
+
+      switch (btn.dataset.action) {
+        case 'copy':
+          window.__copyMediaLink(path);
+          break;
+        case 'delete':
+          handleDelete(path, kind);
+          break;
+        case 'edit':
+          openCropModal(path);
+          break;
+        case 'autocrop':
+          handleAutoCrop(path);
+          break;
+      }
     });
   })();
 </script>

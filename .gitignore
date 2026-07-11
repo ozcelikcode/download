@@ -1,0 +1,10 @@
+# Sanal ortam / bağımlılıklar
+.venv/
+__pycache__/
+*.pyc
+
+# Test
+.pytest_cache/
+
+# Tailwind bağımsız CLI ikili dosyası (make tailwind-cli ile indirilir, ~45MB)
+.bin/

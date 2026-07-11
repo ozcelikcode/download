@@ -15,23 +15,12 @@
     })();
   </script>
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-          borderRadius: { sm: '3px', DEFAULT: '3px', md: '4px', lg: '6px' }
-        }
-      }
-    }
-  </script>
+  <!-- Tailwind (önceden derlenmiş statik CSS — make css ile üretilir) -->
+  <link rel="stylesheet" href="/static/css/tailwind.css">
 
   <!-- Custom CSS + Lucide -->
   <link rel="stylesheet" href="/static/css/app.css">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
 
   {% block head %}{% endblock %}
 </head>

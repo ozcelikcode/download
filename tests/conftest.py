@@ -12,14 +12,23 @@ from __future__ import annotations
 
 from typing import AsyncIterator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 — tüm modelleri Base.metadata'ya kaydeder
+from app.config import settings
 from app.database import Base
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, get_db
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def isolated_uploads(tmp_path, monkeypatch):
+    """Hiçbir test gerçek app/static/uploads dizinine yazmasın diye
+    yükleme dizinini her testte geçici bir klasöre yönlendirir."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
 
 
 @pytest_asyncio.fixture

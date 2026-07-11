@@ -56,6 +56,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.config import settings
+from app.imaging import compress_image_file, make_square_icon
 from app.dependencies import (
     create_admin_session_token,
     get_db,
@@ -164,13 +165,14 @@ def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str
 
 
 async def _save_icon_upload(file: UploadFile) -> str:
-    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, web yolunu döndürür."""
+    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, sıkıştırır, web yolunu döndürür."""
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
+    compress_image_file(dest)
     logger.info("İkon yüklendi: %s", dest)
     return f"/static/uploads/icons/{filename}"
 
@@ -215,11 +217,14 @@ async def _fetch_icon_from_url(url: str, token: str) -> None:
                     async for chunk in resp.aiter_bytes(chunk_size=65536):
                         out.write(chunk)
                         received += len(chunk)
-                        percent = min(99, int(received * 100 / total)) if total else 99
+                        # İndirme %0-90 aralığını kapsar; kalanı sıkıştırma aşamasına ayrılır.
+                        percent = min(90, int(received * 90 / total)) if total else 90
                         _icon_fetch_progress[token]["percent"] = percent
 
+        _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
+        compress_image_file(dest)
         _icon_fetch_progress[token].update(
-            {"percent": 100, "done": True, "path": f"/static/uploads/icons/{filename}"}
+            {"percent": 100, "done": True, "phase": "done", "path": f"/static/uploads/icons/{filename}"}
         )
         logger.info("Dış görsel indirildi: %s -> %s", url, dest)
     except Exception as exc:
@@ -306,6 +311,47 @@ async def media_view(request: Request, _admin: str = Depends(require_admin)):
     )
 
 
+def _unique_upload_filename(original_name: str) -> str:
+    """Çakışmaları önlemek için orijinal dosya adının sonuna kısa bir uuid ekler."""
+    safe_name = Path(original_name or "dosya").name
+    stem = Path(safe_name).stem or "dosya"
+    ext = Path(safe_name).suffix
+    return f"{stem}-{uuid.uuid4().hex[:8]}{ext}"
+
+
+@router.post("/media/upload-file", name="admin_media_upload_file")
+async def media_upload_file(
+    _admin: str = Depends(require_admin),
+    file: UploadFile = File(...),
+):
+    """Dosya Arşivi için genel amaçlı dosya yükleme (herhangi bir tür, orijinal haliyle saklanır)."""
+    upload_dir = settings.upload_path
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filename = _unique_upload_filename(file.filename)
+    dest = upload_dir / filename
+    with dest.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+    logger.info("Dosya arşivine yüklendi: %s", dest)
+    return {"path": f"/static/uploads/{quote(filename)}", "name": filename}
+
+
+@router.post("/media/delete-file", name="admin_media_delete_file")
+async def media_delete_file(
+    _admin: str = Depends(require_admin),
+    path: str = Form(...),
+):
+    """Dosya Arşivi'ndeki bir dosyayı (uploads kök dizininden) siler."""
+    filename = Path(path or "").name
+    if filename:
+        full = settings.upload_path / filename
+        if full.exists() and full.is_file():
+            try:
+                full.unlink()
+            except OSError as exc:
+                logger.error("Dosya silme hatası: %s", exc)
+    return {"deleted": True}
+
+
 # ---------------------------------------------------------------------------
 # İkon görseli — AJAX yükleme / dış URL indirme / ilerleme / silme
 # ---------------------------------------------------------------------------
@@ -327,7 +373,9 @@ async def upload_icon_image_url(
     url: str = Form(...),
     token: str = Form(...),
 ):
-    _icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None, "path": None}
+    _icon_fetch_progress[token] = {
+        "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
+    }
     asyncio.create_task(_fetch_icon_from_url(url, token))
     return {"started": True, "token": token}
 
@@ -349,6 +397,30 @@ async def delete_icon_image(
 ):
     _delete_icon_file(path)
     return {"deleted": True}
+
+
+@router.post("/upload/icon-auto-crop", name="admin_upload_icon_auto_crop")
+async def upload_icon_auto_crop(
+    _admin: str = Depends(require_admin),
+    path: str = Form(...),
+    size: int = Form(256),
+):
+    """Mevcut bir ikon görselini otomatik olarak ortadan kare kırpıp yeniden boyutlandırır."""
+    filename = Path(path or "").name
+    src = settings.upload_path / "icons" / filename
+    if not filename or not src.exists():
+        raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
+
+    icons_dir = settings.upload_path / "icons"
+    new_filename = f"{uuid.uuid4().hex[:12]}.png"
+    dest = icons_dir / new_filename
+    try:
+        make_square_icon(src, dest, size=max(32, min(int(size), 1024)))
+    except Exception as exc:
+        logger.error("Otomatik ikon kırpma hatası (%s): %s", src, exc)
+        raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
+
+    return {"path": f"/static/uploads/icons/{new_filename}"}
 
 
 # ---------------------------------------------------------------------------

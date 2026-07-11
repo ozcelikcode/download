@@ -16,7 +16,17 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Category, Download, DownloadLog, DownloadTag, FileType, IconType, MenuItem, Tag
+from app.models import (
+    Category,
+    Download,
+    DownloadLog,
+    DownloadTag,
+    FileType,
+    IconType,
+    MediaAsset,
+    MenuItem,
+    Tag,
+)
 from app.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -216,6 +226,48 @@ async def reorder_menu_items(session: AsyncSession, ordered_ids: List[int]) -> N
             update(MenuItem).where(MenuItem.id == item_id).values(position=position)
         )
     await session.commit()
+
+
+# ===========================================================================
+# MediaAsset — Medya Arşivi görünen ad meta verisi
+# ===========================================================================
+
+async def get_media_display_names(session: AsyncSession, paths: List[str]) -> dict[str, str]:
+    """Verilen yollar için (varsa) özel görünen adları toplu olarak döndürür."""
+    if not paths:
+        return {}
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_(paths)))
+    return {row.path: row.display_name for row in result.scalars().all() if row.display_name}
+
+
+async def set_media_display_name(
+    session: AsyncSession, path: str, display_name: Optional[str]
+) -> None:
+    """Bir dosya yolu için görünen adı ayarlar; boş verilirse özel adı kaldırır
+    (varsayılan olarak fiziksel dosya adı gösterilmeye devam eder)."""
+    display_name = (display_name or "").strip() or None
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    asset = result.scalar_one_or_none()
+
+    if asset is None:
+        if display_name is None:
+            return
+        session.add(MediaAsset(path=path, display_name=display_name))
+    elif display_name is None:
+        await session.delete(asset)
+    else:
+        asset.display_name = display_name
+
+    await session.commit()
+
+
+async def delete_media_asset(session: AsyncSession, path: str) -> None:
+    """Bir dosya silindiğinde ona ait görünen ad kaydını da temizler."""
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    asset = result.scalar_one_or_none()
+    if asset:
+        await session.delete(asset)
+        await session.commit()
 
 
 # ===========================================================================

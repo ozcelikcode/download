@@ -2,8 +2,8 @@
 {% block title %}{% if edit_mode %}Düzenle: {{ download.title }}{% else %}Yeni Dosya{% endif %}{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="https://unpkg.com/cropperjs@1/dist/cropper.min.css">
-<script src="https://unpkg.com/cropperjs@1/dist/cropper.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+<script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@
 <!-- ================================================================
      Yükleme ilerleme göstergesi — dinamik, sol üst köşe
      ================================================================ -->
-<div id="upload-progress-toast" class="fixed top-4 left-4 z-50 hidden">
+<div id="upload-progress-toast" class="fixed top-4 right-4 z-50 hidden">
   <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 min-w-[230px]">
     <div class="relative w-9 h-9 shrink-0">
       <svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
@@ -164,10 +164,16 @@
           <div class="min-w-0">
             <p class="text-xs text-slate-500 dark:text-slate-400">Görsel yüklendi.</p>
             <div class="flex items-center gap-2 mt-1.5">
+              <button type="button" id="icon-autocrop-btn"
+                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400
+                       border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                title="Otomatik olarak ortadan kare kırpar ve ikon boyutuna getirir">
+                <i data-lucide="wand-2" class="w-3 h-3"></i> İkon Olarak Ayarla
+              </button>
               <button type="button" id="icon-edit-btn"
                 class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <i data-lucide="crop" class="w-3 h-3"></i> Düzenle
+                <i data-lucide="crop" class="w-3 h-3"></i> Manuel Düzenle
               </button>
               <button type="button" id="icon-delete-btn"
                 class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-600 dark:text-red-400
@@ -582,6 +588,7 @@
     const urlUploadBtn   = document.getElementById('icon-url-upload-btn');
     const editBtn        = document.getElementById('icon-edit-btn');
     const deleteBtn      = document.getElementById('icon-delete-btn');
+    const autocropBtn    = document.getElementById('icon-autocrop-btn');
 
     const toast     = document.getElementById('upload-progress-toast');
     const ring      = document.getElementById('upload-progress-ring');
@@ -632,11 +639,33 @@
         showProgress(label || 'Görsel yükleniyor…');
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/admin/upload/icon-image');
+
+        // Yükleme %0-85 aralığını kapsar; sunucu görseli sıkıştırırken
+        // (yanıt henüz gelmeden) çubuk boş kalmasın diye %85-97 arasında
+        // yavaşça ilerleyen bir "sıkıştırılıyor" aşaması gösterilir.
+        let compressTimer = null;
+        function startCompressPhase() {
+          if (compressTimer) return;
+          labelEl.textContent = 'Görsel sıkıştırılıyor…';
+          let fakePct = 85;
+          compressTimer = setInterval(function () {
+            fakePct = Math.min(fakePct + 2, 97);
+            setProgress(fakePct);
+          }, 150);
+        }
+        function stopCompressPhase() {
+          if (compressTimer) { clearInterval(compressTimer); compressTimer = null; }
+        }
+
         xhr.upload.onprogress = function (e) {
-          if (e.lengthComputable) setProgress((e.loaded / e.total) * 100);
+          if (!e.lengthComputable) return;
+          setProgress((e.loaded / e.total) * 85);
+          if (e.loaded >= e.total) startCompressPhase();
         };
         xhr.onload = function () {
-          hideProgress();
+          stopCompressPhase();
+          setProgress(100);
+          setTimeout(hideProgress, 250);
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               resolve(JSON.parse(xhr.responseText).path);
@@ -648,6 +677,7 @@
           }
         };
         xhr.onerror = function () {
+          stopCompressPhase();
           hideProgress();
           reject(new Error('Ağ hatası — yükleme başarısız oldu.'));
         };
@@ -673,6 +703,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                   setProgress(data.percent || 0);
+                  labelEl.textContent = data.phase === 'compressing' ? 'Görsel sıkıştırılıyor…' : 'Görsel indiriliyor…';
                   if (data.done) {
                     clearInterval(poll);
                     hideProgress();
@@ -719,6 +750,32 @@
       });
     }
 
+    if (autocropBtn) {
+      autocropBtn.addEventListener('click', function () {
+        const current = finalPathInput.value;
+        if (!current) return;
+        showProgress('Otomatik ikon oluşturuluyor…');
+        const fd = new FormData();
+        fd.append('path', current);
+        fd.append('size', '256');
+        fetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
+          .then(function (r) { if (!r.ok) throw new Error('İşlem başarısız oldu.'); return r.json(); })
+          .then(function (data) {
+            hideProgress();
+            showPreview(data.path);
+            if (current !== data.path) {
+              const delFd = new FormData();
+              delFd.append('path', current);
+              fetch('/admin/upload/icon-image-delete', { method: 'POST', body: delFd }).catch(function () {});
+            }
+          })
+          .catch(function (e) {
+            hideProgress();
+            alert(e.message || 'Otomatik ikon oluşturulamadı.');
+          });
+      });
+    }
+
     // ── Kırpma / boyutlandırma modalı ──────────────────────────────────
     const modal       = document.getElementById('icon-crop-modal');
     const cropTarget  = document.getElementById('icon-crop-target');
@@ -737,9 +794,14 @@
       cropTarget.onload = function () {
         cropper = new Cropper(cropTarget, {
           viewMode: 1,
-          autoCropArea: 1,
+          dragMode: 'move',
+          autoCropArea: 0.8,
           background: false,
           aspectRatio: NaN,
+          movable: true,
+          zoomable: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
           crop: function (event) {
             cropWidth.value = Math.round(event.detail.width);
             cropHeight.value = Math.round(event.detail.height);
