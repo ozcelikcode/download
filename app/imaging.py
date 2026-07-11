@@ -45,17 +45,26 @@ def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:
             if fmt in ("JPEG", "JPG") or suffix in (".jpg", ".jpeg"):
                 if img.mode in ("RGBA", "P", "LA"):
                     img = img.convert("RGB")
-                img.save(path, format="JPEG", quality=JPEG_QUALITY, optimize=True, progressive=True)
             elif fmt == "WEBP" or suffix == ".webp":
-                img.save(path, format="WEBP", quality=WEBP_QUALITY, method=6)
+                pass
             else:
                 # PNG, GIF, BMP, ICO vb. → optimize edilmiş PNG
                 if img.mode not in ("RGBA", "RGB", "P", "L"):
                     img = img.convert("RGBA")
-                img.save(path, format="PNG", optimize=True)
+            img.load()  # kaynak dosyadan bağımsız, tam belleğe alınmış hale getir
 
-        before = path.stat().st_size
-        logger.info("Görsel sıkıştırıldı: %s (%.1f KB)", path.name, before / 1024)
+        # `with` bloğu burada kapanır (kaynak dosya handle'ı serbest); ancak
+        # yerinde (aynı yola) yazılacağı için kaydetme işlemi handle kapandıktan
+        # sonra yapılır.
+        if fmt in ("JPEG", "JPG") or suffix in (".jpg", ".jpeg"):
+            img.save(path, format="JPEG", quality=JPEG_QUALITY, optimize=True, progressive=True)
+        elif fmt == "WEBP" or suffix == ".webp":
+            img.save(path, format="WEBP", quality=WEBP_QUALITY, method=6)
+        else:
+            img.save(path, format="PNG", optimize=True)
+
+        after = path.stat().st_size
+        logger.info("Görsel sıkıştırıldı: %s (%.1f KB)", path.name, after / 1024)
     except Exception as exc:
         logger.warning("Görsel sıkıştırılamadı (%s): %s", path, exc)
 
@@ -64,6 +73,8 @@ def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
     """
     Görseli ortadan kare olacak şekilde kırpar, verilen boyuta küçültür ve
     dest_path'e optimize edilmiş PNG olarak kaydeder (şeffaflık korunur).
+    `dest_path`, `src_path` ile aynı olabilir (yerinde güncelleme / link
+    değişmez) — kaynak dosya handle'ı kaydetmeden önce kapatılır.
     """
     with Image.open(src_path) as img:
         img = ImageOps.exif_transpose(img)
@@ -76,6 +87,8 @@ def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
         top = (height - side) // 2
         img = img.crop((left, top, left + side, top + side))
         img = img.resize((size, size), Image.LANCZOS)
-        img.save(dest_path, format="PNG", optimize=True)
+        img.load()
 
+    # `with` bloğu kapandı (kaynak handle serbest) — artık aynı yola güvenle yazabiliriz.
+    img.save(dest_path, format="PNG", optimize=True)
     logger.info("Otomatik ikon oluşturuldu: %s (%dx%d)", dest_path.name, size, size)

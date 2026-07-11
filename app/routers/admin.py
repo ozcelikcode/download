@@ -164,17 +164,40 @@ def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str
     return f"{uuid.uuid4().hex[:12]}{ext}"
 
 
-async def _save_icon_upload(file: UploadFile) -> str:
-    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, sıkıştırır, web yolunu döndürür."""
+async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
+    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, web yolunu döndürür.
+
+    `compress=False`: kaynağı zaten işlenmiş (ör. kırpma tuvalinden gelen) bir
+    görsel ise gereksiz ikinci bir sıkıştırma turu uygulanmaz.
+    """
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
-    compress_image_file(dest)
-    logger.info("İkon yüklendi: %s", dest)
+    if compress:
+        compress_image_file(dest)
+    logger.info("İkon yüklendi: %s (sıkıştırma=%s)", dest, compress)
     return f"/static/uploads/icons/{filename}"
+
+
+def _resolve_icon_path(path: str) -> Path:
+    """Bir ikon web yolunu ('/static/uploads/icons/x.png') gerçek disk yoluna çevirir.
+    Yalnızca dosya adı kullanılır — dizin gezinmesine (path traversal) izin verilmez."""
+    return settings.upload_path / "icons" / Path(path or "").name
+
+
+async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
+    """Var olan bir ikon dosyasının İÇERİĞİNİ, TAM OLARAK AYNI yol/link üzerinde
+    değiştirir — dosya adı asla değişmez, sıkıştırma uygulanmaz (kaynak zaten
+    işlenmiş kabul edilir)."""
+    dest = _resolve_icon_path(existing_path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+    logger.info("İkon yerinde güncellendi (link değişmedi): %s", dest)
+    return existing_path
 
 
 def _delete_icon_file(path: str) -> None:
@@ -291,12 +314,24 @@ def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
 
 
 @router.get("/media", name="admin_media")
-async def media_view(request: Request, _admin: str = Depends(require_admin)):
+async def media_view(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
     upload_root = settings.upload_path
     icons_dir = upload_root / "icons"
 
     images = _list_media_files(icons_dir, "/static/uploads/icons")
     files = _list_media_files(upload_root, "/static/uploads")
+
+    # Link (path) hiçbir zaman değişmez; kullanıcı yalnızca görünen adı
+    # düzenler. Bu, fiziksel dosya adından bağımsız ayrı bir alandır.
+    all_paths = [item["url"] for item in images] + [item["url"] for item in files]
+    display_names = await crud.get_media_display_names(session, all_paths)
+    for item in images + files:
+        item["display_name"] = display_names.get(item["url"], item["name"])
+
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
@@ -335,9 +370,29 @@ async def media_upload_file(
     return {"path": f"/static/uploads/{quote(filename)}", "name": filename}
 
 
+@router.post("/media/replace-file", name="admin_media_replace_file")
+async def media_replace_file(
+    _admin: str = Depends(require_admin),
+    path: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Dosya Arşivi'nde mevcut bir dosyanın İÇERİĞİNİ değiştirir; link/ad aynı kalır."""
+    filename = Path(path or "").name
+    if not filename:
+        raise HTTPException(status_code=400, detail="Geçersiz yol.")
+    dest = settings.upload_path / filename
+    if not dest.exists():
+        raise HTTPException(status_code=404, detail="Kaynak dosya bulunamadı.")
+    with dest.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+    logger.info("Dosya yerinde güncellendi (link değişmedi): %s", dest)
+    return {"path": path}
+
+
 @router.post("/media/delete-file", name="admin_media_delete_file")
 async def media_delete_file(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
     """Dosya Arşivi'ndeki bir dosyayı (uploads kök dizininden) siler."""
@@ -349,7 +404,21 @@ async def media_delete_file(
                 full.unlink()
             except OSError as exc:
                 logger.error("Dosya silme hatası: %s", exc)
+    await crud.delete_media_asset(session, path)
     return {"deleted": True}
+
+
+@router.post("/media/rename", name="admin_media_rename")
+async def media_rename(
+    _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
+    path: str = Form(...),
+    display_name: str = Form(""),
+):
+    """Bir medya öğesinin görünen adını değiştirir. Link (path) hiç değişmez;
+    boş ad gönderilirse fiziksel dosya adına geri döner."""
+    await crud.set_media_display_name(session, path, display_name)
+    return {"ok": True, "display_name": display_name.strip() or Path(path).name}
 
 
 # ---------------------------------------------------------------------------
@@ -360,10 +429,18 @@ async def media_delete_file(
 async def upload_icon_image(
     _admin: str = Depends(require_admin),
     file: UploadFile = File(...),
+    replace_path: Optional[str] = Form(None),
+    skip_compression: bool = Form(False),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Sadece görsel dosyaları yüklenebilir.")
-    path = await _save_icon_upload(file)
+
+    if replace_path:
+        # Yerinde güncelleme: link/dosya adı asla değişmez, sıkıştırma uygulanmaz
+        # (kaynak — kırpma tuvali çıktısı — zaten işlenmiş kabul edilir).
+        path = await _replace_icon_upload(file, replace_path)
+    else:
+        path = await _save_icon_upload(file, compress=not skip_compression)
     return {"path": path}
 
 
@@ -393,9 +470,11 @@ async def upload_progress(token: str, _admin: str = Depends(require_admin)):
 @router.post("/upload/icon-image-delete", name="admin_upload_icon_image_delete")
 async def delete_icon_image(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
     _delete_icon_file(path)
+    await crud.delete_media_asset(session, path)
     return {"deleted": True}
 
 
@@ -404,23 +483,30 @@ async def upload_icon_auto_crop(
     _admin: str = Depends(require_admin),
     path: str = Form(...),
     size: int = Form(256),
+    in_place: bool = Form(False),
 ):
-    """Mevcut bir ikon görselini otomatik olarak ortadan kare kırpıp yeniden boyutlandırır."""
+    """Mevcut bir ikon görselini otomatik olarak ortadan kare kırpıp yeniden boyutlandırır.
+
+    `in_place=True`: sonucu KAYNAKLA AYNI dosya yoluna yazar (link asla değişmez).
+    `in_place=False` (varsayılan): yeni, benzersiz adlı bir dosya oluşturur.
+    """
     filename = Path(path or "").name
     src = settings.upload_path / "icons" / filename
     if not filename or not src.exists():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
 
-    icons_dir = settings.upload_path / "icons"
-    new_filename = f"{uuid.uuid4().hex[:12]}.png"
-    dest = icons_dir / new_filename
+    if in_place:
+        dest = src
+    else:
+        dest = settings.upload_path / "icons" / f"{uuid.uuid4().hex[:12]}.png"
+
     try:
         make_square_icon(src, dest, size=max(32, min(int(size), 1024)))
     except Exception as exc:
         logger.error("Otomatik ikon kırpma hatası (%s): %s", src, exc)
         raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
 
-    return {"path": f"/static/uploads/icons/{new_filename}"}
+    return {"path": f"/static/uploads/icons/{dest.name}"}
 
 
 # ---------------------------------------------------------------------------
