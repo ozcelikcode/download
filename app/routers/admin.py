@@ -55,6 +55,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
+from app.branding import SITE_ICON_COLORS
 from app.config import settings
 from app.imaging import compress_image_file, make_square_icon
 from app.dependencies import (
@@ -72,9 +73,10 @@ from app.schemas import (
     DownloadUpdate,
     MenuItemCreate,
     MenuItemUpdate,
+    SiteSettingsUpdate,
     TagCreate,
 )
-from app.templating import templates
+from app.templating import refresh_site_branding_globals, templates
 
 logger = logging.getLogger(__name__)
 
@@ -641,6 +643,7 @@ async def download_new_post(
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
     is_featured: bool = Form(False),
+    is_official_source: bool = Form(True),
     tag_ids: List[str] = Form(default_factory=list),
     upload_file: Optional[UploadFile] = File(None),
     icon_image_file: Optional[UploadFile] = File(None),
@@ -683,6 +686,7 @@ async def download_new_post(
             parent_id=par_id,
             is_active=is_active,
             is_featured=is_featured,
+            is_official_source=is_official_source,
             tag_ids=tag_id_list,
         )
         download = await crud.create_download(session, data)
@@ -777,6 +781,7 @@ async def download_edit_post(
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
     is_featured: bool = Form(False),
+    is_official_source: bool = Form(True),
     tag_ids: List[str] = Form(default_factory=list),
     upload_file: Optional[UploadFile] = File(None),
     icon_image_file: Optional[UploadFile] = File(None),
@@ -827,6 +832,7 @@ async def download_edit_post(
             parent_id=par_id,
             is_active=is_active,
             is_featured=is_featured,
+            is_official_source=is_official_source,
             tag_ids=tag_id_list,
         )
         await crud.update_download(session, download, data)
@@ -1007,23 +1013,96 @@ async def tag_delete(
 # Ayarlar — Menü Düzenleme
 # ---------------------------------------------------------------------------
 
+class _ReorderPayload(BaseModel):
+    ids: List[int]
+
+
+class _StringOrderPayload(BaseModel):
+    order: List[str]
+
+
+@router.get("/settings", name="admin_settings")
 @router.get("/settings/menu", name="admin_settings_menu")
 async def settings_menu_view(
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
-    menu_items = await crud.get_menu_items(session)
+    navbar_items = await crud.get_menu_items(session, location="navbar")
+    footer_items = await crud.get_menu_items(session, location="footer")
+    categories = await crud.get_categories_ordered(session)
+    category_counts = await crud.get_category_download_counts(session)
+    tags = await crud.get_tags_ordered(session)
+    site_settings = await crud.get_site_settings(session)
+    sidebar_block_order = [
+        b for b in site_settings.sidebar_block_order.split(",") if b
+    ] or ["search", "categories", "tags"]
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
         "admin/menu_editor.html",
         {
             "request": request,
-            "menu_items": menu_items,
+            "navbar_items": navbar_items,
+            "footer_items": footer_items,
+            "categories": categories,
+            "category_counts": category_counts,
+            "tags": tags,
+            "sidebar_block_order": sidebar_block_order,
+            "site_settings": site_settings,
+            "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
+            "page_title": "Ayarlar",
         },
     )
+
+
+@router.post("/settings/branding", name="admin_settings_branding")
+async def settings_branding_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    site_name: str = Form(...),
+    site_icon: str = Form(...),
+    site_icon_color: str = Form(...),
+):
+    data = SiteSettingsUpdate(
+        site_name=site_name, site_icon=site_icon, site_icon_color=site_icon_color
+    )
+    updated = await crud.update_site_settings(session, data)
+    refresh_site_branding_globals(updated)
+    request.session["flash_message"] = "Site kimliği güncellendi."
+    return _redirect("/admin/settings/menu")
+
+
+@router.post("/settings/categories/reorder", name="admin_categories_reorder")
+async def categories_reorder(
+    payload: _ReorderPayload,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    await crud.reorder_categories(session, payload.ids)
+    return {"ok": True}
+
+
+@router.post("/settings/tags/reorder", name="admin_tags_reorder")
+async def tags_reorder(
+    payload: _ReorderPayload,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    await crud.reorder_tags(session, payload.ids)
+    return {"ok": True}
+
+
+@router.post("/settings/sidebar/reorder", name="admin_sidebar_reorder")
+async def sidebar_reorder(
+    payload: _StringOrderPayload,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    await crud.update_sidebar_block_order(session, payload.order)
+    return {"ok": True}
 
 
 @router.post("/settings/menu", name="admin_menu_item_create")
@@ -1036,10 +1115,12 @@ async def menu_item_create(
     icon: Optional[str] = Form(None),
     is_active: bool = Form(False),
     open_in_new_tab: bool = Form(False),
+    location: str = Form("navbar"),
 ):
     data = MenuItemCreate(
         label=label, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,
+        location=location,
     )
     await crud.create_menu_item(session, data)
     request.session["flash_message"] = f"\"{label}\" menü öğesi eklendi."
@@ -1083,13 +1164,9 @@ async def menu_item_delete(
     return _redirect("/admin/settings/menu")
 
 
-class _MenuReorderPayload(BaseModel):
-    ids: List[int]
-
-
 @router.post("/settings/menu/reorder", name="admin_menu_reorder")
 async def menu_reorder(
-    payload: _MenuReorderPayload,
+    payload: _ReorderPayload,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):

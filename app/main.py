@@ -11,10 +11,11 @@ from fastapi import FastAPI, Request, status
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import crud
 from app.config import settings
-from app.database import engine
+from app.database import AsyncSessionLocal, engine
 from app.routers import admin, public
-from app.templating import templates
+from app.templating import refresh_site_branding_globals, templates
 
 # ---------------------------------------------------------------------------
 # Logging yapılandırması
@@ -34,6 +35,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     settings.upload_path  # upload klasörünü oluştur
+    async with AsyncSessionLocal() as session:
+        site_settings = await crud.get_site_settings(session)
+        refresh_site_branding_globals(site_settings)
     logger.info("✅ %s başlatıldı", settings.app_name)
     yield
     # Shutdown

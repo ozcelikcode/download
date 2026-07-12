@@ -11,8 +11,9 @@ from typing import Optional
 
 from fastapi.templating import Jinja2Templates
 
+from app.branding import resolve_icon_color
 from app.config import settings
-from app.models import FileType, IconType
+from app.models import FileType, IconType, SiteSettings
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -81,5 +82,25 @@ templates.env.filters["icon_name"] = _icon_name
 templates.env.filters["pluralize"] = _pluralize
 templates.env.filters["thousands"] = _thousands
 
-# Global: site başlığı (.env APP_NAME'den gelir)
+# Global: site başlığı (.env APP_NAME'den gelir) — SiteSettings yüklenene kadarki varsayılan.
 templates.env.globals["site_name"] = settings.app_name
+templates.env.globals["site_icon"] = "download-cloud"
+templates.env.globals["site_icon_color_light"], templates.env.globals["site_icon_color_dark"] = (
+    resolve_icon_color("blue")
+)
+
+
+def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
+    """SiteSettings veritabanı satırından Jinja global'lerini günceller.
+
+    Uygulama başlangıcında (main.py lifespan) ve admin site kimliği kaydedildiğinde
+    çağrılır — böylece sunucu yeniden başlatılmadan değişiklik anında yansır.
+    Not: çoklu worker'da (ör. `make prod`) her worker kendi bellek-içi kopyasını
+    tutar; diğer worker'lar bir sonraki isteklerinde eski değeri göstermeye devam
+    edebilir (bu proje ölçeğinde kabul edilebilir bir sınırlama).
+    """
+    templates.env.globals["site_name"] = site_settings.site_name
+    templates.env.globals["site_icon"] = site_settings.site_icon
+    light, dark = resolve_icon_color(site_settings.site_icon_color)
+    templates.env.globals["site_icon_color_light"] = light
+    templates.env.globals["site_icon_color_dark"] = dark

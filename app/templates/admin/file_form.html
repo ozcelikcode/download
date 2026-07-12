@@ -4,6 +4,8 @@
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
 <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js" defer></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -218,12 +220,11 @@
         <input type="hidden" id="f-icon-image-cleared" name="icon_image_cleared" value="">
       </div>
 
-      <!-- Açıklama -->
+      <!-- Açıklama (WYSIWYG) -->
       <div class="sm:col-span-2">
-        <label for="f-description" class="form-label">Açıklama</label>
-        <textarea id="f-description" name="description" rows="3"
-          placeholder="Kısa bir açıklama yazın…"
-          class="form-input resize-y">{{ download.description if download else '' }}</textarea>
+        <label class="form-label">Açıklama</label>
+        <div id="f-description-editor" class="quill-editor-wrap bg-white dark:bg-slate-900"></div>
+        <textarea id="f-description" name="description" class="hidden">{{ download.description if download else '' }}</textarea>
       </div>
 
     </div>
@@ -280,6 +281,41 @@
           <span id="url-ext-text"></span>
         </p>
       </div>
+
+      <!-- Kaynak türü: resmî site / üçüncü parti -->
+      <div>
+        <label class="form-label">Kaynak Türü</label>
+        <div class="flex gap-3">
+          <label class="flex-1 flex items-center gap-2.5 p-2.5 border rounded-sm cursor-pointer transition-colors
+                 {% if not download or download.is_official_source %}border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}"
+                 data-source-type-label="true">
+            <input type="radio" name="is_official_source" value="true"
+              {% if not download or download.is_official_source %}checked{% endif %}
+              class="accent-green-600">
+            <div>
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <i data-lucide="badge-check" class="w-3.5 h-3.5 text-green-600 dark:text-green-400"></i>
+                Resmî Site
+              </p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">Yazılımın kendi resmî kaynağı</p>
+            </div>
+          </label>
+          <label class="flex-1 flex items-center gap-2.5 p-2.5 border rounded-sm cursor-pointer transition-colors
+                 {% if download and not download.is_official_source %}border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}"
+                 data-source-type-label="false">
+            <input type="radio" name="is_official_source" value="false"
+              {% if download and not download.is_official_source %}checked{% endif %}
+              class="accent-amber-600">
+            <div>
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"></i>
+                Üçüncü Parti Site
+              </p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">Doğrulanmamış / aracı kaynak</p>
+            </div>
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- Lokal dosya bölümü -->
@@ -302,12 +338,12 @@
     <!-- Dosya boyutu -->
     <div class="mt-4">
       <label for="f-size" class="form-label">Dosya Boyutu</label>
-      <div class="flex gap-2">
+      <div class="flex gap-2 w-full sm:max-w-[40%]">
         <input id="f-size" name="file_size_value" type="number" min="0" step="any"
           value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
           placeholder="Örn: 50"
-          class="form-input flex-1">
-        <select name="file_size_unit" class="form-input w-24">
+          class="form-input flex-1 min-w-0">
+        <select id="f-size-unit" name="file_size_unit" class="form-input shrink-0">
           <option value="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>MB</option>
           <option value="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>KB</option>
           <option value="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>GB</option>
@@ -471,6 +507,41 @@
 
 {% block scripts %}
 <script>
+  // ── Açıklama WYSIWYG editörü (Quill) ─────────────────
+  document.addEventListener('DOMContentLoaded', function () {
+    var editorEl = document.getElementById('f-description-editor');
+    var hiddenTextarea = document.getElementById('f-description');
+    if (!editorEl || typeof Quill === 'undefined') return;
+
+    var quill = new Quill(editorEl, {
+      theme: 'snow',
+      placeholder: 'Kısa bir açıklama yazın…',
+      modules: {
+        toolbar: [
+          [{ header: [2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ color: [] }, { background: [] }],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['blockquote', 'code-block', 'link'],
+          [{ align: [] }],
+          ['clean'],
+        ],
+      },
+    });
+
+    if (hiddenTextarea.value.trim()) {
+      quill.clipboard.dangerouslyPasteHTML(hiddenTextarea.value);
+    }
+
+    var form = editorEl.closest('form');
+    if (form) {
+      form.addEventListener('submit', function () {
+        var isEmpty = quill.getText().trim().length === 0;
+        hiddenTextarea.value = isEmpty ? '' : quill.root.innerHTML;
+      });
+    }
+  });
+
   // ── Dosya türü radio toggle ──────────────────────────
   const radios   = document.querySelectorAll('input[name="file_type"]');
   const secExt   = document.getElementById('section-external');
@@ -500,6 +571,26 @@
     lblLocal.classList.toggle('dark:border-slate-800', isExt);
   }
   radios.forEach(function(r) { r.addEventListener('change', updateFileType); });
+
+  // ── Kaynak türü (resmî / üçüncü parti) seçim stilleri ─────────────
+  document.querySelectorAll('input[name="is_official_source"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      document.querySelectorAll('[data-source-type-label]').forEach(function (label) {
+        const isOfficial = label.dataset.sourceTypeLabel === 'true';
+        const selected = label.querySelector('input').checked;
+        label.classList.toggle('border-green-400', selected && isOfficial);
+        label.classList.toggle('dark:border-green-500', selected && isOfficial);
+        label.classList.toggle('bg-green-50', selected && isOfficial);
+        label.classList.toggle('dark:bg-green-500/10', selected && isOfficial);
+        label.classList.toggle('border-amber-400', selected && !isOfficial);
+        label.classList.toggle('dark:border-amber-500', selected && !isOfficial);
+        label.classList.toggle('bg-amber-50', selected && !isOfficial);
+        label.classList.toggle('dark:bg-amber-500/10', selected && !isOfficial);
+        label.classList.toggle('border-slate-200', !selected);
+        label.classList.toggle('dark:border-slate-800', !selected);
+      });
+    });
+  });
 
   // ── Uzantı → ikon otomatik algılama ─────────────────
   var EXT_ICON = {

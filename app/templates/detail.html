@@ -41,7 +41,14 @@
 {# ================================================================
    BAŞLIK BÖLÜMÜ
    ================================================================ #}
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
+<div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
+
+  {# İndirme sayacı — kartın sağ üst köşesi #}
+  <span class="absolute top-3 right-4 text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
+    <i data-lucide="download" class="w-3 h-3"></i>
+    {{ download.download_count | thousands }} kez indirildi
+  </span>
+
   <div class="flex items-start gap-4">
 
     {# Büyük ikon #}
@@ -56,30 +63,13 @@
 
     {# Başlık ve meta #}
     <div class="flex-1 min-w-0">
-      <div class="flex items-start justify-between gap-4">
-        <div class="min-w-0">
-          <div class="flex items-center flex-wrap gap-2">
-            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-              {{ download.title }}
-            </h1>
-            {% if download.version %}
-            <span class="version-badge text-sm">{{ download.version }}</span>
-            {% endif %}
-          </div>
-        </div>
-
-        {# İndirme / bağlantı butonu — üstte de göster #}
-        <a href="/dl/{{ download.slug }}"
-          id="download-btn-top"
-          class="btn-download shrink-0 py-2 px-4 text-sm">
-          {% if download.file_type.value == 'external' %}
-          <i data-lucide="external-link" class="w-4 h-4"></i>
-          Bağlantıya Git
-          {% else %}
-          <i data-lucide="download" class="w-4 h-4"></i>
-          İndir
-          {% endif %}
-        </a>
+      <div class="flex items-center flex-wrap gap-2">
+        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+          {{ download.title }}
+        </h1>
+        {% if download.version %}
+        <span class="version-badge text-sm">{{ download.version }}</span>
+        {% endif %}
       </div>
 
       {# Kategori + etiketler #}
@@ -94,23 +84,15 @@
         {% for tag in download.tags %}
         <a href="/tag/{{ tag.slug }}" class="tag-pill text-xs">#{{ tag.name }}</a>
         {% endfor %}
-
-        <span class="flex-1"></span>
-
-        {# İndirme sayacı #}
-        <span class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
-          <i data-lucide="download" class="w-3 h-3"></i>
-          {{ download.download_count | thousands }} kez indirildi
-        </span>
       </div>
     </div>
   </div>
 
   {# Açıklama #}
   {% if download.description %}
-  <p class="mt-4 text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-4">
-    {{ download.description }}
-  </p>
+  <div class="prose-description mt-4 text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-4">
+    {{ download.description | safe }}
+  </div>
   {% endif %}
 </div>
 
@@ -121,10 +103,11 @@
 
   <a href="/dl/{{ download.slug }}"
     id="download-btn-main"
+    {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
     class="btn-download py-2.5 px-6 text-base font-semibold">
     {% if download.file_type.value == 'external' %}
     <i data-lucide="external-link" class="w-4.5 h-4.5"></i>
-    Şimdi Bağlantıya Git
+    Bağlantıya Git
     {% else %}
     <i data-lucide="download" class="w-4.5 h-4.5"></i>
     Şimdi İndir
@@ -136,7 +119,7 @@
     <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
       <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
       Kaynak:
-      <a href="{{ download.external_url }}" target="_blank" rel="noopener noreferrer"
+      <a href="{{ download.source_root_url }}" target="_blank" rel="noopener noreferrer"
         class="text-blue-600 dark:text-blue-400 hover:underline underline-offset-2 font-medium">
         {{ download.source_domain }}
       </a>
@@ -153,11 +136,25 @@
 
   <div class="flex-1"></div>
 
-  {# Güven göstergesi #}
+  {# Kaynak güvenilirlik göstergesi #}
+  {% if download.file_type.value == 'external' %}
+    {% if download.is_official_source %}
+    <span class="text-xs flex items-center gap-1 px-2 py-1 rounded-sm bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 text-green-700 dark:text-green-400">
+      <i data-lucide="badge-check" class="w-3.5 h-3.5"></i>
+      Resmî Site
+    </span>
+    {% else %}
+    <span class="text-xs flex items-center gap-1 px-2 py-1 rounded-sm bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
+      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+      Üçüncü Parti Site
+    </span>
+    {% endif %}
+  {% else %}
   <span class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
     <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500 dark:text-green-400"></i>
     Güvenli indirme
   </span>
+  {% endif %}
 </div>
 
 {# ================================================================
@@ -202,10 +199,24 @@
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">Kaynak</dt>
       <dd class="font-medium text-blue-600 dark:text-blue-400">
-        <a href="{{ download.external_url }}" target="_blank" rel="noopener" class="hover:underline flex items-center gap-1">
+        <a href="{{ download.source_root_url }}" target="_blank" rel="noopener" class="hover:underline flex items-center gap-1">
           {{ download.source_domain }}
           <i data-lucide="external-link" class="w-3 h-3"></i>
         </a>
+      </dd>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
+      <dt class="text-slate-400 dark:text-slate-500 shrink-0">Kaynak Türü</dt>
+      <dd class="font-medium flex items-center gap-1
+        {% if download.is_official_source %}text-green-700 dark:text-green-400{% else %}text-amber-700 dark:text-amber-400{% endif %}">
+        {% if download.is_official_source %}
+        <i data-lucide="badge-check" class="w-3.5 h-3.5"></i>
+        Resmî Site
+        {% else %}
+        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+        Üçüncü Parti Site
+        {% endif %}
       </dd>
     </div>
     {% endif %}

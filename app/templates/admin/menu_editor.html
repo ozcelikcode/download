@@ -1,5 +1,5 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Menü Düzenleme{% endblock %}
+{% block title %}Ayarlar{% endblock %}
 
 {% block content %}
 
@@ -9,185 +9,370 @@
       <a href="/admin">Admin</a>
       <span class="breadcrumb-sep">›</span>
       <span class="text-slate-700 dark:text-slate-300">Ayarlar</span>
-      <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">Menü Düzenleme</span>
     </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Menü Düzenleme</h1>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ayarlar</h1>
   </div>
 </div>
 
 <!-- ================================================================
-     Canlı Önizleme
+     SİTE KİMLİĞİ
      ================================================================ -->
-<div class="mb-6">
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-8 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-    <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-    Canlı Önizleme
+    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    Site Kimliği
   </h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
-    Sitenin üst menüsü — sürükleyip bıraktıkça anında güncellenir.
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Site adı, ikonu ve ikon rengi — sitenin her yerinde anında yansır.</p>
+
+  <form method="post" action="/admin/settings/branding" class="space-y-4">
+    <div>
+      <label class="form-label">Site Adı</label>
+      <input name="site_name" type="text" required maxlength="100" value="{{ site_settings.site_name }}" class="form-input max-w-sm">
+    </div>
+
+    <div>
+      <label class="form-label">Site İkonu</label>
+      <div class="flex items-center gap-2">
+        <div id="branding-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+          <i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color" id="branding-icon-preview-glyph"
+            style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
+        </div>
+        <input id="branding-icon-input" name="site_icon" type="text" required value="{{ site_settings.site_icon }}" class="form-input max-w-xs" autocomplete="off">
+      </div>
+      <div id="branding-icon-picker" class="flex flex-wrap gap-1 mt-2">
+        {% for icon_name in ['download-cloud','home','layers','folder','tag','link','star','image','settings','globe','shield','download','heart','bookmark','grid-3x3','monitor','smartphone','newspaper'] %}
+        <button type="button" data-icon-pick="{{ icon_name }}"
+          class="p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
+                 hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          title="{{ icon_name }}">
+          <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
+        </button>
+        {% endfor %}
+      </div>
+      <p class="form-hint">
+        <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
+        üzerinden başka bir ikon adı da yazabilirsiniz.
+      </p>
+    </div>
+
+    <div>
+      <label class="form-label">İkon Rengi</label>
+      <div class="flex items-center gap-2 flex-wrap">
+        {% for color, hexes in icon_colors.items() %}
+        <label class="cursor-pointer" title="{{ color }}">
+          <input type="radio" name="site_icon_color" value="{{ color }}" class="peer sr-only"
+            {% if site_settings.site_icon_color == color %}checked{% endif %}
+            data-color-light="{{ hexes[0] }}" data-color-dark="{{ hexes[1] }}">
+          <span class="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
+            style="background: {{ hexes[0] }};"></span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary py-2 px-4 text-sm">
+      <i data-lucide="save" class="w-3.5 h-3.5"></i>
+      Site Kimliğini Kaydet
+    </button>
+  </form>
+</div>
+
+<!-- ================================================================
+     ÜST MENÜ (NAVBAR)
+     ================================================================ -->
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-1">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+      <i data-lucide="menu" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Üst Menü (Navbar)
+    </h2>
+    <button type="button" data-add-menu-btn data-location="navbar" class="btn-primary py-1.5 px-3 text-xs">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
+    </button>
+  </div>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
+    <i data-lucide="move" class="w-3 h-3"></i>
+    Sıralamak için önizlemedeki öğeleri sürükleyin, düzenlemek için tıklayın.
   </p>
 
-  <!-- Gerçek site header'ının birebir kopyası -->
   <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
     <div class="bg-white dark:bg-slate-900 px-4 sm:px-6 h-14 flex items-center gap-5">
       <div class="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 shrink-0">
-        <i data-lucide="download-cloud" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
-        <span>{{ site_name }}</span>
+        <i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color"
+          style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
+        <span>{{ site_settings.site_name }}</span>
       </div>
-      <nav id="menu-preview" class="flex items-center gap-0.5 flex-1 overflow-x-auto">
-        {% for item in menu_items %}
-        <span class="menu-preview-item inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap text-slate-600 dark:text-slate-400 {% if not item.is_active %}opacity-30{% endif %}"
-          data-item-id="{{ item.id }}">
+      <div id="navbar-preview" data-menu-preview data-location="navbar" data-reorder-endpoint="/admin/settings/menu/reorder" data-drag-axis="horizontal"
+        class="flex items-center gap-0.5 flex-1 overflow-x-auto min-h-[2rem]">
+        {% for item in navbar_items %}
+        <span class="menu-preview-pill cursor-pointer inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap
+                     text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors {% if not item.is_active %}opacity-40{% endif %}"
+          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-url="{{ item.url }}"
+          data-icon="{{ item.icon or '' }}" data-active="{{ '1' if item.is_active else '0' }}" data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
           {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
           {{ item.label }}
         </span>
         {% else %}
-        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Menü boş — soldan bir öğe ekleyin.</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Menü boş — "Yeni Ekle" ile başlayın.</span>
         {% endfor %}
-      </nav>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- ================================================================
-     Liste + Detay Paneli
+     KATEGORİ MENÜSÜ (SIDEBAR)
      ================================================================ -->
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
-
-  <!-- Sol: sürüklenebilir liste -->
-  <div class="lg:col-span-3">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Menü Öğeleri ({{ menu_items | length }})</h2>
-      <button type="button" id="menu-add-btn" class="btn-primary py-1.5 px-3 text-xs">
-        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
-      </button>
-    </div>
-
-    {% if menu_items %}
-    <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
-      <i data-lucide="move" class="w-3 h-3"></i>
-      Sıralamayı değiştirmek için sürükleyin, düzenlemek için bir öğeye tıklayın.
-    </p>
-    {% endif %}
-
-    <ul id="menu-item-list" class="space-y-1.5">
-      {% for item in menu_items %}
-      <li class="menu-row group flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2.5 cursor-pointer transition-colors hover:border-blue-200 dark:hover:border-blue-500/40"
-        draggable="true"
-        data-id="{{ item.id }}"
-        data-label="{{ item.label }}"
-        data-url="{{ item.url }}"
-        data-icon="{{ item.icon or '' }}"
-        data-active="{{ '1' if item.is_active else '0' }}"
-        data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
-        <i data-lucide="grip-vertical" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 cursor-grab active:cursor-grabbing"></i>
-        <div class="w-8 h-8 rounded-sm bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0">
-          <i data-lucide="{{ item.icon or 'link' }}" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{{ item.label }}</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500 truncate">{{ item.url }}</p>
-        </div>
-        {% if not item.is_active %}
-        <span class="text-[10px] px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shrink-0">Pasif</span>
-        {% endif %}
-        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0 group-hover:text-blue-400 dark:group-hover:text-blue-400 transition-colors"></i>
-      </li>
-      {% else %}
-      <li class="text-sm text-slate-400 dark:text-slate-500 text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
-        Henüz menü öğesi yok. Sağ üstteki <strong>"Yeni Ekle"</strong> ile başlayın.
-      </li>
-      {% endfor %}
-    </ul>
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-1">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+      <i data-lucide="layout-list" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Kategori Menüsü (Sidebar)
+    </h2>
+    <a href="/admin/categories" class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+      Kategorileri Yönet <i data-lucide="arrow-right" class="w-3 h-3"></i>
+    </a>
   </div>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
+    <i data-lucide="move" class="w-3 h-3"></i>
+    Sürükleyerek sırasını değiştirin. Ekleme, silme ve açıklama için "Kategorileri Yönet"i kullanın.
+  </p>
 
-  <!-- Sağ: detay paneli -->
-  <div class="lg:col-span-2">
-    <div id="menu-detail-panel" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 sticky top-20 transition-colors hidden">
-      <div class="flex items-center justify-between mb-4">
-        <h2 id="menu-detail-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-          <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-          Menü Öğesini Düzenle
-        </h2>
-        <button type="button" id="menu-detail-close" class="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
+  <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm max-w-xs">
+    <div class="bg-white dark:bg-slate-900 p-4">
+      <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5">Kategoriler</p>
+      <ul class="space-y-0.5">
+        <li>
+          <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-sm bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+            <i data-lucide="layers" class="w-3.5 h-3.5 shrink-0"></i>
+            Tümü
+          </span>
+        </li>
+      </ul>
+      <ul id="category-preview" data-menu-preview data-reorder-endpoint="/admin/settings/categories/reorder" data-drag-axis="vertical"
+        class="space-y-0.5 mt-0.5 min-h-[2rem]">
+        {% for cat in categories %}
+        <li class="category-preview-row flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm rounded-sm text-slate-600 dark:text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          draggable="true" data-item-id="{{ cat.id }}">
+          <span class="flex items-center gap-1.5 min-w-0">
+            <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0"></i>
+            <i data-lucide="folder" class="w-3.5 h-3.5 shrink-0"></i>
+            <span class="truncate">{{ cat.name }}</span>
+          </span>
+          {% set cnt = (category_counts | default({})).get(cat.id, 0) %}
+          {% if cnt %}<span class="text-xs text-slate-400 dark:text-slate-500 tabular-nums shrink-0">{{ cnt }}</span>{% endif %}
+        </li>
+        {% else %}
+        <li class="text-xs text-slate-400 dark:text-slate-500 italic px-2.5 py-1.5">Henüz kategori yok.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
 
-      <form id="menu-detail-form" method="post" class="space-y-3">
-        <div>
-          <label for="menu-field-label" class="form-label">Etiket <span class="text-red-500">*</span></label>
-          <input id="menu-field-label" name="label" type="text" required class="form-input" placeholder="Örn: Blog">
-        </div>
+<!-- ================================================================
+     KENAR ÇUBUĞU (SAĞ SIDEBAR: ARA / KATEGORİLER / ETİKETLER)
+     ================================================================ -->
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-1">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+      <i data-lucide="panel-right" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Kenar Çubuğu (Sidebar)
+    </h2>
+  </div>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
+    <i data-lucide="move" class="w-3 h-3"></i>
+    "Ara", "Kategoriler" ve "Etiketler" bloklarını sürükleyerek üst-alt sırasını değiştirin. Etiketlerin kendi sırası için etiket önizlemesindeki pilleri sürükleyin.
+  </p>
 
-        <div>
-          <label for="menu-field-url" class="form-label">Bağlantı <span class="text-red-500">*</span></label>
-          <input id="menu-field-url" name="url" type="text" required class="form-input" placeholder="/category/oyunlar veya https://…">
-          <p class="form-hint">İç sayfa yolu (<code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">/category/oyunlar</code>) veya tam bir dış URL girin.</p>
-        </div>
+  <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm max-w-xs">
+    <div class="bg-white dark:bg-slate-900 p-4">
+      <div id="sidebar-blocks-preview" data-menu-preview data-drag-axis="vertical"
+        data-reorder-endpoint="/admin/settings/sidebar/reorder" data-id-type="string" data-body-key="order"
+        class="space-y-5 min-h-[2rem]">
 
-        <div>
-          <label for="menu-field-icon" class="form-label">İkon</label>
-          <div class="flex items-center gap-2">
-            <div id="menu-icon-preview-wrap" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-              <i data-lucide="link" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+        {% for block_key in sidebar_block_order %}
+        {% if block_key == 'search' %}
+        <div class="sidebar-block-row cursor-grab active:cursor-grabbing rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors p-1 -m-1"
+          draggable="true" data-item-id="search">
+          <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0"></i>
+            Ara
+          </p>
+          <div class="relative">
+            <i data-lucide="search" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
+            <div class="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">
+              İndirme ara...
             </div>
-            <input id="menu-field-icon" name="icon" type="text" class="form-input flex-1" placeholder="Örn: home, folder, tag" autocomplete="off">
-            <button type="button" id="menu-icon-clear-btn"
-              class="shrink-0 p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400
-                     border border-slate-200 dark:border-slate-800 rounded-sm hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
-              title="İkonu kaldır">
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            </button>
           </div>
+        </div>
 
-          <!-- Hızlı ikon seçici -->
-          <div id="menu-icon-picker" class="flex flex-wrap gap-1 mt-2">
-            {% for icon_name in ['home','layers','folder','tag','link','star','image','file','settings','mail','globe','shield','download','heart','bookmark','grid-3x3','list','monitor','smartphone','newspaper'] %}
-            <button type="button" data-icon-pick="{{ icon_name }}"
-              class="menu-icon-pick-btn p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
-                     hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              title="{{ icon_name }}">
-              <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
-            </button>
+        {% elif block_key == 'categories' %}
+        <div class="sidebar-block-row cursor-grab active:cursor-grabbing rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors p-1 -m-1"
+          draggable="true" data-item-id="categories">
+          <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0"></i>
+            Kategoriler
+          </p>
+          <ul class="space-y-0.5">
+            <li>
+              <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-sm bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+                <i data-lucide="layers" class="w-3.5 h-3.5 shrink-0"></i>
+                Tümü
+              </span>
+            </li>
+            {% for cat in categories %}
+            <li>
+              <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-sm text-slate-600 dark:text-slate-400">
+                <i data-lucide="folder" class="w-3.5 h-3.5 shrink-0"></i>
+                <span class="truncate">{{ cat.name }}</span>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        {% elif block_key == 'tags' %}
+        <div class="sidebar-block-row cursor-grab active:cursor-grabbing rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors p-1 -m-1"
+          draggable="true" data-item-id="tags">
+          <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0"></i>
+            Etiketler
+          </p>
+          <div id="sidebar-tags-preview" data-menu-preview data-drag-axis="horizontal"
+            data-reorder-endpoint="/admin/settings/tags/reorder"
+            class="flex flex-wrap gap-1.5 min-h-[1.5rem]">
+            {% for tag in tags %}
+            <span class="cursor-grab active:cursor-grabbing inline-flex items-center px-2 py-0.5 text-xs rounded-sm border
+                        bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+              draggable="true" data-item-id="{{ tag.id }}">
+              #{{ tag.name }}
+            </span>
+            {% else %}
+            <span class="text-xs text-slate-400 dark:text-slate-500 italic">Henüz etiket yok.</span>
             {% endfor %}
           </div>
-
-          <p class="form-hint">
-            Yukarıdan bir ikon seçin veya
-            <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
-            üzerinden bir ad yazın. İkon opsiyoneldir.
-          </p>
         </div>
+        {% endif %}
+        {% endfor %}
 
-        <div class="flex items-center gap-4 pt-1">
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input id="menu-field-active" name="is_active" type="checkbox" value="true" class="accent-blue-600 rounded-sm" checked>
-            <span class="text-sm text-slate-700 dark:text-slate-300">Aktif</span>
-          </label>
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input id="menu-field-new-tab" name="open_in_new_tab" type="checkbox" value="true" class="accent-blue-600 rounded-sm">
-            <span class="text-sm text-slate-700 dark:text-slate-300">Yeni sekmede aç</span>
-          </label>
-        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-        <div class="flex items-center gap-2 pt-2">
-          <button type="submit" class="btn-primary py-2 px-4 text-sm flex-1 justify-center">
-            <i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet
+<!-- ================================================================
+     FOOTER
+     ================================================================ -->
+<div class="mb-4">
+  <div class="flex items-center justify-between mb-1">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+      <i data-lucide="panel-bottom" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Footer
+    </h2>
+    <button type="button" data-add-menu-btn data-location="footer" class="btn-primary py-1.5 px-3 text-xs">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
+    </button>
+  </div>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
+    <i data-lucide="move" class="w-3 h-3"></i>
+    Sıralamak için önizlemedeki öğeleri sürükleyin, düzenlemek için tıklayın.
+  </p>
+
+  <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+    <div class="bg-white dark:bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-1.5 text-xs">
+        <i data-lucide="{{ site_settings.site_icon }}" class="w-3.5 h-3.5 site-icon-color"
+          style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
+        <span class="font-medium text-slate-500 dark:text-slate-400">{{ site_settings.site_name }}</span>
+      </div>
+      <div id="footer-preview" data-menu-preview data-location="footer" data-reorder-endpoint="/admin/settings/menu/reorder" data-drag-axis="horizontal"
+        class="flex items-center gap-4 flex-wrap min-h-[1.5rem]">
+        {% for item in footer_items %}
+        <span class="menu-preview-pill cursor-pointer flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors {% if not item.is_active %}opacity-40{% endif %}"
+          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-url="{{ item.url }}"
+          data-icon="{{ item.icon or '' }}" data-active="{{ '1' if item.is_active else '0' }}" data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
+          {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3 h-3"></i>{% endif %}
+          {{ item.label }}
+        </span>
+        {% else %}
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Footer boş — "Yeni Ekle" ile başlayın.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     Menü Öğesi Modalı (Navbar + Footer ortak)
+     ================================================================ -->
+<div id="menu-item-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-md p-5">
+    <h3 id="menu-item-modal-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
+      <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Menü Öğesi
+    </h3>
+
+    <div class="space-y-3">
+      <div>
+        <label class="form-label">Etiket <span class="text-red-500">*</span></label>
+        <input id="menu-item-label" type="text" required class="form-input" placeholder="Örn: Blog">
+      </div>
+      <div>
+        <label class="form-label">Bağlantı <span class="text-red-500">*</span></label>
+        <input id="menu-item-url" type="text" required class="form-input" placeholder="/category/oyunlar veya https://…">
+      </div>
+      <div>
+        <label class="form-label">İkon</label>
+        <div class="flex items-center gap-2">
+          <div id="menu-item-icon-preview-wrap" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+            <i data-lucide="link" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+          </div>
+          <input id="menu-item-icon" type="text" class="form-input flex-1" placeholder="Örn: home, folder, tag" autocomplete="off">
+          <button type="button" id="menu-item-icon-clear"
+            class="shrink-0 p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400
+                   border border-slate-200 dark:border-slate-800 rounded-sm hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
+            title="İkonu kaldır">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
           </button>
-          <button type="button" id="menu-detail-delete" class="btn-danger py-2 px-3 text-sm hidden">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-          </button>
         </div>
-      </form>
+        <div id="menu-item-icon-picker" class="flex flex-wrap gap-1 mt-2">
+          {% for icon_name in ['home','layers','folder','tag','link','star','image','file','settings','mail','globe','shield','download','heart','bookmark','grid-3x3','list','monitor','smartphone','newspaper'] %}
+          <button type="button" data-icon-pick="{{ icon_name }}"
+            class="p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
+                   hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            title="{{ icon_name }}">
+            <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="flex items-center gap-4 pt-1">
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input id="menu-item-active" type="checkbox" class="accent-blue-600 rounded-sm" checked>
+          <span class="text-sm text-slate-700 dark:text-slate-300">Aktif</span>
+        </label>
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input id="menu-item-new-tab" type="checkbox" class="accent-blue-600 rounded-sm">
+          <span class="text-sm text-slate-700 dark:text-slate-300">Yeni sekmede aç</span>
+        </label>
+      </div>
     </div>
 
-    <div id="menu-detail-empty" class="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm p-8 text-center transition-colors">
-      <i data-lucide="mouse-pointer-click" class="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
-      <p class="text-sm text-slate-400 dark:text-slate-500">
-        Düzenlemek için soldan bir menü öğesi seçin,<br>ya da "Yeni Ekle" ile başlayın.
-      </p>
+    <div class="flex items-center gap-2 pt-4">
+      <button type="button" id="menu-item-delete" class="btn-danger py-2 px-3 text-sm hidden">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+      </button>
+      <div class="flex-1"></div>
+      <button type="button" id="menu-item-cancel"
+        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 dark:text-slate-400
+               border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+        İptal
+      </button>
+      <button type="button" id="menu-item-save" class="btn-primary py-2 px-4 text-sm">
+        <i data-lucide="save" class="w-3.5 h-3.5"></i>
+        Kaydet
+      </button>
     </div>
   </div>
 </div>
@@ -196,166 +381,217 @@
 
 {% block scripts %}
 <script>
+  // ── Site kimliği: ikon seçici + renk önizleme ────────────────────────
   (function () {
-    const list        = document.getElementById('menu-item-list');
-    const preview     = document.getElementById('menu-preview');
-    const detailPanel = document.getElementById('menu-detail-panel');
-    const detailEmpty = document.getElementById('menu-detail-empty');
-    const detailForm  = document.getElementById('menu-detail-form');
-    const detailTitle = document.getElementById('menu-detail-title');
-    const fieldLabel  = document.getElementById('menu-field-label');
-    const fieldUrl    = document.getElementById('menu-field-url');
-    const fieldIcon   = document.getElementById('menu-field-icon');
-    const fieldActive = document.getElementById('menu-field-active');
-    const fieldNewTab = document.getElementById('menu-field-new-tab');
-    const iconWrap    = document.getElementById('menu-icon-preview-wrap');
-    const deleteBtn   = document.getElementById('menu-detail-delete');
-    const closeBtn    = document.getElementById('menu-detail-close');
-    const addBtn      = document.getElementById('menu-add-btn');
+    const iconInput  = document.getElementById('branding-icon-input');
+    const iconGlyph  = document.getElementById('branding-icon-preview-glyph');
+    const colorRadios = document.querySelectorAll('input[name="site_icon_color"]');
 
-    let currentDeleteUrl = null;
-
-    function rows() {
-      return Array.from(list.querySelectorAll('.menu-row'));
-    }
-
-    function setIconPreview(name) {
-      iconWrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>';
+    function setGlyph(name) {
+      const wrap = document.getElementById('branding-icon-preview-wrap');
+      wrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-5 h-5 site-icon-color" id="branding-icon-preview-glyph" style="' + wrap.querySelector('i').getAttribute('style') + '"></i>';
       if (window.lucide) lucide.createIcons();
     }
 
-    function clearSelection() {
-      rows().forEach(function (r) {
-        r.classList.remove('border-blue-300', 'dark:border-blue-500/50', 'ring-2', 'ring-blue-100', 'dark:ring-blue-500/20');
+    document.querySelectorAll('#branding-icon-picker [data-icon-pick]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        iconInput.value = btn.dataset.iconPick;
+        setGlyph(btn.dataset.iconPick);
+      });
+    });
+    iconInput.addEventListener('input', function () { setGlyph(iconInput.value); });
+
+    colorRadios.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        const wrap = document.getElementById('branding-icon-preview-wrap');
+        const glyph = wrap.querySelector('i');
+        if (glyph) {
+          glyph.style.setProperty('--site-icon-light', radio.dataset.colorLight);
+          glyph.style.setProperty('--site-icon-dark', radio.dataset.colorDark);
+        }
+      });
+    });
+  })();
+
+  // ── Sürükle-bırak ile sıralama (navbar / footer / kategori önizlemeleri) ──
+  (function () {
+    function setupDraggablePreview(container) {
+      const endpoint = container.dataset.reorderEndpoint;
+      const isVertical = container.dataset.dragAxis === 'vertical';
+      const isStringId = container.dataset.idType === 'string';
+      const bodyKey = container.dataset.bodyKey || 'ids';
+      let dragEl = null;
+
+      function items() {
+        return Array.from(container.querySelectorAll(':scope > [data-item-id]'));
+      }
+
+      function elementAfter(clientX, clientY) {
+        let closest = { offset: -Infinity, element: null };
+        items().filter(function (el) { return el !== dragEl; }).forEach(function (el) {
+          const box = el.getBoundingClientRect();
+          const center = isVertical ? box.top + box.height / 2 : box.left + box.width / 2;
+          const pos = isVertical ? clientY : clientX;
+          const offset = pos - center;
+          if (offset < 0 && offset > closest.offset) closest = { offset: offset, element: el };
+        });
+        return closest.element;
+      }
+
+      function persist() {
+        const raw = items().map(function (el) { return el.dataset.itemId; });
+        const ids = isStringId ? raw : raw.map(function (v) { return parseInt(v, 10); });
+        const body = {};
+        body[bodyKey] = ids;
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }).catch(function () {});
+      }
+
+      items().forEach(function (el) {
+        el.addEventListener('dragstart', function (e) {
+          dragEl = el;
+          el.classList.add('opacity-40');
+          e.dataTransfer.effectAllowed = 'move';
+          e.stopPropagation();
+        });
+        el.addEventListener('dragend', function (e) {
+          el.classList.remove('opacity-40');
+          dragEl = null;
+          persist();
+          e.stopPropagation();
+        });
+      });
+
+      container.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (!dragEl) return;
+        e.stopPropagation();
+        const after = elementAfter(e.clientX, e.clientY);
+        if (after == null) container.appendChild(dragEl);
+        else if (after !== dragEl) container.insertBefore(dragEl, after);
       });
     }
 
-    function openDetailFor(row) {
-      detailEmpty.classList.add('hidden');
-      detailPanel.classList.remove('hidden');
-      detailTitle.innerHTML = '<i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Menü Öğesini Düzenle';
-      fieldLabel.value = row.dataset.label || '';
-      fieldUrl.value = row.dataset.url || '';
-      fieldIcon.value = row.dataset.icon || '';
-      fieldActive.checked = row.dataset.active === '1';
-      fieldNewTab.checked = row.dataset.newTab === '1';
-      setIconPreview(row.dataset.icon);
-      detailForm.action = '/admin/settings/menu/' + row.dataset.id + '/edit';
-      deleteBtn.classList.remove('hidden');
-      currentDeleteUrl = '/admin/settings/menu/' + row.dataset.id + '/delete';
-      clearSelection();
-      row.classList.add('border-blue-300', 'dark:border-blue-500/50', 'ring-2', 'ring-blue-100', 'dark:ring-blue-500/20');
+    // Önce en içteki (nested) önizlemeler kurulur — dış blok sürüklemesiyle
+    // etiket sürüklemesi (nested) birbirine karışmasın diye event'ler durdurulur.
+    var previews = Array.from(document.querySelectorAll('[data-menu-preview]'));
+    previews.sort(function (a, b) {
+      return a.contains(b) ? 1 : (b.contains(a) ? -1 : 0);
+    });
+    previews.forEach(setupDraggablePreview);
+  })();
+
+  // ── Menü öğesi modalı (Navbar + Footer ortak) ─────────────────────────
+  (function () {
+    const modal       = document.getElementById('menu-item-modal');
+    const titleEl     = document.getElementById('menu-item-modal-title');
+    const labelField   = document.getElementById('menu-item-label');
+    const urlField     = document.getElementById('menu-item-url');
+    const iconField    = document.getElementById('menu-item-icon');
+    const iconClearBtn = document.getElementById('menu-item-icon-clear');
+    const activeField  = document.getElementById('menu-item-active');
+    const newTabField  = document.getElementById('menu-item-new-tab');
+    const deleteBtn    = document.getElementById('menu-item-delete');
+    const cancelBtn     = document.getElementById('menu-item-cancel');
+    const saveBtn       = document.getElementById('menu-item-save');
+
+    let currentItemId = null;
+    let currentLocation = 'navbar';
+
+    function setIconPreview(name) {
+      const wrap = document.getElementById('menu-item-icon-preview-wrap');
+      wrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>';
       if (window.lucide) lucide.createIcons();
     }
 
-    function openDetailForNew() {
-      detailEmpty.classList.add('hidden');
-      detailPanel.classList.remove('hidden');
-      detailTitle.innerHTML = '<i data-lucide="plus-circle" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Yeni Menü Öğesi';
-      fieldLabel.value = '';
-      fieldUrl.value = '';
-      fieldIcon.value = '';
-      fieldActive.checked = true;
-      fieldNewTab.checked = false;
-      setIconPreview('link');
-      detailForm.action = '/admin/settings/menu';
-      deleteBtn.classList.add('hidden');
-      currentDeleteUrl = null;
-      clearSelection();
+    function openModal(location, data) {
+      currentItemId = data ? parseInt(data.id, 10) : null;
+      currentLocation = location;
+      titleEl.innerHTML = (data
+        ? '<i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Menü Öğesini Düzenle'
+        : '<i data-lucide="plus-circle" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Yeni Menü Öğesi');
+      labelField.value = data ? data.label : '';
+      urlField.value = data ? data.url : '';
+      iconField.value = data ? data.icon : '';
+      setIconPreview(data ? data.icon : '');
+      activeField.checked = data ? data.active === '1' : true;
+      newTabField.checked = data ? data.newTab === '1' : false;
+      deleteBtn.classList.toggle('hidden', !data);
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
       if (window.lucide) lucide.createIcons();
     }
 
-    rows().forEach(function (row) {
-      row.addEventListener('click', function () { openDetailFor(row); });
+    function closeModal() {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    document.querySelectorAll('[data-add-menu-btn]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openModal(btn.dataset.location, null); });
     });
 
-    addBtn.addEventListener('click', openDetailForNew);
-
-    closeBtn.addEventListener('click', function () {
-      detailPanel.classList.add('hidden');
-      detailEmpty.classList.remove('hidden');
-      clearSelection();
+    document.querySelectorAll('.menu-preview-pill').forEach(function (pill) {
+      pill.addEventListener('click', function () {
+        const location = pill.closest('[data-menu-preview]').dataset.location;
+        openModal(location, {
+          id: pill.dataset.itemId,
+          label: pill.dataset.label,
+          url: pill.dataset.url,
+          icon: pill.dataset.icon,
+          active: pill.dataset.active,
+          newTab: pill.dataset.newTab,
+        });
+      });
     });
 
-    fieldIcon.addEventListener('input', function () { setIconPreview(fieldIcon.value); });
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
 
-    document.getElementById('menu-icon-clear-btn').addEventListener('click', function () {
-      fieldIcon.value = '';
+    iconClearBtn.addEventListener('click', function () {
+      iconField.value = '';
       setIconPreview('');
-      fieldIcon.focus();
+      iconField.focus();
     });
-
-    document.querySelectorAll('.menu-icon-pick-btn').forEach(function (btn) {
+    iconField.addEventListener('input', function () { setIconPreview(iconField.value); });
+    document.querySelectorAll('#menu-item-icon-picker [data-icon-pick]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        fieldIcon.value = btn.dataset.iconPick;
+        iconField.value = btn.dataset.iconPick;
         setIconPreview(btn.dataset.iconPick);
       });
     });
 
-    deleteBtn.addEventListener('click', function () {
-      if (!currentDeleteUrl) return;
-      if (!confirm('Bu menü öğesi silinecek. Onaylıyor musunuz?')) return;
-      const form = document.createElement('form');
-      form.method = 'post';
-      form.action = currentDeleteUrl;
-      document.body.appendChild(form);
-      form.submit();
+    saveBtn.addEventListener('click', function () {
+      if (!labelField.value.trim() || !urlField.value.trim()) {
+        alert('Etiket ve bağlantı zorunludur.');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('label', labelField.value.trim());
+      fd.append('url', urlField.value.trim());
+      fd.append('icon', iconField.value.trim());
+      fd.append('is_active', activeField.checked ? 'true' : 'false');
+      fd.append('open_in_new_tab', newTabField.checked ? 'true' : 'false');
+
+      const endpoint = currentItemId
+        ? '/admin/settings/menu/' + currentItemId + '/edit'
+        : '/admin/settings/menu';
+      if (!currentItemId) fd.append('location', currentLocation);
+
+      fetch(endpoint, { method: 'POST', body: fd })
+        .then(function (r) { if (!r.ok) throw new Error(); window.location.reload(); })
+        .catch(function () { alert('Kaydedilemedi.'); });
     });
 
-    // ── Sürükle-bırak ile sıralama ────────────────────────────────────
-    let dragEl = null;
-
-    function updatePreviewOrder() {
-      if (!preview) return;
-      rows().forEach(function (row) {
-        const el = preview.querySelector('[data-item-id="' + row.dataset.id + '"]');
-        if (el) preview.appendChild(el);
-      });
-    }
-
-    function rowAfter(y) {
-      let closest = { offset: -Infinity, element: null };
-      rows().filter(function (r) { return r !== dragEl; }).forEach(function (el) {
-        const box = el.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-          closest = { offset: offset, element: el };
-        }
-      });
-      return closest.element;
-    }
-
-    function persistOrder() {
-      const ids = rows().map(function (r) { return parseInt(r.dataset.id, 10); });
-      fetch('/admin/settings/menu/reorder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: ids }),
-      }).catch(function () {});
-    }
-
-    rows().forEach(function (row) {
-      row.addEventListener('dragstart', function (e) {
-        dragEl = row;
-        row.classList.add('opacity-40');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      row.addEventListener('dragend', function () {
-        row.classList.remove('opacity-40');
-        dragEl = null;
-        persistOrder();
-      });
-      row.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        if (!dragEl) return;
-        const after = rowAfter(e.clientY);
-        if (after == null) {
-          list.appendChild(dragEl);
-        } else if (after !== dragEl) {
-          list.insertBefore(dragEl, after);
-        }
-        updatePreviewOrder();
-      });
+    deleteBtn.addEventListener('click', function () {
+      if (!currentItemId) return;
+      if (!confirm('Bu menü öğesi silinecek. Onaylıyor musunuz?')) return;
+      fetch('/admin/settings/menu/' + currentItemId + '/delete', { method: 'POST' })
+        .then(function (r) { if (!r.ok) throw new Error(); window.location.reload(); })
+        .catch(function () { alert('Silinemedi.'); });
     });
   })();
 </script>

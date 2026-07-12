@@ -85,6 +85,8 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     slug: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Sidebar'daki "Kategori Menüsü" sıralaması (admin panelinden sürüklenerek değiştirilir)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -107,6 +109,8 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
     slug: Mapped[str] = mapped_column(String(80), unique=True, nullable=False, index=True)
+    # Sidebar'daki "Etiketler" sıralaması (admin panelinden sürüklenerek değiştirilir)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
 
     # İlişkiler
     downloads: Mapped[List["Download"]] = relationship(
@@ -118,7 +122,8 @@ class Tag(Base):
 
 
 # ---------------------------------------------------------------------------
-# MenuItem — site üst navigasyon menüsü (admin panelinden düzenlenir)
+# MenuItem — site üst navigasyon menüsü VE footer bağlantıları
+# (admin panelinden düzenlenir; `location` alanı hangi bölgeye ait olduğunu belirler)
 # ---------------------------------------------------------------------------
 class MenuItem(Base):
     __tablename__ = "menu_items"
@@ -130,6 +135,8 @@ class MenuItem(Base):
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     open_in_new_tab: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 'navbar' → üst menü, 'footer' → alt bilgi (footer) bağlantıları
+    location: Mapped[str] = mapped_column(String(20), default="navbar", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -138,7 +145,29 @@ class MenuItem(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<MenuItem id={self.id} label={self.label!r} position={self.position}>"
+        return f"<MenuItem id={self.id} label={self.label!r} location={self.location!r}>"
+
+
+# ---------------------------------------------------------------------------
+# SiteSettings — tekil satır; site adı, ikon ve ikon rengi (admin panelinden düzenlenir)
+# ---------------------------------------------------------------------------
+class SiteSettings(Base):
+    __tablename__ = "site_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Download Sitesi")
+    site_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="download-cloud")
+    site_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
+    # Sidebar blok sırası, virgülle ayrılmış: "search,categories,tags"
+    sidebar_block_order: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="search,categories,tags"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<SiteSettings site_name={self.site_name!r}>"
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +239,8 @@ class Download(Base):
     # Durum bayrakları
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Kaynak güvenilirliği: True → resmî site, False → üçüncü parti site
+    is_official_source: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Zaman damgaları
     created_at: Mapped[datetime] = mapped_column(
@@ -265,12 +296,23 @@ class Download(Base):
 
     @property
     def source_domain(self) -> Optional[str]:
-        """Dış URL'nin kök alan adını döndürür (örn: github.com)."""
+        """Dış URL'nin alan adını (subdomain dahil) döndürür (örn: code.visualstudio.com)."""
         if self.file_type != FileType.external or not self.external_url:
             return None
         from urllib.parse import urlparse
         parsed = urlparse(self.external_url)
         return parsed.netloc or None
+
+    @property
+    def source_root_url(self) -> Optional[str]:
+        """Kaynak sitenin ana adresini döndürür (örn: https://code.visualstudio.com)."""
+        if self.file_type != FileType.external or not self.external_url:
+            return None
+        from urllib.parse import urlparse
+        parsed = urlparse(self.external_url)
+        if not parsed.netloc:
+            return None
+        return f"{parsed.scheme or 'https'}://{parsed.netloc}"
 
     def __repr__(self) -> str:
         return f"<Download id={self.id} slug={self.slug!r} version={self.version!r}>"

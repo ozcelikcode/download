@@ -25,6 +25,7 @@ from app.models import (
     IconType,
     MediaAsset,
     MenuItem,
+    SiteSettings,
     Tag,
 )
 from app.schemas import (
@@ -34,6 +35,7 @@ from app.schemas import (
     DownloadUpdate,
     MenuItemCreate,
     MenuItemUpdate,
+    SiteSettingsUpdate,
     TagCreate,
 )
 
@@ -120,6 +122,21 @@ async def delete_category(session: AsyncSession, category: Category) -> None:
     logger.info("Kategori silindi: id=%d", category.id)
 
 
+async def get_categories_ordered(session: AsyncSession) -> List[Category]:
+    """Sidebar'daki 'Kategori Menüsü' sırasına göre (position, sonra ad) döndürür."""
+    result = await session.execute(select(Category).order_by(Category.position, Category.name))
+    return list(result.scalars().all())
+
+
+async def reorder_categories(session: AsyncSession, ordered_ids: List[int]) -> None:
+    """Verilen id sırasına göre kategori position alanlarını 0'dan başlayarak yeniden yazar."""
+    for position, cat_id in enumerate(ordered_ids):
+        await session.execute(
+            update(Category).where(Category.id == cat_id).values(position=position)
+        )
+    await session.commit()
+
+
 # ===========================================================================
 # Tag CRUD
 # ===========================================================================
@@ -127,6 +144,21 @@ async def delete_category(session: AsyncSession, category: Category) -> None:
 async def get_tags(session: AsyncSession) -> List[Tag]:
     result = await session.execute(select(Tag).order_by(Tag.name))
     return list(result.scalars().all())
+
+
+async def get_tags_ordered(session: AsyncSession) -> List[Tag]:
+    """Sidebar'daki 'Etiketler' sırasına göre (position, sonra ad) döndürür."""
+    result = await session.execute(select(Tag).order_by(Tag.position, Tag.name))
+    return list(result.scalars().all())
+
+
+async def reorder_tags(session: AsyncSession, ordered_ids: List[int]) -> None:
+    """Verilen id sırasına göre etiket position alanlarını 0'dan başlayarak yeniden yazar."""
+    for position, tag_id in enumerate(ordered_ids):
+        await session.execute(
+            update(Tag).where(Tag.id == tag_id).values(position=position)
+        )
+    await session.commit()
 
 
 async def get_tag_by_slug(session: AsyncSession, slug: str) -> Optional[Tag]:
@@ -171,10 +203,14 @@ async def delete_tag(session: AsyncSession, tag: Tag) -> None:
 # MenuItem CRUD
 # ===========================================================================
 
-async def get_menu_items(session: AsyncSession, active_only: bool = False) -> List[MenuItem]:
+async def get_menu_items(
+    session: AsyncSession, active_only: bool = False, location: Optional[str] = None
+) -> List[MenuItem]:
     stmt = select(MenuItem).order_by(MenuItem.position, MenuItem.id)
     if active_only:
         stmt = stmt.where(MenuItem.is_active.is_(True))
+    if location:
+        stmt = stmt.where(MenuItem.location == location)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -185,19 +221,22 @@ async def get_menu_item_by_id(session: AsyncSession, menu_item_id: int) -> Optio
 
 
 async def create_menu_item(session: AsyncSession, data: MenuItemCreate) -> MenuItem:
-    max_position = await session.scalar(select(func.max(MenuItem.position)))
+    max_position = await session.scalar(
+        select(func.max(MenuItem.position)).where(MenuItem.location == data.location)
+    )
     item = MenuItem(
         label=data.label,
         url=data.url,
         icon=data.icon or None,
         is_active=data.is_active,
         open_in_new_tab=data.open_in_new_tab,
+        location=data.location,
         position=(max_position or 0) + 1,
     )
     session.add(item)
     await session.commit()
     await session.refresh(item)
-    logger.info("Menü öğesi oluşturuldu: id=%d label=%r", item.id, item.label)
+    logger.info("Menü öğesi oluşturuldu: id=%d label=%r location=%r", item.id, item.label, item.location)
     return item
 
 
@@ -226,6 +265,45 @@ async def reorder_menu_items(session: AsyncSession, ordered_ids: List[int]) -> N
             update(MenuItem).where(MenuItem.id == item_id).values(position=position)
         )
     await session.commit()
+
+
+# ===========================================================================
+# SiteSettings — tekil satır (site adı, ikon, ikon rengi)
+# ===========================================================================
+
+async def get_site_settings(session: AsyncSession) -> SiteSettings:
+    """Tekil ayar satırını döndürür; yoksa varsayılan değerlerle oluşturur."""
+    result = await session.execute(select(SiteSettings).limit(1))
+    settings_row = result.scalar_one_or_none()
+    if settings_row is None:
+        settings_row = SiteSettings()
+        session.add(settings_row)
+        await session.commit()
+        await session.refresh(settings_row)
+    return settings_row
+
+
+async def update_site_settings(
+    session: AsyncSession, data: SiteSettingsUpdate
+) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.site_name = data.site_name
+    settings_row.site_icon = data.site_icon
+    settings_row.site_icon_color = data.site_icon_color
+    await session.commit()
+    await session.refresh(settings_row)
+    logger.info("Site kimliği güncellendi: name=%r icon=%r color=%r",
+                settings_row.site_name, settings_row.site_icon, settings_row.site_icon_color)
+    return settings_row
+
+
+async def update_sidebar_block_order(session: AsyncSession, order: List[str]) -> SiteSettings:
+    """Sidebar blok sırasını ('search', 'categories', 'tags') günceller."""
+    settings_row = await get_site_settings(session)
+    settings_row.sidebar_block_order = ",".join(order)
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
 
 
 # ===========================================================================
@@ -418,6 +496,7 @@ async def create_download(
         parent_id=data.parent_id,
         is_active=data.is_active,
         is_featured=data.is_featured,
+        is_official_source=data.is_official_source,
     )
     session.add(download)
     await session.flush()  # id almak için

@@ -38,15 +38,22 @@ PAGE_SIZE = 12
 # ---------------------------------------------------------------------------
 
 async def _sidebar_context(session: AsyncSession) -> dict:
-    categories = await crud.get_categories(session)
-    tags = await crud.get_tags(session)
+    categories = await crud.get_categories_ordered(session)
+    tags = await crud.get_tags_ordered(session)
     counts = await crud.get_category_download_counts(session)
-    menu_items = await crud.get_menu_items(session, active_only=True)
+    menu_items = await crud.get_menu_items(session, active_only=True, location="navbar")
+    footer_menu_items = await crud.get_menu_items(session, active_only=True, location="footer")
+    site_settings = await crud.get_site_settings(session)
+    sidebar_block_order = [
+        b for b in site_settings.sidebar_block_order.split(",") if b
+    ] or ["search", "categories", "tags"]
     return {
         "sidebar_categories": categories,
         "sidebar_tags": tags,
         "category_counts": counts,
         "menu_items": menu_items,
+        "footer_menu_items": footer_menu_items,
+        "sidebar_block_order": sidebar_block_order,
     }
 
 

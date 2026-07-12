@@ -22,6 +22,7 @@ from app.config import settings
 from app.database import Base
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, get_db
 from app.main import app
+from app.templating import templates
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +30,18 @@ def isolated_uploads(tmp_path, monkeypatch):
     """Hiçbir test gerçek app/static/uploads dizinine yazmasın diye
     yükleme dizinini her testte geçici bir klasöre yönlendirir."""
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
+
+
+@pytest.fixture(autouse=True)
+def isolated_branding_globals():
+    """Site kimliği (isim/ikon/renk), `templates.env.globals` içinde tutulan
+    process-genelinde mutable bir durumdur. Bir test bunu değiştirirse (ör.
+    /admin/settings/branding), diğer testlere sızmasın diye önceki/sonraki
+    değeri yedekleyip geri yükler."""
+    keys = ["site_name", "site_icon", "site_icon_color_light", "site_icon_color_dark"]
+    snapshot = {k: templates.env.globals.get(k) for k in keys}
+    yield
+    templates.env.globals.update(snapshot)
 
 
 @pytest_asyncio.fixture

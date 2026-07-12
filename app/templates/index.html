@@ -58,6 +58,9 @@
   <div>
     {% if current_category or current_search or (current_tag is defined and current_tag) %}
     <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ page_title }}</h1>
+    {% if current_category and current_category.description %}
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">{{ current_category.description }}</p>
+    {% endif %}
     <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
       {% if total == 0 %}
         Sonuç bulunamadı
@@ -161,7 +164,7 @@
 
       {# Açıklama #}
       {% if d.description %}
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{{ d.description }}</p>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{{ d.description | striptags }}</p>
       {% endif %}
 
       {# Meta satırı #}

@@ -105,7 +105,7 @@ class MenuItemBase(BaseModel):
 
 
 class MenuItemCreate(MenuItemBase):
-    pass
+    location: str = Field("navbar", pattern="^(navbar|footer)$")
 
 
 class MenuItemUpdate(BaseModel):
@@ -119,8 +119,15 @@ class MenuItemUpdate(BaseModel):
 class MenuItemRead(MenuItemBase):
     id: int
     position: int
+    location: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SiteSettingsUpdate(BaseModel):
+    site_name: str = Field(..., min_length=1, max_length=100)
+    site_icon: str = Field(..., min_length=1, max_length=50)
+    site_icon_color: str = Field(..., min_length=1, max_length=20)
 
 
 # ===========================================================================
@@ -144,6 +151,7 @@ class DownloadBase(BaseModel):
     parent_id: Optional[int] = None
     is_active: bool = True
     is_featured: bool = False
+    is_official_source: bool = True
 
     @model_validator(mode="after")
     def check_file_source(self) -> "DownloadBase":
@@ -181,6 +189,7 @@ class DownloadUpdate(BaseModel):
     parent_id: Optional[int] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
+    is_official_source: Optional[bool] = None
     tag_ids: Optional[List[int]] = None
 
 
