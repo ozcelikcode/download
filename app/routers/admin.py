@@ -5,7 +5,8 @@ Rotalar:
   GET  /admin/login                  → Giriş formu
   POST /admin/login                  → Kimlik doğrulama
   GET  /admin/logout                 → Çıkış
-  GET  /admin                        → Dashboard (download listesi)
+  GET  /admin                        → Dashboard (özet: son 5 içerik + istatistikler)
+  GET  /admin/downloads              → İçerikler (tam liste, arama/filtre/sayfalama)
   GET  /admin/downloads/new          → Yeni dosya formu
   POST /admin/downloads/new          → Dosya oluştur
   GET  /admin/downloads/{id}/edit    → Düzenle formu
@@ -37,7 +38,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 from fastapi import (
@@ -187,7 +188,7 @@ async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
 def _resolve_icon_path(path: str) -> Path:
     """Bir ikon web yolunu ('/static/uploads/icons/x.png') gerçek disk yoluna çevirir.
     Yalnızca dosya adı kullanılır — dizin gezinmesine (path traversal) izin verilmez."""
-    return settings.upload_path / "icons" / Path(path or "").name
+    return settings.upload_path / "icons" / Path(unquote(path or "")).name
 
 
 async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
@@ -204,7 +205,7 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
 
 def _delete_icon_file(path: str) -> None:
     """Verilen web yoluna karşılık gelen ikon dosyasını (varsa) diskten siler."""
-    filename = Path(path or "").name
+    filename = Path(unquote(path or "")).name
     if not filename:
         return
     full = settings.upload_path / "icons" / filename
@@ -379,7 +380,7 @@ async def media_replace_file(
     file: UploadFile = File(...),
 ):
     """Dosya Arşivi'nde mevcut bir dosyanın İÇERİĞİNİ değiştirir; link/ad aynı kalır."""
-    filename = Path(path or "").name
+    filename = Path(unquote(path or "")).name
     if not filename:
         raise HTTPException(status_code=400, detail="Geçersiz yol.")
     dest = settings.upload_path / filename
@@ -398,7 +399,7 @@ async def media_delete_file(
     path: str = Form(...),
 ):
     """Dosya Arşivi'ndeki bir dosyayı (uploads kök dizininden) siler."""
-    filename = Path(path or "").name
+    filename = Path(unquote(path or "")).name
     if filename:
         full = settings.upload_path / filename
         if full.exists() and full.is_file():
@@ -492,7 +493,7 @@ async def upload_icon_auto_crop(
     `in_place=True`: sonucu KAYNAKLA AYNI dosya yoluna yazar (link asla değişmez).
     `in_place=False` (varsayılan): yeni, benzersiz adlı bir dosya oluşturur.
     """
-    filename = Path(path or "").name
+    filename = Path(unquote(path or "")).name
     src = settings.upload_path / "icons" / filename
     if not filename or not src.exists():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
@@ -562,21 +563,62 @@ async def logout():
 @router.get("/", include_in_schema=False)
 async def dashboard(
     request: Request,
-    page: int = 1,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
-    import math
-    items, total = await crud.get_downloads_paginated(
-        session, page=page, page_size=20, include_inactive=True
+    recent_items, _ = await crud.get_downloads_paginated(
+        session, page=1, page_size=5, include_inactive=True, pin_featured=False
     )
-    total_pages = max(1, math.ceil(total / 20))
-    categories = await crud.get_categories(session)
-    tags = await crud.get_tags(session)
+    stats = await crud.get_dashboard_stats(session)
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
+        {
+            "request": request,
+            "recent_items": recent_items,
+            "stats": stats,
+            "admin_user": _admin,
+            "flash_message": flash_message,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# İçerikler — tüm indirmelerin filtrelenebilir/aranabilir tam listesi
+# ---------------------------------------------------------------------------
+
+@router.get("/downloads", name="admin_content_list")
+async def content_list(
+    request: Request,
+    page: int = 1,
+    q: Optional[str] = None,
+    category_id: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    file_type_filter: Optional[str] = None,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    import math
+    page_size = 20
+    category_id_int = _int_or_none(category_id)
+    items, total = await crud.get_downloads_paginated(
+        session,
+        page=page,
+        page_size=page_size,
+        search=q or None,
+        category_id=category_id_int,
+        status=status_filter or None,
+        file_type_filter=file_type_filter or None,
+        include_inactive=True,
+        pin_featured=False,
+    )
+    total_pages = max(1, math.ceil(total / page_size))
+    categories = await crud.get_categories(session)
+    flash_message = request.session.pop("flash_message", None)
+
+    return templates.TemplateResponse(
+        "admin/content_list.html",
         {
             "request": request,
             "downloads": items,
@@ -584,7 +626,10 @@ async def dashboard(
             "page": page,
             "total_pages": total_pages,
             "categories": categories,
-            "tags": tags,
+            "q": q or "",
+            "category_id": category_id_int,
+            "status_filter": status_filter or "",
+            "file_type_filter": file_type_filter or "",
             "admin_user": _admin,
             "flash_message": flash_message,
         },

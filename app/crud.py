@@ -369,14 +369,22 @@ async def get_downloads_paginated(
     page: int = 1,
     page_size: int = 12,
     category_slug: Optional[str] = None,
+    category_id: Optional[int] = None,
     tag_slug: Optional[str] = None,
     search: Optional[str] = None,
     featured_only: bool = False,
     include_inactive: bool = False,
+    status: Optional[str] = None,
+    file_type_filter: Optional[str] = None,
+    pin_featured: bool = True,
 ) -> Tuple[List[Download], int]:
     """
     Sayfalandırılmış indirme listesi döndürür.
     Dönüş: (items, total_count)
+
+    `pin_featured=False` verilirse öne çıkan kayıtlar listenin başına
+    sabitlenmez (yönetim panelindeki "İçerikler" listesi için kullanılır —
+    sabitleme yalnızca sitede görünmeli, admin panelinde değil).
     """
     stmt = _download_base_query()
 
@@ -402,6 +410,9 @@ async def get_downloads_paginated(
             Category.slug == category_slug
         )
 
+    if category_id:
+        stmt = stmt.where(Download.category_id == category_id)
+
     if tag_slug:
         stmt = stmt.join(DownloadTag, Download.id == DownloadTag.download_id).join(
             Tag, DownloadTag.tag_id == Tag.id
@@ -411,6 +422,14 @@ async def get_downloads_paginated(
         term = f"%{search}%"
         stmt = stmt.where(Download.title.ilike(term))
 
+    if status == "active":
+        stmt = stmt.where(Download.is_active == True)  # noqa: E712
+    elif status == "inactive":
+        stmt = stmt.where(Download.is_active == False)  # noqa: E712
+
+    if file_type_filter:
+        stmt = stmt.where(Download.file_type == FileType(file_type_filter))
+
     # Toplam sayım
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await session.execute(count_stmt)
@@ -418,12 +437,46 @@ async def get_downloads_paginated(
 
     # Sayfalama
     offset = (page - 1) * page_size
-    stmt = stmt.order_by(Download.is_featured.desc(), Download.created_at.desc())
+    if pin_featured:
+        stmt = stmt.order_by(Download.is_featured.desc(), Download.created_at.desc())
+    else:
+        stmt = stmt.order_by(Download.created_at.desc())
     stmt = stmt.offset(offset).limit(page_size)
 
     result = await session.execute(stmt)
     items = list(result.scalars().all())
     return items, total
+
+
+async def get_dashboard_stats(session: AsyncSession) -> dict:
+    """Dashboard'daki genel istatistik kartları için toplu sayım."""
+    total_downloads = await session.scalar(
+        select(func.count()).select_from(Download).where(Download.parent_id == None)  # noqa: E711
+    )
+    active_downloads = await session.scalar(
+        select(func.count()).select_from(Download).where(
+            Download.parent_id == None, Download.is_active == True  # noqa: E711, E712
+        )
+    )
+    inactive_downloads = (total_downloads or 0) - (active_downloads or 0)
+    total_download_count = await session.scalar(
+        select(func.coalesce(func.sum(Download.download_count), 0))
+    )
+    featured_count = await session.scalar(
+        select(func.count()).select_from(Download).where(Download.is_featured == True)  # noqa: E712
+    )
+    category_count = await session.scalar(select(func.count()).select_from(Category))
+    tag_count = await session.scalar(select(func.count()).select_from(Tag))
+
+    return {
+        "total_downloads": total_downloads or 0,
+        "active_downloads": active_downloads or 0,
+        "inactive_downloads": inactive_downloads,
+        "total_download_count": total_download_count or 0,
+        "featured_count": featured_count or 0,
+        "category_count": category_count or 0,
+        "tag_count": tag_count or 0,
+    }
 
 
 async def get_download_by_slug(

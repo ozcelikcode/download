@@ -1,0 +1,224 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}İçerikler{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="breadcrumb mb-1">
+      <a href="/admin">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="text-slate-700 dark:text-slate-300">İçerikler</span>
+    </div>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">İçerikler</h1>
+  </div>
+  <a href="/admin/downloads/new" class="btn-primary">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    Yeni Dosya
+  </a>
+</div>
+
+<!-- Arama + filtre — tek satır, kompakt -->
+<form method="get" action="/admin/downloads"
+  class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-4 transition-colors">
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative flex-1 min-w-[160px]">
+      <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
+      <input type="text" name="q" value="{{ q }}" placeholder="Başlığa göre ara…"
+        class="form-input form-input-icon py-1.5 text-sm">
+    </div>
+
+    <select name="category_id" class="form-input py-1.5 text-sm flex-[0_0_150px] min-w-0">
+      <option value="">— Kategori —</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {% if category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="status_filter" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
+      <option value="" {% if not status_filter %}selected{% endif %}>— Durum —</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Aktif</option>
+      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Pasif</option>
+    </select>
+
+    <select name="file_type_filter" class="form-input py-1.5 text-sm flex-[0_0_130px] min-w-0">
+      <option value="" {% if not file_type_filter %}selected{% endif %}>— Tür —</option>
+      <option value="external" {% if file_type_filter == 'external' %}selected{% endif %}>Dış Bağlantı</option>
+      <option value="local" {% if file_type_filter == 'local' %}selected{% endif %}>Lokal Dosya</option>
+    </select>
+
+    <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
+      <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+      Filtrele
+    </button>
+    {% if q or category_id or status_filter or file_type_filter %}
+    <a href="/admin/downloads" title="Filtreleri temizle"
+      class="shrink-0 inline-flex items-center gap-1 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- İndirme tablosu -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Sonuçlar</h2>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ total }} kayıt · Sayfa {{ page }}/{{ total_pages }}</span>
+  </div>
+
+  {% if downloads %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Başlık</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden md:table-cell">Kategori</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">Tür</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden lg:table-cell">İndirme</th>
+          <th class="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Durum</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">İşlem</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
+        {% for d in downloads %}
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
+
+          <!-- ID -->
+          <td class="px-4 py-3 text-xs text-slate-400 dark:text-slate-500 tabular-nums">{{ d.id }}</td>
+
+          <!-- Başlık + sürüm -->
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              {% set icon_css = d.icon_type.value %}
+              <div class="icon-box {{ icon_css }} w-7 h-7 shrink-0">
+                <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-3.5 h-3.5"></i>
+              </div>
+              <div class="min-w-0">
+                <span class="font-medium text-slate-800 dark:text-slate-200 truncate block max-w-xs">
+                  {{ d.title }}
+                </span>
+                {% if d.version %}
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ d.version }}</span>
+                {% endif %}
+              </div>
+              {% if d.is_featured %}
+              <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 shrink-0"
+                title="Sitede sabitlenmiş (Öne Çıkanlar) — bu liste sırası site sıralamasını etkilemez">
+                <i data-lucide="star" class="w-3 h-3"></i> Sabitlenmiş
+              </span>
+              {% endif %}
+            </div>
+          </td>
+
+          <!-- Kategori -->
+          <td class="px-4 py-3 hidden md:table-cell">
+            {% if d.category %}
+            <span class="category-badge">{{ d.category.name }}</span>
+            {% else %}
+            <span class="text-slate-300 dark:text-slate-600 text-xs">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Tür -->
+          <td class="px-4 py-3 hidden sm:table-cell">
+            {% if d.file_type.value == 'external' %}
+            <span class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+              <i data-lucide="external-link" class="w-3 h-3"></i> Dış Link
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <i data-lucide="server" class="w-3 h-3"></i> Lokal
+            </span>
+            {% endif %}
+          </td>
+
+          <!-- İndirme sayısı -->
+          <td class="px-4 py-3 hidden lg:table-cell text-right text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+            {{ d.download_count }}
+          </td>
+
+          <!-- Durum badge -->
+          <td class="px-4 py-3 text-center">
+            {% if d.is_active %}
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20">
+              <i data-lucide="check" class="w-3 h-3"></i> Aktif
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+              Pasif
+            </span>
+            {% endif %}
+          </td>
+
+          <!-- İşlemler -->
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-end gap-1">
+              <a href="/download/{{ d.slug }}" target="_blank" rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+                       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="external-link" class="w-3 h-3"></i>
+                Görüntüle
+              </a>
+              <a href="/admin/downloads/{{ d.id }}/edit"
+                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
+                       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="pencil" class="w-3 h-3"></i>
+                Düzenle
+              </a>
+              <form method="post" action="/admin/downloads/{{ d.id }}/delete" class="inline">
+                <button type="submit"
+                  onclick="return confirm('{{ d.title }} silinecek. Onaylıyor musunuz?')"
+                  class="btn-danger py-1.5 px-2.5">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Sayfalama (ellipsis'li, taşma önlenir) -->
+  {% if total_pages > 1 %}
+  {% set qs = { 'q': q, 'category_id': category_id, 'status_filter': status_filter, 'file_type_filter': file_type_filter } %}
+  {% macro page_href(p) %}?page={{ p }}{% for k, v in qs.items() %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}{% endmacro %}
+  <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ page }} / {{ total_pages }}</span>
+    <div class="pagination">
+      {% if page > 1 %}
+      <a href="{{ page_href(page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+      {% for p in pagination_range(page, total_pages) %}
+        {% if p is none %}
+        <span class="page-btn disabled">…</span>
+        {% else %}
+        <a href="{{ page_href(p) }}" class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+      <a href="{{ page_href(page + 1) }}" class="page-btn"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="py-12 text-center text-slate-400 dark:text-slate-500">
+    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
+    <p class="text-sm">Kayıt bulunamadı.</p>
+    {% if q or category_id or status_filter or file_type_filter %}
+    <a href="/admin/downloads" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">Filtreleri temizle</a>
+    {% else %}
+    <a href="/admin/downloads/new" class="btn-primary mt-3 inline-flex">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> İlk dosyayı ekle
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

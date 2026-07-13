@@ -14,8 +14,8 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="/static/css/tailwind.css">
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
   {% block head %}{% endblock %}
 </head>
@@ -109,6 +109,17 @@
         {% endif %}">
         <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 shrink-0"></i>
         Dashboard
+      </a>
+
+      <a href="/admin/downloads"
+        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
+        {% if request.url.path == '/admin/downloads' %}
+          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
+        {% else %}
+          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
+        {% endif %}">
+        <i data-lucide="list" class="w-3.5 h-3.5 shrink-0"></i>
+        İçerikler
       </a>
 
       <a href="/admin/downloads/new"

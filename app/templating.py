@@ -6,6 +6,7 @@ Tüm router'lar bu modülden import eder — tek kaynak.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -72,6 +73,35 @@ def _thousands(value: Optional[int]) -> str:
     return f"{value:,}".replace(",", ".")
 
 
+def _pagination_range(current: int, total: int, edge: int = 2, around: int = 1) -> list:
+    """
+    Uzun sayfalama listelerinde taşmayı önlemek için "1 2 3 … 10 11 12" tarzı
+    kısaltılmış sayfa numarası listesi üretir. `None` değerleri "…" (ellipsis)
+    yer tutucusudur.
+    """
+    if total <= 1:
+        return [1]
+
+    pages = set()
+    for i in range(1, edge + 1):
+        pages.add(i)
+    for i in range(total - edge + 1, total + 1):
+        pages.add(i)
+    for i in range(current - around, current + around + 1):
+        if 1 <= i <= total:
+            pages.add(i)
+
+    ordered = sorted(p for p in pages if 1 <= p <= total)
+    result: list = []
+    prev: Optional[int] = None
+    for p in ordered:
+        if prev is not None and p - prev > 1:
+            result.append(None)
+        result.append(p)
+        prev = p
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Filtre / global kayıt
 # ---------------------------------------------------------------------------
@@ -81,6 +111,18 @@ templates.env.filters["human_size"] = _human_size
 templates.env.filters["icon_name"] = _icon_name
 templates.env.filters["pluralize"] = _pluralize
 templates.env.filters["thousands"] = _thousands
+templates.env.globals["pagination_range"] = _pagination_range
+
+# Global: statik CSS dosyalarının cache-busting sürüm numarası. Tarayıcının
+# `make css` sonrası eski tailwind.css/app.css'i önbellekten göstermeye devam
+# etmesini önler — dosya değiştikçe link'in sonuna eklenen ?v= değeri de değişir.
+def _css_asset_version() -> int:
+    paths = ["app/static/css/tailwind.css", "app/static/css/app.css"]
+    mtimes = [os.path.getmtime(p) for p in paths if os.path.exists(p)]
+    return int(max(mtimes)) if mtimes else 0
+
+
+templates.env.globals["css_asset_v"] = _css_asset_version()
 
 # Global: site başlığı (.env APP_NAME'den gelir) — SiteSettings yüklenene kadarki varsayılan.
 templates.env.globals["site_name"] = settings.app_name

@@ -236,6 +236,68 @@
     </div>
   </div>
 
+  <!-- ── Sınıflandırma ────────────────────────────────── -->
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
+      <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Sınıflandırma
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <!-- Kategori -->
+      <div>
+        <label for="f-category" class="form-label">Kategori</label>
+        <select id="f-category" name="category_id" class="form-input">
+          <option value="">— Seçiniz —</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if download and download.category_id == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Üst kayıt (sürüm ilişkisi) -->
+      <div>
+        <label for="f-parent" class="form-label">Üst Kayıt (Eski Sürüm İçin)</label>
+        <select id="f-parent" name="parent_id" class="form-input">
+          <option value="">— Bağımsız Kayıt —</option>
+          {% for d in all_downloads %}
+          {% if not download or d.id != download.id %}
+          <option value="{{ d.id }}" {% if download and download.parent_id == d.id %}selected{% endif %}>
+            {{ d.title }} {% if d.version %}({{ d.version }}){% endif %}
+          </option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <p class="form-hint">Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.</p>
+      </div>
+
+      <!-- Etiketler -->
+      <div class="sm:col-span-2">
+        <label class="form-label">Etiketler</label>
+        {% if tags %}
+        <div class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
+          {% for t in tags %}
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" name="tag_ids" value="{{ t.id }}"
+              {% if download and t in download.tags %}checked{% endif %}
+              class="accent-blue-600 rounded-sm">
+            <span class="text-sm text-slate-700 dark:text-slate-300">#{{ t.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-400 dark:text-slate-500 p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
+          Henüz etiket yok. <a href="/admin/tags" class="text-blue-600 dark:text-blue-400 hover:underline">Etiket ekle →</a>
+        </p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
   </div>
   <!-- ══════════════════════════ /SOL SÜTUN ══════════════════════════ -->
 
@@ -348,16 +410,16 @@
     <!-- Dosya boyutu -->
     <div class="mt-4">
       <label for="f-size" class="form-label">Dosya Boyutu</label>
-      <div class="flex gap-2 w-full sm:max-w-[40%]">
+      <div class="flex gap-2 w-full">
         <input id="f-size" name="file_size_value" type="number" min="0" step="any"
           value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
           placeholder="Örn: 50"
-          class="form-input flex-1 min-w-0">
-        <select id="f-size-unit" name="file_size_unit" class="form-input shrink-0">
-          <option value="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>MB</option>
-          <option value="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>KB</option>
-          <option value="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>GB</option>
-          <option value="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
+          class="form-input min-w-0 flex-[0_0_90%]">
+        <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 flex-[0_0_10%]" title="Birim">
+          <option value="MB" title="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>M</option>
+          <option value="KB" title="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>K</option>
+          <option value="GB" title="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>G</option>
+          <option value="B" title="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
         </select>
       </div>
       <p class="form-hint">Boş bırakılabilir.</p>
@@ -396,68 +458,6 @@
         <span class="text-sm text-slate-700 dark:text-slate-300">{{ os_label }}</span>
       </label>
       {% endfor %}
-    </div>
-  </div>
-
-  <!-- ── Sınıflandırma ────────────────────────────────── -->
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
-    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
-      <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Sınıflandırma
-    </h2>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-      <!-- Kategori -->
-      <div>
-        <label for="f-category" class="form-label">Kategori</label>
-        <select id="f-category" name="category_id" class="form-input">
-          <option value="">— Seçiniz —</option>
-          {% for c in categories %}
-          <option value="{{ c.id }}" {% if download and download.category_id == c.id %}selected{% endif %}>
-            {{ c.name }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Üst kayıt (sürüm ilişkisi) -->
-      <div>
-        <label for="f-parent" class="form-label">Üst Kayıt (Eski Sürüm İçin)</label>
-        <select id="f-parent" name="parent_id" class="form-input">
-          <option value="">— Bağımsız Kayıt —</option>
-          {% for d in all_downloads %}
-          {% if not download or d.id != download.id %}
-          <option value="{{ d.id }}" {% if download and download.parent_id == d.id %}selected{% endif %}>
-            {{ d.title }} {% if d.version %}({{ d.version }}){% endif %}
-          </option>
-          {% endif %}
-          {% endfor %}
-        </select>
-        <p class="form-hint">Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.</p>
-      </div>
-
-      <!-- Etiketler -->
-      <div class="sm:col-span-2">
-        <label class="form-label">Etiketler</label>
-        {% if tags %}
-        <div class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
-          {% for t in tags %}
-          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" name="tag_ids" value="{{ t.id }}"
-              {% if download and t in download.tags %}checked{% endif %}
-              class="accent-blue-600 rounded-sm">
-            <span class="text-sm text-slate-700 dark:text-slate-300">#{{ t.name }}</span>
-          </label>
-          {% endfor %}
-        </div>
-        {% else %}
-        <p class="text-sm text-slate-400 dark:text-slate-500 p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
-          Henüz etiket yok. <a href="/admin/tags" class="text-blue-600 dark:text-blue-400 hover:underline">Etiket ekle →</a>
-        </p>
-        {% endif %}
-      </div>
-
     </div>
   </div>
 

@@ -16,10 +16,10 @@
   </script>
 
   <!-- Tailwind (önceden derlenmiş statik CSS — make css ile üretilir) -->
-  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
 
   <!-- Custom CSS + Lucide -->
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
 
   {% block head %}{% endblock %}

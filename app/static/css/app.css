@@ -296,12 +296,14 @@ body {
 .dark .form-label { color: #cbd5e1; }
 .dark .form-hint  { color: #64748b; }
 
-#f-size-unit { width: auto; min-width: 4.5rem; max-width: 6rem; flex: none; }
-
 /* .form-input'un kısayol "padding" kuralı, Tailwind'in pl-* gibi yardımcı
    sınıflarını (yükleme sırası nedeniyle) eziyor. İkonlu input'lar için
    kaynak sırasında .form-input'tan SONRA gelen özel bir sınıf kullanılır. */
 .form-input-icon { padding-left: 2rem; }
+
+/* Dosya boyutu birim seçici — dar bir alanda (%10) okunur kalması için
+   tek harfli etiket (M/K/G/B, title'da tam adı) + minimal padding. */
+#f-size-unit { padding-left: 0.4rem; padding-right: 1.1rem; font-size: 0.8125rem; text-align: center; }
 
 .btn-primary {
   display: inline-flex; align-items: center; gap: 0.375rem;
