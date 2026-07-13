@@ -21,6 +21,7 @@ from app.models import (
     Download,
     DownloadLog,
     DownloadTag,
+    DownloadVersionHistory,
     FileType,
     IconType,
     MediaAsset,
@@ -306,6 +307,66 @@ async def update_sidebar_block_order(session: AsyncSession, order: List[str]) ->
     return settings_row
 
 
+async def update_admin_credentials(
+    session: AsyncSession, username: Optional[str], password_hash: Optional[str]
+) -> SiteSettings:
+    """Admin kullanıcı adı/şifre hash'ini DB'ye kaydeder (None → değiştirme)."""
+    settings_row = await get_site_settings(session)
+    if username:
+        settings_row.admin_username = username
+    if password_hash:
+        settings_row.admin_password_hash = password_hash
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
+async def update_session_max_age(session: AsyncSession, minutes: int) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.session_max_age_minutes = minutes
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
+async def update_admin_avatar(session: AsyncSession, icon: str, color: str) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.admin_icon = icon
+    settings_row.admin_icon_color = color
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
+# ===========================================================================
+# DownloadVersionHistory — otomatik sürüm geçmişi düzenleme/silme (ekleme yok)
+# ===========================================================================
+
+async def get_version_history_entry(
+    session: AsyncSession, entry_id: int
+) -> Optional[DownloadVersionHistory]:
+    result = await session.execute(
+        select(DownloadVersionHistory).where(DownloadVersionHistory.id == entry_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def update_version_history_entry(
+    session: AsyncSession, entry: DownloadVersionHistory, version: str
+) -> DownloadVersionHistory:
+    entry.version = version
+    await session.commit()
+    await session.refresh(entry)
+    return entry
+
+
+async def delete_version_history_entry(
+    session: AsyncSession, entry: DownloadVersionHistory
+) -> None:
+    await session.delete(entry)
+    await session.commit()
+
+
 # ===========================================================================
 # MediaAsset — Medya Arşivi görünen ad meta verisi
 # ===========================================================================
@@ -491,7 +552,10 @@ async def get_download_by_slug(
             selectinload(Download.versions).options(
                 selectinload(Download.tags)
             ),
-            selectinload(Download.parent),
+            selectinload(Download.parent).options(
+                selectinload(Download.versions)
+            ),
+            selectinload(Download.version_history),
         )
         .where(Download.slug == slug, Download.is_active == True)  # noqa: E712
     )
@@ -507,6 +571,7 @@ async def get_download_by_id(
         .options(
             selectinload(Download.category),
             selectinload(Download.tags),
+            selectinload(Download.version_history),
         )
         .where(Download.id == download_id)
     )
@@ -535,6 +600,7 @@ async def create_download(
         title=data.title,
         slug=slug,
         description=data.description,
+        short_description=data.short_description,
         version=data.version,
         file_type=data.file_type,
         file_path=data.file_path,
@@ -544,6 +610,7 @@ async def create_download(
         thumbnail_path=data.thumbnail_path,
         icon_image_path=data.icon_image_path,
         icon_image_url=data.icon_image_url,
+        icon_extension=data.icon_extension,
         os_compatibility=os_str,
         category_id=data.category_id,
         parent_id=data.parent_id,
@@ -588,6 +655,18 @@ async def update_download(
     # os_compatibility listesini stringe çevir ve güncelle
     if data.os_compatibility is not None:
         update_data["os_compatibility"] = ",".join(data.os_compatibility) if data.os_compatibility else None
+
+    # ── Otomatik sürüm geçmişi ───────────────────────────────────────────
+    # Sürüm değişiyorsa (ve eskiden bir sürüm bilgisi varsa) eski hâl,
+    # üzerine yazılmadan önce anlık görüntü olarak kaydedilir.
+    if "version" in update_data and update_data["version"] != download.version and download.version:
+        session.add(
+            DownloadVersionHistory(
+                download_id=download.id,
+                version=download.version,
+                file_size_bytes=download.file_size_bytes,
+            )
+        )
 
     for field, value in update_data.items():
         if field != "os_compatibility":  # yukarıda zaten işlendi

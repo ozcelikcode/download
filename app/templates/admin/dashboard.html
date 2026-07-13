@@ -89,7 +89,7 @@
             <div class="flex items-center gap-2">
               {% set icon_css = d.icon_type.value %}
               <div class="icon-box {{ icon_css }} w-7 h-7 shrink-0">
-                <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-3.5 h-3.5"></i>
+                <i data-lucide="{{ d.icon_type | icon_name(d.file_type, d.icon_extension) }}" class="w-3.5 h-3.5"></i>
               </div>
               <div class="min-w-0">
                 <span class="font-medium text-slate-800 dark:text-slate-200 truncate block max-w-xs">{{ d.title }}</span>

@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import crud
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
+from app.dependencies import refresh_session_max_age
 from app.routers import admin, public
 from app.templating import refresh_site_branding_globals, templates
 
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as session:
         site_settings = await crud.get_site_settings(session)
         refresh_site_branding_globals(site_settings)
+        refresh_session_max_age(site_settings.session_max_age_minutes)
     logger.info("✅ %s başlatıldı", settings.app_name)
     yield
     # Shutdown

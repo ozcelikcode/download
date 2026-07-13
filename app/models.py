@@ -52,6 +52,7 @@ class IconType(str, enum.Enum):
     dmg = "dmg"
     deb = "deb"
     auto = "auto"
+    extension = "extension"
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +163,14 @@ class SiteSettings(Base):
     sidebar_block_order: Mapped[str] = mapped_column(
         String(100), nullable=False, default="search,categories,tags"
     )
+    # Admin hesabı — boşsa .env'deki ADMIN_USERNAME/ADMIN_PASSWORD_HASH kullanılır
+    # (ilk kurulum varsayılanı). Ayarlar'dan değiştirilince burada saklanır.
+    admin_username: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    admin_password_hash: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    admin_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="user-circle")
+    admin_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="slate")
+    # Admin oturumunun dakika cinsinden geçerlilik süresi
+    session_max_age_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=480)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
@@ -204,6 +213,9 @@ class Download(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(220), unique=True, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Ön açıklama: ana sayfa kartlarında gösterilen kısa, düz metin özet.
+    # Boşsa kart, tam açıklamanın (WYSIWYG) etiketsiz kısaltmasına düşer.
+    short_description: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Dosya bilgileri
@@ -222,6 +234,8 @@ class Download(Base):
     # Uygulama ikonu (öncelik sırası: icon_image_path > icon_image_url)
     icon_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     icon_image_url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    # icon_type == 'extension' seçildiğinde kullanılan serbest uzantı adı (ör. "rar", "iso")
+    icon_extension: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     # İşletim sistemi uyumu (virgülle ayrılmış: windows,macos,linux,android,ios)
     os_compatibility: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
@@ -278,6 +292,14 @@ class Download(Base):
     logs: Mapped[List["DownloadLog"]] = relationship(
         "DownloadLog", back_populates="download", lazy="select"
     )
+    # Otomatik sürüm geçmişi: her düzenlemede sürüm değişirse eski hâl buraya kaydedilir
+    version_history: Mapped[List["DownloadVersionHistory"]] = relationship(
+        "DownloadVersionHistory",
+        back_populates="download",
+        lazy="select",
+        order_by="DownloadVersionHistory.changed_at.desc()",
+        cascade="all, delete-orphan",
+    )
 
     # ---------------------------------------------------------------------------
     # Computed properties
@@ -316,6 +338,35 @@ class Download(Base):
 
     def __repr__(self) -> str:
         return f"<Download id={self.id} slug={self.slug!r} version={self.version!r}>"
+
+
+# ---------------------------------------------------------------------------
+# DownloadVersionHistory — bir indirmenin geçmiş sürüm anlık görüntüleri.
+# Admin panelinden bir kayıt düzenlenip "Sürüm" değiştirildiğinde, ESKİ değer
+# otomatik olarak buraya kaydedilir. Ayrı bir sayfası/slug'ı yoktur — sadece
+# detay sayfasındaki "Sürüm Geçmişi" kutusunda bilgi amaçlı listelenir.
+# ---------------------------------------------------------------------------
+class DownloadVersionHistory(Base):
+    __tablename__ = "download_version_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    download_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("downloads.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Değişiklikten ÖNCEKİ (eski) sürüm bilgisi
+    version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    file_size_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # İlişkiler
+    download: Mapped["Download"] = relationship(
+        "Download", back_populates="version_history", lazy="select"
+    )
+
+    def __repr__(self) -> str:
+        return f"<DownloadVersionHistory download_id={self.download_id} version={self.version!r}>"
 
 
 # ---------------------------------------------------------------------------

@@ -150,8 +150,24 @@
           <option value="dmg" {% if download and download.icon_type.value == 'dmg' %}selected{% endif %}>macOS (DMG)</option>
           <option value="deb" {% if download and download.icon_type.value == 'deb' %}selected{% endif %}>Linux (DEB)</option>
           <option value="link" {% if download and download.icon_type.value == 'link' %}selected{% endif %}>Web Bağlantısı</option>
+          <option value="extension" {% if download and download.icon_type.value == 'extension' %}selected{% endif %}>Uzantı İkonu (ör. RAR, ISO)</option>
         </select>
         <p class="form-hint">İndirme listesinde gösterilecek ikonu seçin.</p>
+      </div>
+
+      <!-- Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) -->
+      <div id="section-icon-extension" class="sm:col-span-2 space-y-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
+        <label for="f-icon-extension" class="form-label text-xs">Dosya Uzantısı</label>
+        <div class="flex items-center gap-2">
+          <div id="icon-extension-preview" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center">
+            <i data-lucide="file" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
+          </div>
+          <input id="f-icon-extension" name="icon_extension" type="text" maxlength="20" autocomplete="off"
+            value="{{ download.icon_extension if download and download.icon_extension else '' }}"
+            placeholder="Örn: rar, iso, msi, mp4"
+            class="form-input flex-1">
+        </div>
+        <p class="form-hint">Uzantıya göre otomatik en uygun ikon eşlenir (bilinmeyen uzantılarda genel dosya ikonu kullanılır).</p>
       </div>
 
       <!-- İkon detayları (Sadece 'Resim' seçildiğinde açılır) -->
@@ -224,13 +240,23 @@
         <input type="hidden" id="f-icon-image-cleared" name="icon_image_cleared" value="">
       </div>
 
+      <!-- Ön Açıklama — ana sayfa kartlarında gösterilen kısa özet -->
+      <div class="sm:col-span-2">
+        <label for="f-short-description" class="form-label">Ön Açıklama</label>
+        <input id="f-short-description" name="short_description" type="text" maxlength="300"
+          value="{{ download.short_description if download and download.short_description else '' }}"
+          placeholder="Ana sayfa kartında görünecek kısa özet…"
+          class="form-input">
+        <p class="form-hint">Boş bırakılırsa ana sayfada aşağıdaki açıklamanın kısaltılmış hâli gösterilir.</p>
+      </div>
+
       <!-- Açıklama (WYSIWYG) -->
       <div class="sm:col-span-2">
         <label class="form-label">Açıklama</label>
         <div id="f-description-wrap" class="quill-editor-wrap rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div id="f-description-editor"></div>
         </div>
-        <textarea id="f-description" name="description" class="hidden">{{ download.description if download else '' }}</textarea>
+        <textarea id="f-description" name="description" class="hidden">{{ download.description if download and download.description else '' }}</textarea>
       </div>
 
     </div>
@@ -491,6 +517,42 @@
     </div>
   </div>
 
+  <!-- ── Sürüm Geçmişi (otomatik — yalnızca düzelt/sil, ekleme yok) ──── -->
+  {% if edit_mode and download.version_history %}
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+      <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+      Sürüm Geçmişi
+    </h2>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
+      "Sürüm" alanı değiştirildiğinde otomatik kaydedilir. Buradan yalnızca sorunlu bir kaydı düzeltebilir veya silebilirsiniz.
+    </p>
+
+    <ul class="space-y-1" id="version-history-list">
+      {% for h in download.version_history %}
+      <li class="version-history-row flex items-center gap-2 px-2.5 py-2 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+        data-entry-id="{{ h.id }}">
+        <span class="version-history-display text-sm text-slate-700 dark:text-slate-300 flex-1 min-w-0 truncate">{{ h.version }}</span>
+        <input type="text" class="version-history-input form-input py-1 text-sm flex-1 hidden" value="{{ h.version }}" maxlength="50">
+        <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0">{{ h.changed_at | format_date }}</span>
+        <button type="button" data-vh-action="edit" class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0" title="Düzelt">
+          <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-vh-action="save" class="p-1.5 text-blue-600 dark:text-blue-400 hidden shrink-0" title="Kaydet">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-vh-action="cancel" class="p-1.5 text-slate-400 dark:text-slate-500 hidden shrink-0" title="Vazgeç">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+        <button type="button" data-vh-action="delete" class="p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0" title="Sil">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   </div>
   <!-- ══════════════════════════ /SAĞ SÜTUN ══════════════════════════ -->
 
@@ -668,20 +730,43 @@
     });
   }
 
-  // ── İkon Türü 'resim' seçildiğinde detay panelini aç/kapat ──────────
+  // ── İkon Türü 'resim' / 'uzantı' seçildiğinde ilgili paneli aç/kapat ──
   const iconTypeSelect = document.getElementById('f-icon-type');
   const iconImgSection = document.getElementById('section-icon-image');
+  const iconExtSection = document.getElementById('section-icon-extension');
+  const iconExtInput = document.getElementById('f-icon-extension');
+  const iconExtPreview = document.getElementById('icon-extension-preview');
+
+  var EXT_ICON_MAP = {
+    zip:'archive', rar:'archive', '7z':'archive', tar:'archive', gz:'archive',
+    pdf:'file-text', exe:'monitor', msi:'monitor', apk:'smartphone',
+    dmg:'apple', pkg:'apple', deb:'terminal', rpm:'terminal', iso:'disc',
+    mp4:'video', mov:'video', avi:'video', mkv:'video', mp3:'music', wav:'music',
+    doc:'file-text', docx:'file-text', xls:'file-spreadsheet', xlsx:'file-spreadsheet',
+    ppt:'presentation', pptx:'presentation'
+  };
+
+  function updateExtensionPreview() {
+    if (!iconExtInput || !iconExtPreview) return;
+    var ext = (iconExtInput.value || '').trim().toLowerCase().replace(/^\./, '');
+    var icon = EXT_ICON_MAP[ext] || 'file';
+    iconExtPreview.innerHTML = '<i data-lucide="' + icon + '" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>';
+    if (window.lucide) lucide.createIcons();
+  }
 
   function updateIconImageSection() {
-    if (iconTypeSelect && iconImgSection) {
-      const showImageFields = (iconTypeSelect.value === 'image');
-      iconImgSection.classList.toggle('hidden', !showImageFields);
-    }
+    if (!iconTypeSelect) return;
+    if (iconImgSection) iconImgSection.classList.toggle('hidden', iconTypeSelect.value !== 'image');
+    if (iconExtSection) iconExtSection.classList.toggle('hidden', iconTypeSelect.value !== 'extension');
   }
 
   if (iconTypeSelect) {
     iconTypeSelect.addEventListener('change', updateIconImageSection);
     updateIconImageSection(); // Sayfa yüklendiğinde çalıştır
+  }
+  if (iconExtInput) {
+    iconExtInput.addEventListener('input', updateExtensionPreview);
+    updateExtensionPreview();
   }
 
   // ── Görsel yükleme / dış URL indirme / kırpma / silme ────────────────
@@ -996,5 +1081,52 @@
       });
     }
   })();
+
+  // ── Sürüm Geçmişi: satır içi düzelt / sil (ekleme yok) ────────────────
+  {% if edit_mode %}
+  (function () {
+    const downloadId = {{ download.id }};
+    const list = document.getElementById('version-history-list');
+    if (!list) return;
+
+    function setEditing(row, editing) {
+      row.querySelector('.version-history-display').classList.toggle('hidden', editing);
+      row.querySelector('.version-history-input').classList.toggle('hidden', !editing);
+      row.querySelector('[data-vh-action="edit"]').classList.toggle('hidden', editing);
+      row.querySelector('[data-vh-action="delete"]').classList.toggle('hidden', editing);
+      row.querySelector('[data-vh-action="save"]').classList.toggle('hidden', !editing);
+      row.querySelector('[data-vh-action="cancel"]').classList.toggle('hidden', !editing);
+      if (editing) row.querySelector('.version-history-input').focus();
+    }
+
+    list.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-vh-action]');
+      if (!btn) return;
+      const row = btn.closest('.version-history-row');
+      const entryId = row.dataset.entryId;
+      const action = btn.dataset.vhAction;
+
+      if (action === 'edit') {
+        setEditing(row, true);
+      } else if (action === 'cancel') {
+        row.querySelector('.version-history-input').value = row.querySelector('.version-history-display').textContent.trim();
+        setEditing(row, false);
+      } else if (action === 'save') {
+        const newVersion = row.querySelector('.version-history-input').value.trim();
+        if (!newVersion) { alert('Sürüm boş olamaz.'); return; }
+        const fd = new FormData();
+        fd.append('version', newVersion);
+        fetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/edit', { method: 'POST', body: fd })
+          .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
+          .catch(function () { alert('Kaydedilemedi.'); });
+      } else if (action === 'delete') {
+        if (!confirm('Bu sürüm geçmişi kaydı silinecek. Onaylıyor musunuz?')) return;
+        fetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
+          .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
+          .catch(function () { alert('Silinemedi.'); });
+      }
+    });
+  })();
+  {% endif %}
 </script>
 {% endblock %}

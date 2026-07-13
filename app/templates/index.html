@@ -104,7 +104,7 @@
         {% if d.icon_type.value == 'image' and (d.icon_image_path or d.icon_image_url) %}
           <img src="{{ d.icon_image_path or d.icon_image_url }}" alt="" class="w-full h-full object-contain p-0.5">
         {% else %}
-          <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4 h-4"></i>
+          <i data-lucide="{{ d.icon_type | icon_name(d.file_type, d.icon_extension) }}" class="w-4 h-4"></i>
         {% endif %}
       </div>
       <div class="min-w-0 flex-1">
@@ -136,7 +136,7 @@
       {% if d.icon_type.value == 'image' and (d.icon_image_path or d.icon_image_url) %}
         <img src="{{ d.icon_image_path or d.icon_image_url }}" alt="" class="w-full h-full object-contain p-0.5">
       {% else %}
-        <i data-lucide="{{ d.icon_type | icon_name(d.file_type) }}" class="w-4.5 h-4.5"></i>
+        <i data-lucide="{{ d.icon_type | icon_name(d.file_type, d.icon_extension) }}" class="w-4.5 h-4.5"></i>
       {% endif %}
     </div>
 
@@ -162,9 +162,10 @@
         </a>
       </div>
 
-      {# Açıklama #}
-      {% if d.description %}
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{{ d.description | striptags }}</p>
+      {# Açıklama — ön açıklama varsa o, yoksa tam açıklamanın etiketsiz özeti #}
+      {% set card_desc = d.short_description or (d.description | striptags if d.description else '') %}
+      {% if card_desc %}
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">{{ card_desc }}</p>
       {% endif %}
 
       {# Meta satırı #}

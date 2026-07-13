@@ -25,7 +25,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _serializer = URLSafeTimedSerializer(settings.app_secret_key)
 SESSION_COOKIE = "admin_session"
+# Varsayılan; Ayarlar'dan değiştirilip DB'den yüklenince refresh_session_max_age
+# ile güncellenir (bkz. app/main.py lifespan, app/routers/admin.py Ayarlar kaydı).
 SESSION_MAX_AGE = 60 * 60 * 8  # 8 saat
+
+
+def refresh_session_max_age(minutes: int) -> None:
+    """Admin oturum süresini (dakika) DB'deki güncel değere göre ayarlar."""
+    global SESSION_MAX_AGE
+    SESSION_MAX_AGE = max(1, int(minutes)) * 60
 
 
 def create_admin_session_token(username: str) -> str:
@@ -47,22 +55,28 @@ def verify_admin_session_token(token: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Admin kimlik doğrulama
 # ---------------------------------------------------------------------------
-def verify_admin_password(plain: str) -> bool:
+def verify_admin_password(plain: str, stored_hash: Optional[str] = None) -> bool:
     """
-    .env'deki ADMIN_PASSWORD_HASH ile verilen plain şifreyi karşılaştırır.
-    Hash yoksa (placeholder) her zaman False döner.
+    Verilen plain şifreyi bcrypt hash ile karşılaştırır.
+    `stored_hash` verilmezse (ör. eski çağrı yerleri) .env'deki
+    ADMIN_PASSWORD_HASH kullanılır. Hash yoksa (placeholder) her zaman False döner.
     """
-    stored_hash = settings.admin_password_hash.strip()
-    if not stored_hash or "placeholder" in stored_hash:
+    effective_hash = (stored_hash or settings.admin_password_hash).strip()
+    if not effective_hash or "placeholder" in effective_hash:
         logger.warning(
-            "ADMIN_PASSWORD_HASH .env'de ayarlanmamış! Admin girişi devre dışı."
+            "Admin şifre hash'i ayarlanmamış! Admin girişi devre dışı."
         )
         return False
     try:
-        return bcrypt.checkpw(plain.encode(), stored_hash.encode())
+        return bcrypt.checkpw(plain.encode(), effective_hash.encode())
     except Exception as exc:
         logger.error("bcrypt doğrulama hatası: %s", exc)
         return False
+
+
+def hash_admin_password(plain: str) -> str:
+    """Yeni bir admin şifresini bcrypt ile hash'ler (Ayarlar'dan şifre değişimi için)."""
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 async def require_admin(
@@ -85,6 +99,20 @@ async def require_admin(
             headers={"Location": "/admin/login"},
         )
     return username
+
+
+def get_optional_admin_username(request: Request) -> Optional[str]:
+    """
+    `require_admin`'in aksine hiçbir şeyi zorunlu kılmaz — sadece geçerli bir
+    admin oturumu varsa kullanıcı adını, yoksa None döndürür. Herkese açık
+    sayfalarda (navbar'da admin durumu, indirme sayfasında admin aksiyonları)
+    kullanılır. İmza doğrulaması `verify_admin_session_token` ile aynıdır,
+    yalnızca çerez varlığına bakılmaz — sahte/geçersiz çerez admin sayılmaz.
+    """
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        return None
+    return verify_admin_session_token(token)
 
 
 # ---------------------------------------------------------------------------

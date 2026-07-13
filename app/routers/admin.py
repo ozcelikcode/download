@@ -62,6 +62,8 @@ from app.imaging import compress_image_file, make_square_icon
 from app.dependencies import (
     create_admin_session_token,
     get_db,
+    hash_admin_password,
+    refresh_session_max_age,
     require_admin,
     verify_admin_password,
     SESSION_COOKIE,
@@ -524,10 +526,15 @@ async def login_get(request: Request):
 @router.post("/login", name="admin_login_post")
 async def login_post(
     request: Request,
+    session: AsyncSession = Depends(get_db),
     username: str = Form(...),
     password: str = Form(...),
 ):
-    if username != settings.admin_username or not verify_admin_password(password):
+    site_settings = await crud.get_site_settings(session)
+    effective_username = site_settings.admin_username or settings.admin_username
+    effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
+
+    if username != effective_username or not verify_admin_password(password, effective_hash):
         logger.warning("Başarısız admin giriş denemesi: username=%r", username)
         return templates.TemplateResponse(
             "admin/login.html",
@@ -675,12 +682,14 @@ async def download_new_post(
     _admin: str = Depends(require_admin),
     title: str = Form(...),
     description: Optional[str] = Form(None),
+    short_description: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
     file_type: str = Form(...),
     external_url: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
     file_size_unit: str = Form("MB"),
     icon_type: str = Form("auto"),
+    icon_extension: Optional[str] = Form(None),
     icon_image_url: Optional[str] = Form(None),
     icon_image_final_path: Optional[str] = Form(None),
     category_id: Optional[str] = Form(None),
@@ -718,12 +727,14 @@ async def download_new_post(
         data = DownloadCreate(
             title=title,
             description=description or None,
+            short_description=short_description or None,
             version=version or None,
             file_type=FileType(file_type),
             file_path=file_path,
             external_url=external_url or None,
             file_size_bytes=size_bytes,
             icon_type=IconType(icon_type),
+            icon_extension=(icon_extension or "").strip().lstrip(".").lower() or None,
             icon_image_path=icon_img_path,
             icon_image_url=icon_img_url,
             os_compatibility=os_tags,
@@ -812,12 +823,14 @@ async def download_edit_post(
     _admin: str = Depends(require_admin),
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    short_description: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
     file_type: Optional[str] = Form(None),
     external_url: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
     file_size_unit: str = Form("MB"),
     icon_type: Optional[str] = Form(None),
+    icon_extension: Optional[str] = Form(None),
     icon_image_url: Optional[str] = Form(None),
     icon_image_final_path: Optional[str] = Form(None),
     icon_image_cleared: Optional[str] = Form(None),
@@ -864,12 +877,14 @@ async def download_edit_post(
         data = DownloadUpdate(
             title=title,
             description=description or None,
+            short_description=short_description or None,
             version=version or None,
             file_type=FileType(file_type) if file_type else None,
             file_path=file_path or download.file_path,
             external_url=external_url or None,
             file_size_bytes=size_bytes,
             icon_type=IconType(icon_type) if icon_type else None,
+            icon_extension=(icon_extension or "").strip().lstrip(".").lower() or None,
             icon_image_path=icon_img_path,
             icon_image_url=icon_img_url,
             os_compatibility=os_tags,
@@ -926,6 +941,52 @@ async def download_delete(
 
     await crud.delete_download(session, download)
     return _redirect("/admin")
+
+
+# ---------------------------------------------------------------------------
+# Download — Sürüm Geçmişi (otomatik; yalnızca düzeltme/silme, ekleme yok)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/downloads/{download_id}/version-history/{entry_id}/edit",
+    name="admin_version_history_edit",
+)
+async def version_history_edit(
+    download_id: int,
+    entry_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    version: str = Form(...),
+):
+    entry = await crud.get_version_history_entry(session, entry_id)
+    if not entry or entry.download_id != download_id:
+        raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
+    version = version.strip()
+    if not version:
+        raise HTTPException(status_code=422, detail="Sürüm boş olamaz.")
+    await crud.update_version_history_entry(session, entry, version)
+    request.session["flash_message"] = "Sürüm geçmişi kaydı güncellendi."
+    return _redirect(f"/admin/downloads/{download_id}/edit")
+
+
+@router.post(
+    "/downloads/{download_id}/version-history/{entry_id}/delete",
+    name="admin_version_history_delete",
+)
+async def version_history_delete(
+    download_id: int,
+    entry_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    entry = await crud.get_version_history_entry(session, entry_id)
+    if not entry or entry.download_id != download_id:
+        raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
+    await crud.delete_version_history_entry(session, entry)
+    request.session["flash_message"] = "Sürüm geçmişi kaydı silindi."
+    return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
 # ---------------------------------------------------------------------------
@@ -1094,6 +1155,7 @@ async def settings_menu_view(
             "tags": tags,
             "sidebar_block_order": sidebar_block_order,
             "site_settings": site_settings,
+            "effective_admin_username": site_settings.admin_username or settings.admin_username,
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
@@ -1118,6 +1180,77 @@ async def settings_branding_update(
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = "Site kimliği güncellendi."
     return _redirect("/admin/settings/menu")
+
+
+@router.post("/settings/account", name="admin_settings_account")
+async def settings_account_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    current_password: str = Form(...),
+    new_username: Optional[str] = Form(None),
+    new_password: Optional[str] = Form(None),
+    new_password_confirm: Optional[str] = Form(None),
+):
+    site_settings = await crud.get_site_settings(session)
+    effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
+
+    if not verify_admin_password(current_password, effective_hash):
+        request.session["flash_message"] = "Mevcut şifre yanlış. Hiçbir şey değiştirilmedi."
+        return _redirect("/admin/settings")
+
+    new_username = (new_username or "").strip()
+    new_password = (new_password or "").strip()
+    new_password_confirm = (new_password_confirm or "").strip()
+
+    if new_password and new_password != new_password_confirm:
+        request.session["flash_message"] = "Yeni şifreler eşleşmiyor. Hiçbir şey değiştirilmedi."
+        return _redirect("/admin/settings")
+
+    if new_password and len(new_password) < 8:
+        request.session["flash_message"] = "Yeni şifre en az 8 karakter olmalı. Hiçbir şey değiştirilmedi."
+        return _redirect("/admin/settings")
+
+    password_hash = hash_admin_password(new_password) if new_password else None
+    await crud.update_admin_credentials(session, new_username or None, password_hash)
+
+    changed = []
+    if new_username:
+        changed.append("kullanıcı adı")
+    if new_password:
+        changed.append("şifre")
+    request.session["flash_message"] = (
+        f"{' ve '.join(changed).capitalize()} güncellendi." if changed else "Değişiklik yapılmadı."
+    )
+    return _redirect("/admin/settings")
+
+
+@router.post("/settings/session-duration", name="admin_settings_session_duration")
+async def settings_session_duration_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    session_max_age_minutes: int = Form(...),
+):
+    minutes = max(5, min(int(session_max_age_minutes), 60 * 24 * 30))  # 5 dk – 30 gün arası
+    updated = await crud.update_session_max_age(session, minutes)
+    refresh_session_max_age(updated.session_max_age_minutes)
+    request.session["flash_message"] = "Oturum süresi güncellendi."
+    return _redirect("/admin/settings")
+
+
+@router.post("/settings/avatar", name="admin_settings_avatar")
+async def settings_avatar_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    admin_icon: str = Form(...),
+    admin_icon_color: str = Form(...),
+):
+    updated = await crud.update_admin_avatar(session, admin_icon, admin_icon_color)
+    refresh_site_branding_globals(updated)
+    request.session["flash_message"] = "Profil ikonu güncellendi."
+    return _redirect("/admin/settings")
 
 
 @router.post("/settings/categories/reorder", name="admin_categories_reorder")

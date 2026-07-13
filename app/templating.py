@@ -42,7 +42,25 @@ def _human_size(value: Optional[int]) -> str:
     return f"{size:.1f} TB"
 
 
-def _icon_name(icon_type: IconType, file_type: FileType) -> str:
+_EXTENSION_ICON_MAP = {
+    "zip": "archive", "rar": "archive", "7z": "archive", "tar": "archive", "gz": "archive",
+    "pdf": "file-text",
+    "exe": "monitor", "msi": "monitor",
+    "apk": "smartphone",
+    "dmg": "apple", "pkg": "apple",
+    "deb": "terminal", "rpm": "terminal",
+    "iso": "disc",
+    "mp4": "video", "mov": "video", "avi": "video", "mkv": "video",
+    "mp3": "music", "wav": "music",
+    "doc": "file-text", "docx": "file-text",
+    "xls": "file-spreadsheet", "xlsx": "file-spreadsheet",
+    "ppt": "presentation", "pptx": "presentation",
+}
+
+
+def _icon_name(
+    icon_type: IconType, file_type: FileType, extension: Optional[str] = None
+) -> str:
     """
     Lucide icon adını döndürür.
     https://lucide.dev/icons/
@@ -58,6 +76,9 @@ def _icon_name(icon_type: IconType, file_type: FileType) -> str:
         IconType.deb: "terminal",
         IconType.auto: "download",
     }
+    if icon_type == IconType.extension:
+        ext = (extension or "").lower().lstrip(".")
+        return _EXTENSION_ICON_MAP.get(ext, "file")
     if icon_type == IconType.auto:
         return "link" if file_type == FileType.external else "download"
     return mapping.get(icon_type, "file")
@@ -130,13 +151,18 @@ templates.env.globals["site_icon"] = "download-cloud"
 templates.env.globals["site_icon_color_light"], templates.env.globals["site_icon_color_dark"] = (
     resolve_icon_color("blue")
 )
+templates.env.globals["admin_icon"] = "user-circle"
+templates.env.globals["admin_icon_color_light"], templates.env.globals["admin_icon_color_dark"] = (
+    resolve_icon_color("slate")
+)
 
 
 def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     """SiteSettings veritabanı satırından Jinja global'lerini günceller.
 
-    Uygulama başlangıcında (main.py lifespan) ve admin site kimliği kaydedildiğinde
-    çağrılır — böylece sunucu yeniden başlatılmadan değişiklik anında yansır.
+    Uygulama başlangıcında (main.py lifespan) ve admin site kimliği/profil
+    ikonu kaydedildiğinde çağrılır — böylece sunucu yeniden başlatılmadan
+    değişiklik anında yansır.
     Not: çoklu worker'da (ör. `make prod`) her worker kendi bellek-içi kopyasını
     tutar; diğer worker'lar bir sonraki isteklerinde eski değeri göstermeye devam
     edebilir (bu proje ölçeğinde kabul edilebilir bir sınırlama).
@@ -146,3 +172,8 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     light, dark = resolve_icon_color(site_settings.site_icon_color)
     templates.env.globals["site_icon_color_light"] = light
     templates.env.globals["site_icon_color_dark"] = dark
+
+    templates.env.globals["admin_icon"] = site_settings.admin_icon
+    admin_light, admin_dark = resolve_icon_color(site_settings.admin_icon_color)
+    templates.env.globals["admin_icon_color_light"] = admin_light
+    templates.env.globals["admin_icon_color_dark"] = admin_dark

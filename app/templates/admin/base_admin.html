@@ -42,7 +42,8 @@
   <!-- Admin kullanıcı -->
   {% if admin_user is defined %}
   <div class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-    <i data-lucide="user-circle" class="w-3.5 h-3.5"></i>
+    <i data-lucide="{{ admin_icon }}" class="w-3.5 h-3.5 site-icon-color"
+      style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
     <span>{{ admin_user }}</span>
   </div>
   {% endif %}

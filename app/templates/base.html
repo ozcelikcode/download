@@ -55,8 +55,31 @@
       {% endfor %}
     </nav>
 
+    {% if is_admin %}
+    <!-- Admin oturum durumu -->
+    <div class="relative ml-auto md:ml-0 shrink-0" id="admin-menu-wrap">
+      <button type="button" id="admin-toggle-btn"
+        class="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors">
+        <i data-lucide="{{ admin_icon }}" class="w-4 h-4 site-icon-color"
+          style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
+        <span class="hidden sm:inline">{{ admin_username }}</span>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+      </button>
+      <div id="admin-menu" class="hidden absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
+        <a href="/admin"
+          class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Admin Panel
+        </a>
+        <a href="/admin/logout"
+          class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Çıkış Yap
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Tema seçici: Aydınlık / Karanlık / Sistem -->
-    <div class="relative ml-auto md:ml-0 shrink-0" id="theme-menu-wrap">
+    <div class="relative {% if not is_admin %}ml-auto md:ml-0{% endif %} shrink-0" id="theme-menu-wrap">
       <button type="button" id="theme-toggle-btn"
         class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
         aria-label="Tema seç">
@@ -246,6 +269,21 @@
   if (mBtn && mMenu) {
     mBtn.addEventListener('click', () => mMenu.classList.toggle('hidden'));
   }
+
+  // Admin oturum durumu menüsü
+  (function () {
+    const wrap = document.getElementById('admin-menu-wrap');
+    if (!wrap) return;
+    const btn = document.getElementById('admin-toggle-btn');
+    const menu = document.getElementById('admin-menu');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target)) menu.classList.add('hidden');
+    });
+  })();
 
   // Tema seçici: Aydınlık / Karanlık / Sistem
   (function () {

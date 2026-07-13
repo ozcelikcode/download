@@ -137,6 +137,7 @@ class SiteSettingsUpdate(BaseModel):
 class DownloadBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
+    short_description: Optional[str] = Field(None, max_length=300)
     version: Optional[str] = Field(None, max_length=50)
     file_type: FileType = FileType.external
     file_path: Optional[str] = Field(None, max_length=500)
@@ -146,6 +147,7 @@ class DownloadBase(BaseModel):
     thumbnail_path: Optional[str] = Field(None, max_length=500)
     icon_image_path: Optional[str] = Field(None, max_length=500)
     icon_image_url: Optional[str] = Field(None, max_length=2000)
+    icon_extension: Optional[str] = Field(None, max_length=20)
     os_compatibility: List[str] = Field(default_factory=list)
     category_id: Optional[int] = None
     parent_id: Optional[int] = None
@@ -175,6 +177,7 @@ class DownloadUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     slug: Optional[str] = Field(None, max_length=220)
     description: Optional[str] = None
+    short_description: Optional[str] = Field(None, max_length=300)
     version: Optional[str] = Field(None, max_length=50)
     file_type: Optional[FileType] = None
     file_path: Optional[str] = Field(None, max_length=500)
@@ -184,6 +187,7 @@ class DownloadUpdate(BaseModel):
     thumbnail_path: Optional[str] = Field(None, max_length=500)
     icon_image_path: Optional[str] = Field(None, max_length=500)
     icon_image_url: Optional[str] = Field(None, max_length=2000)
+    icon_extension: Optional[str] = Field(None, max_length=20)
     os_compatibility: Optional[List[str]] = None
     category_id: Optional[int] = None
     parent_id: Optional[int] = None

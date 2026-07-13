@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.config import settings
-from app.dependencies import get_db, get_request_ip
+from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.models import FileType
 from app.templating import templates
 
@@ -37,7 +37,7 @@ PAGE_SIZE = 12
 # Yardımcı: sidebar context (kategoriler + tag'lar her sayfada)
 # ---------------------------------------------------------------------------
 
-async def _sidebar_context(session: AsyncSession) -> dict:
+async def _sidebar_context(request: Request, session: AsyncSession) -> dict:
     categories = await crud.get_categories_ordered(session)
     tags = await crud.get_tags_ordered(session)
     counts = await crud.get_category_download_counts(session)
@@ -47,6 +47,7 @@ async def _sidebar_context(session: AsyncSession) -> dict:
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
     ] or ["search", "categories", "tags"]
+    admin_username = get_optional_admin_username(request)
     return {
         "sidebar_categories": categories,
         "sidebar_tags": tags,
@@ -54,6 +55,8 @@ async def _sidebar_context(session: AsyncSession) -> dict:
         "menu_items": menu_items,
         "footer_menu_items": footer_menu_items,
         "sidebar_block_order": sidebar_block_order,
+        "is_admin": bool(admin_username),
+        "admin_username": admin_username,
     }
 
 
@@ -88,7 +91,7 @@ async def index(
         "page_title": "Tüm İndirmeler",
         "meta_description": "Ücretsiz yazılım, araç ve belgeleri indirin.",
     }
-    ctx.update(await _sidebar_context(session))
+    ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse("index.html", ctx)
 
 
@@ -125,7 +128,7 @@ async def category_view(
         "page_title": category.name,
         "meta_description": category.description or f"{category.name} kategorisindeki indirmeler.",
     }
-    ctx.update(await _sidebar_context(session))
+    ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse("index.html", ctx)
 
 
@@ -162,7 +165,7 @@ async def search(
         "page_title": f'"{q}" için arama sonuçları' if q else "Arama",
         "meta_description": f"{q} için indirme sonuçları." if q else "İndirme arama.",
     }
-    ctx.update(await _sidebar_context(session))
+    ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse("index.html", ctx)
 
 
@@ -200,7 +203,7 @@ async def tag_view(
         "page_title": f"#{tag.name}",
         "meta_description": f"{tag.name} etiketli indirmeler.",
     }
-    ctx.update(await _sidebar_context(session))
+    ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse("index.html", ctx)
 
 
@@ -225,10 +228,64 @@ async def detail(
         "meta_description": (download.description or f"{download.title} — ücretsiz indir.")[:160],
         "current_category": download.category,
         "current_search": None,
+        "version_timeline": _build_version_timeline(download),
     }
-    ctx.update(await _sidebar_context(session))
+    ctx.update(await _sidebar_context(request, session))
 
     return templates.TemplateResponse("detail.html", ctx)
+
+
+def _build_version_timeline(download) -> list:
+    """
+    Detay sayfasındaki "Sürüm Geçmişi" kutusu için birleşik zaman çizgisi.
+
+    İki farklı kaynağı tek listede birleştirir:
+    - Manuel bağlantılı sürümler (ayrı sayfası olan, `parent_id` ile
+      ilişkilendirilmiş eski/yeni büyük sürüm kayıtları) → tıklanabilir.
+    - Otomatik sürüm geçmişi (aynı kaydın "Sürüm" alanı admin panelinden
+      değiştirildiğinde otomatik kaydedilen eski değerler) → aynı sayfa,
+      yalnızca bilgi amaçlı.
+
+    Şu an görüntülenen kayıt her zaman listenin başında sabit durur.
+    """
+    root = download.parent if download.parent else download
+
+    entries = [{
+        "version": download.version or download.title,
+        "date": download.updated_at,
+        "url": None,
+        "is_current": True,
+    }]
+
+    for v in root.versions:
+        if v.id == download.id:
+            continue
+        entries.append({
+            "version": v.version or v.title,
+            "date": v.created_at,
+            "url": f"/download/{v.slug}",
+            "is_current": False,
+        })
+
+    if root.id != download.id:
+        entries.append({
+            "version": root.version or root.title,
+            "date": root.created_at,
+            "url": f"/download/{root.slug}",
+            "is_current": False,
+        })
+
+    for h in download.version_history:
+        entries.append({
+            "version": h.version,
+            "date": h.changed_at,
+            "url": None,
+            "is_current": False,
+        })
+
+    current = entries[0]
+    rest = sorted(entries[1:], key=lambda e: e["date"], reverse=True)
+    return [current] + rest
 
 
 # ---------------------------------------------------------------------------
