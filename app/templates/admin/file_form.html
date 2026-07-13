@@ -103,8 +103,12 @@
 
 <form method="post"
   action="{% if edit_mode %}/admin/downloads/{{ download.id }}/edit{% else %}/admin/downloads/new{% endif %}"
-  enctype="multipart/form-data"
-  class="space-y-5">
+  enctype="multipart/form-data">
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+
+  <!-- ══════════════════════════ SOL SÜTUN ══════════════════════════ -->
+  <div class="lg:col-span-3 space-y-5">
 
   <!-- ── Temel Bilgiler ──────────────────────────────── -->
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
@@ -223,14 +227,20 @@
       <!-- Açıklama (WYSIWYG) -->
       <div class="sm:col-span-2">
         <label class="form-label">Açıklama</label>
-        <div id="f-description-editor" class="quill-editor-wrap bg-white dark:bg-slate-900"></div>
+        <div id="f-description-wrap" class="quill-editor-wrap rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div id="f-description-editor"></div>
+        </div>
         <textarea id="f-description" name="description" class="hidden">{{ download.description if download else '' }}</textarea>
       </div>
 
     </div>
   </div>
 
+  </div>
+  <!-- ══════════════════════════ /SOL SÜTUN ══════════════════════════ -->
 
+  <!-- ══════════════════════════ SAĞ SÜTUN ══════════════════════════ -->
+  <div class="lg:col-span-2 space-y-5">
 
   <!-- ── Dosya Kaynağı ───────────────────────────────── -->
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
@@ -481,8 +491,14 @@
     </div>
   </div>
 
+  </div>
+  <!-- ══════════════════════════ /SAĞ SÜTUN ══════════════════════════ -->
+
+  </div>
+  <!-- ══════════════════════════ /GRID ══════════════════════════ -->
+
   <!-- ── Kaydet / İptal ──────────────────────────────── -->
-  <div class="flex items-center gap-3 justify-end">
+  <div class="flex items-center gap-3 justify-end mt-5">
     <a href="/admin" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600 dark:text-slate-400
        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
       <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -518,10 +534,12 @@
       placeholder: 'Kısa bir açıklama yazın…',
       modules: {
         toolbar: [
-          [{ header: [2, 3, false] }],
+          [{ header: [1, 2, 3, false] }],
+          [{ size: ['small', false, 'large', 'huge'] }],
           ['bold', 'italic', 'underline', 'strike'],
           [{ color: [] }, { background: [] }],
-          [{ list: 'ordered' }, { list: 'bullet' }],
+          [{ script: 'sub' }, { script: 'super' }],
+          [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
           ['blockquote', 'code-block', 'link'],
           [{ align: [] }],
           ['clean'],

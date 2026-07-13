@@ -298,6 +298,11 @@ body {
 
 #f-size-unit { width: auto; min-width: 4.5rem; max-width: 6rem; flex: none; }
 
+/* .form-input'un kısayol "padding" kuralı, Tailwind'in pl-* gibi yardımcı
+   sınıflarını (yükleme sırası nedeniyle) eziyor. İkonlu input'lar için
+   kaynak sırasında .form-input'tan SONRA gelen özel bir sınıf kullanılır. */
+.form-input-icon { padding-left: 2rem; }
+
 .btn-primary {
   display: inline-flex; align-items: center; gap: 0.375rem;
   padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500;
@@ -321,20 +326,29 @@ body {
 
 /* ------------------------------------------------------------
    Açıklama WYSIWYG editörü (Quill) — açık/koyu tema
+   Not: Quill kurulduğunda toolbar'ı editör kapsayıcısının ÖNCESİNE, aynı
+   üst öğenin içine ekler. İkisinin de tutarlı tek bir kutu olarak
+   görünmesi (ve dışarı taşmaması) için #f-description-wrap ortak bir
+   kapsayıcı olarak kullanılır: kenarlık + overflow:hidden burada, iç
+   toolbar/editor'da kenarlık yok.
    ------------------------------------------------------------ */
-.quill-editor-wrap .ql-toolbar.ql-snow { border-color: #e2e8f0; border-radius: 3px 3px 0 0; }
-.quill-editor-wrap .ql-container.ql-snow { border-color: #e2e8f0; border-radius: 0 0 3px 3px; font-family: inherit; font-size: 0.875rem; }
+.quill-editor-wrap { background: #ffffff; }
+.quill-editor-wrap .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e2e8f0; }
+.quill-editor-wrap .ql-container.ql-snow { border: none; font-family: inherit; font-size: 0.875rem; }
 .quill-editor-wrap .ql-editor { min-height: 140px; }
 .quill-editor-wrap .ql-editor.ql-blank::before { color: #94a3b8; font-style: normal; }
 
-.dark .quill-editor-wrap .ql-toolbar.ql-snow { border-color: #1e293b; background: #0f172a; }
-.dark .quill-editor-wrap .ql-container.ql-snow { border-color: #1e293b; }
-.dark .quill-editor-wrap .ql-editor { color: #e2e8f0; }
+.dark .quill-editor-wrap { background: #0f172a; }
+.dark .quill-editor-wrap .ql-toolbar.ql-snow { border-bottom-color: #1e293b; background: #0f172a; }
+.dark .quill-editor-wrap .ql-editor { color: #ffffff; }
 .dark .quill-editor-wrap .ql-editor.ql-blank::before { color: #64748b; }
 .dark .quill-editor-wrap .ql-snow .ql-stroke { stroke: #94a3b8; }
 .dark .quill-editor-wrap .ql-snow .ql-fill { fill: #94a3b8; }
 .dark .quill-editor-wrap .ql-snow .ql-picker { color: #94a3b8; }
+.dark .quill-editor-wrap .ql-snow .ql-picker-label { color: #94a3b8; }
 .dark .quill-editor-wrap .ql-snow .ql-picker-options { background: #0f172a; border-color: #1e293b; }
+.dark .quill-editor-wrap .ql-snow.ql-toolbar button:hover .ql-stroke,
+.dark .quill-editor-wrap .ql-snow.ql-toolbar .ql-picker-label:hover { color: #e2e8f0; }
 
 /* İndirme detay sayfasında WYSIWYG açıklamanın görüntülenmesi */
 .prose-description :where(p) { margin: 0 0 0.5em; }
