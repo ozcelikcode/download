@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import quote
 
 from fastapi.templating import Jinja2Templates
 
@@ -133,6 +134,23 @@ templates.env.filters["icon_name"] = _icon_name
 templates.env.filters["pluralize"] = _pluralize
 templates.env.filters["thousands"] = _thousands
 templates.env.globals["pagination_range"] = _pagination_range
+
+
+def _qs_override(params: dict, **overrides) -> str:
+    """
+    Bir mevcut query-param sözlüğünü (`params`) verilen `overrides` ile
+    birleştirip `?a=1&b=2` biçiminde bir query-string üretir. Birden fazla
+    bağımsız filtre/sayfalama durumunu (ör. medya arşivinde resim/dosya
+    sekmeleri) aynı URL'de kaybetmeden yönetmek için kullanılır.
+    """
+    merged = {**params, **overrides}
+    parts = [
+        f"{k}={quote(str(v))}" for k, v in merged.items() if v not in (None, "")
+    ]
+    return "?" + "&".join(parts) if parts else ""
+
+
+templates.env.globals["qs_override"] = _qs_override
 
 # Global: statik CSS dosyalarının cache-busting sürüm numarası. Tarayıcının
 # `make css` sonrası eski tailwind.css/app.css'i önbellekten göstermeye devam

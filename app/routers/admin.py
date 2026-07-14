@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import mimetypes
 import shutil
 import uuid
@@ -58,6 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.branding import SITE_ICON_COLORS
 from app.config import settings
+from app.database import AsyncSessionLocal
 from app.imaging import compress_image_file, make_square_icon
 from app.dependencies import (
     create_admin_session_token,
@@ -223,7 +225,7 @@ def _delete_icon_file(path: str) -> None:
 _icon_fetch_progress: dict[str, dict] = {}
 
 
-async def _fetch_icon_from_url(url: str, token: str) -> None:
+async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
     """Dış URL'deki görseli akış halinde indirip icons/ dizinine kaydeder, ilerlemeyi günceller."""
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
@@ -251,8 +253,11 @@ async def _fetch_icon_from_url(url: str, token: str) -> None:
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
         compress_image_file(dest)
+        final_path = f"/static/uploads/icons/{filename}"
+        async with AsyncSessionLocal() as session:
+            await crud.record_media_upload(session, final_path, uploaded_by)
         _icon_fetch_progress[token].update(
-            {"percent": 100, "done": True, "phase": "done", "path": f"/static/uploads/icons/{filename}"}
+            {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
         logger.info("Dış görsel indirildi: %s -> %s", url, dest)
     except Exception as exc:
@@ -269,6 +274,8 @@ _IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"}
 _MEDIA_ICON_MAP = {
     "zip": "archive", "rar": "archive", "7z": "archive", "tar": "archive", "gz": "archive",
     "pdf": "file-text", "txt": "file-text", "doc": "file-text", "docx": "file-text",
+    "xls": "file-spreadsheet", "xlsx": "file-spreadsheet",
+    "ppt": "presentation", "pptx": "presentation",
     "exe": "monitor", "msi": "monitor",
     "apk": "smartphone",
     "dmg": "apple", "pkg": "apple",
@@ -276,6 +283,24 @@ _MEDIA_ICON_MAP = {
     "mp4": "video", "mov": "video", "avi": "video", "mkv": "video",
     "mp3": "music", "wav": "music",
 }
+
+# Dosya Arşivi'nde tür filtresi için kategori grupları
+_TYPE_CATEGORIES: dict[str, set] = {
+    "archive": {"zip", "rar", "7z", "tar", "gz"},
+    "document": {"pdf", "txt", "doc", "docx", "xls", "xlsx", "ppt", "pptx"},
+    "executable": {"exe", "msi"},
+    "apk": {"apk"},
+    "mac": {"dmg", "pkg"},
+    "linux": {"deb", "rpm"},
+    "video": {"mp4", "mov", "avi", "mkv"},
+    "audio": {"mp3", "wav"},
+}
+_TYPE_CATEGORY_LABELS: dict[str, str] = {
+    "archive": "Arşiv", "document": "Belge", "executable": "Windows (EXE)",
+    "apk": "Android (APK)", "mac": "macOS", "linux": "Linux",
+    "video": "Video", "audio": "Ses", "other": "Diğer",
+}
+_MEDIA_PAGE_SIZES = [12, 24, 48, 96]
 
 
 def _media_human_size(num_bytes: int) -> str:
@@ -292,6 +317,14 @@ def _guess_media_icon(ext: str) -> str:
     if ext in _IMAGE_EXTS:
         return "image"
     return _MEDIA_ICON_MAP.get(ext, "file")
+
+
+def _media_type_category(ext: str) -> str:
+    ext = ext.lower().lstrip(".")
+    for cat, exts in _TYPE_CATEGORIES.items():
+        if ext in exts:
+            return cat
+    return "other"
 
 
 def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
@@ -312,10 +345,85 @@ def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
                     "ext": ext,
                     "icon": _guess_media_icon(ext),
                     "is_image": ext in _IMAGE_EXTS,
+                    "type_category": _media_type_category(ext),
                 }
             )
     items.sort(key=lambda x: x["modified"], reverse=True)
     return items
+
+
+def _build_download_media_maps(downloads: List) -> tuple[dict, dict]:
+    """
+    Fiziksel dosya adına göre (uzantı/dizin farkı gözetmeksizin) hangi
+    indirmenin bu ikonu/dosyayı kullandığını bulmak için iki eşleme üretir:
+    icon dosya adı → Download, yerel dosya adı → Download.
+    """
+    icon_map: dict[str, object] = {}
+    file_map: dict[str, object] = {}
+    for d in downloads:
+        if d.icon_image_path:
+            icon_map[Path(d.icon_image_path).name] = d
+        if d.file_type == FileType.local and d.file_path:
+            file_map[Path(d.file_path).name] = d
+    return icon_map, file_map
+
+
+def _paginate_media(
+    request: Request,
+    items: List[dict],
+    prefix: str,
+    downloads_map: dict,
+) -> dict:
+    """Tek bir sekme (images/files) için arama + sayfalama uygular, bağlı
+    içerik bilgisini ekler. Sonuç, template'e geçirilecek bir bağlam sözlüğüdür."""
+    q = (request.query_params.get(f"{prefix}_q") or "").strip().lower()
+    try:
+        page = max(1, int(request.query_params.get(f"{prefix}_page", "1")))
+    except ValueError:
+        page = 1
+    try:
+        page_size = int(request.query_params.get(f"{prefix}_page_size", "24"))
+    except ValueError:
+        page_size = 24
+    if page_size not in _MEDIA_PAGE_SIZES:
+        page_size = 24
+
+    # Bağlı içerik bilgisini ekle
+    for item in items:
+        d = downloads_map.get(item["name"])
+        item["linked_download"] = (
+            {"id": d.id, "title": d.title, "os_compatibility": d.os_compatibility}
+            if d else None
+        )
+
+    if q:
+        items = [it for it in items if q in it["display_name"].lower() or q in it["name"].lower()]
+
+    if prefix == "files":
+        type_filter = request.query_params.get("files_type") or ""
+        if type_filter:
+            items = [it for it in items if it["type_category"] == type_filter]
+        os_filter = request.query_params.get("files_os") or ""
+        if os_filter:
+            items = [
+                it for it in items
+                if it["linked_download"] and os_filter in (it["linked_download"]["os_compatibility"] or "").split(",")
+            ]
+
+    total = len(items)
+    total_pages = max(1, math.ceil(total / page_size))
+    page = min(page, total_pages)
+    start = (page - 1) * page_size
+    page_items = items[start:start + page_size]
+
+    return {
+        "results": page_items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "q": q,
+    }
 
 
 @router.get("/media", name="admin_media")
@@ -333,9 +441,37 @@ async def media_view(
     # Link (path) hiçbir zaman değişmez; kullanıcı yalnızca görünen adı
     # düzenler. Bu, fiziksel dosya adından bağımsız ayrı bir alandır.
     all_paths = [item["url"] for item in images] + [item["url"] for item in files]
-    display_names = await crud.get_media_display_names(session, all_paths)
+    assets = await crud.get_media_assets_info(session, all_paths)
     for item in images + files:
-        item["display_name"] = display_names.get(item["url"], item["name"])
+        asset = assets.get(item["url"])
+        item["display_name"] = (asset.display_name if asset and asset.display_name else None) or item["name"]
+        item["uploaded_by"] = asset.uploaded_by if asset else None
+        item["uploaded_at"] = asset.created_at if asset else None
+
+    all_downloads = await crud.get_all_downloads_for_media_matching(session)
+    icon_map, file_map = _build_download_media_maps(all_downloads)
+
+    images_ctx = _paginate_media(request, images, "images", icon_map)
+    files_ctx = _paginate_media(request, files, "files", file_map)
+
+    active_tab = request.query_params.get("tab") or "images"
+    if active_tab not in ("images", "files"):
+        active_tab = "images"
+
+    files_type = request.query_params.get("files_type") or ""
+    files_os = request.query_params.get("files_os") or ""
+
+    current_params = {
+        "tab": active_tab,
+        "images_q": images_ctx["q"],
+        "images_page": images_ctx["page"],
+        "images_page_size": images_ctx["page_size"],
+        "files_q": files_ctx["q"],
+        "files_page": files_ctx["page"],
+        "files_page_size": files_ctx["page_size"],
+        "files_type": files_type,
+        "files_os": files_os,
+    }
 
     flash_message = request.session.pop("flash_message", None)
 
@@ -343,8 +479,16 @@ async def media_view(
         "admin/media.html",
         {
             "request": request,
-            "images": images,
-            "files": files,
+            "images": images_ctx,
+            "files": files_ctx,
+            "images_total_all": len(images),
+            "files_total_all": len(files),
+            "active_tab": active_tab,
+            "page_sizes": _MEDIA_PAGE_SIZES,
+            "type_categories": _TYPE_CATEGORY_LABELS,
+            "files_type": files_type,
+            "files_os": files_os,
+            "current_params": current_params,
             "admin_user": _admin,
             "flash_message": flash_message,
         },
@@ -362,6 +506,7 @@ def _unique_upload_filename(original_name: str) -> str:
 @router.post("/media/upload-file", name="admin_media_upload_file")
 async def media_upload_file(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
 ):
     """Dosya Arşivi için genel amaçlı dosya yükleme (herhangi bir tür, orijinal haliyle saklanır)."""
@@ -371,8 +516,10 @@ async def media_upload_file(
     dest = upload_dir / filename
     with dest.open("wb") as out:
         shutil.copyfileobj(file.file, out)
+    web_path = f"/static/uploads/{quote(filename)}"
+    await crud.record_media_upload(session, web_path, _admin)
     logger.info("Dosya arşivine yüklendi: %s", dest)
-    return {"path": f"/static/uploads/{quote(filename)}", "name": filename}
+    return {"path": web_path, "name": filename}
 
 
 @router.post("/media/replace-file", name="admin_media_replace_file")
@@ -433,6 +580,7 @@ async def media_rename(
 @router.post("/upload/icon-image", name="admin_upload_icon_image")
 async def upload_icon_image(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
     replace_path: Optional[str] = Form(None),
     skip_compression: bool = Form(False),
@@ -446,6 +594,7 @@ async def upload_icon_image(
         path = await _replace_icon_upload(file, replace_path)
     else:
         path = await _save_icon_upload(file, compress=not skip_compression)
+        await crud.record_media_upload(session, path, _admin)
     return {"path": path}
 
 
@@ -458,7 +607,7 @@ async def upload_icon_image_url(
     _icon_fetch_progress[token] = {
         "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
     }
-    asyncio.create_task(_fetch_icon_from_url(url, token))
+    asyncio.create_task(_fetch_icon_from_url(url, token, _admin))
     return {"started": True, "token": token}
 
 
@@ -606,7 +755,6 @@ async def content_list(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
-    import math
     page_size = 20
     category_id_int = _int_or_none(category_id)
     items, total = await crud.get_downloads_paginated(

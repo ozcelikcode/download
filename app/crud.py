@@ -379,6 +379,27 @@ async def get_media_display_names(session: AsyncSession, paths: List[str]) -> di
     return {row.path: row.display_name for row in result.scalars().all() if row.display_name}
 
 
+async def get_media_assets_info(session: AsyncSession, paths: List[str]) -> dict[str, MediaAsset]:
+    """Verilen yollar için tüm meta veriyi (görünen ad, yükleyen, tarih) toplu döndürür."""
+    if not paths:
+        return {}
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_(paths)))
+    return {row.path: row for row in result.scalars().all()}
+
+
+async def record_media_upload(session: AsyncSession, path: str, uploaded_by: str) -> None:
+    """Yeni bir dosya/görsel yüklendiğinde 'kim, ne zaman' bilgisini kaydeder.
+    Kayıt zaten varsa (ör. daha önce yeniden adlandırılmışsa) yalnızca
+    uploaded_by boşsa doldurur — mevcut görünen adı ezmez."""
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    asset = result.scalar_one_or_none()
+    if asset is None:
+        session.add(MediaAsset(path=path, uploaded_by=uploaded_by))
+    elif not asset.uploaded_by:
+        asset.uploaded_by = uploaded_by
+    await session.commit()
+
+
 async def set_media_display_name(
     session: AsyncSession, path: str, display_name: Optional[str]
 ) -> None:
@@ -393,7 +414,9 @@ async def set_media_display_name(
             return
         session.add(MediaAsset(path=path, display_name=display_name))
     elif display_name is None:
-        await session.delete(asset)
+        asset.display_name = None
+        if not asset.uploaded_by:
+            await session.delete(asset)
     else:
         asset.display_name = display_name
 
@@ -423,6 +446,15 @@ def _download_base_query():
         )
         .where(Download.is_active == True)  # noqa: E712
     )
+
+
+async def get_all_downloads_for_media_matching(session: AsyncSession) -> List[Download]:
+    """
+    Medya Arşivi'ndeki bir dosya/görselin hangi indirmeye ait olduğunu bulmak
+    için TÜM kayıtları (alt sürümler dahil, aktif/pasif ayrımı olmadan) döndürür.
+    """
+    result = await session.execute(select(Download))
+    return list(result.scalars().all())
 
 
 async def get_downloads_paginated(

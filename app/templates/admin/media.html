@@ -139,33 +139,89 @@
 <div class="flex items-center gap-1 mb-5 border-b border-slate-200 dark:border-slate-800">
   <button type="button" data-tab-btn="images"
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
-           border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium">
+           {% if active_tab == 'images' %}border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
     <i data-lucide="image" class="w-3.5 h-3.5"></i>
     Resim Arşivi
-    <span data-tab-count class="text-xs text-slate-400 dark:text-slate-500">({{ images | length }})</span>
+    <span class="text-xs text-slate-400 dark:text-slate-500">({{ images_total_all }})</span>
   </button>
   <button type="button" data-tab-btn="files"
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
-           border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">
+           {% if active_tab == 'files' %}border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
     <i data-lucide="file" class="w-3.5 h-3.5"></i>
     Dosya Arşivi
-    <span data-tab-count class="text-xs text-slate-400 dark:text-slate-500">({{ files | length }})</span>
+    <span class="text-xs text-slate-400 dark:text-slate-500">({{ files_total_all }})</span>
   </button>
 </div>
 
-<!-- ================================================================
-     RESİM ARŞİVİ
-     ================================================================ -->
-<div id="tab-panel-images" data-tab-panel>
+{# ================================================================
+   Ortak parçalar: bağlı içerik rozeti, tür rozeti, meta bilgi satırı
+   ================================================================ #}
+{% macro linked_badge(item, size='xs') %}
+  {% if item.linked_download %}
+  <a href="/admin/downloads/{{ item.linked_download.id }}/edit"
+    class="inline-flex items-center gap-1 px-1.5 py-0.5 text-{{ size }} rounded-sm bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+    title="{{ item.linked_download.title }}">
+    <i data-lucide="link-2" class="w-3 h-3"></i> İçeriğe Git
+  </a>
+  {% else %}
+  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-{{ size }} rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+    <i data-lucide="unlink" class="w-3 h-3"></i> İlişkilendirilmemiş
+  </span>
+  {% endif %}
+{% endmacro %}
 
-  <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-    <p class="text-xs text-slate-400 dark:text-slate-500">{{ images | length }} görsel</p>
-    <div class="flex items-center gap-2">
-      <button type="button" id="images-upload-btn" class="btn-primary py-1.5 px-3 text-xs">
+{% macro os_badges(item) %}
+  {% if item.linked_download and item.linked_download.os_compatibility %}
+  <span class="inline-flex items-center gap-1 flex-wrap">
+    {% for os_val in item.linked_download.os_compatibility.split(',') %}
+    <span class="inline-flex items-center px-1 py-0.5 text-[10px] rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase">{{ os_val }}</span>
+    {% endfor %}
+  </span>
+  {% endif %}
+{% endmacro %}
+
+{# ================================================================
+   RESİM ARŞİVİ
+   ================================================================ #}
+<div id="tab-panel-images" data-tab-panel {% if active_tab != 'images' %}class="hidden"{% endif %}>
+
+  <!-- Araç çubuğu: arama + sayfa boyutu + yükle + görünüm -->
+  <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="tab" value="images">
+      <input type="hidden" name="files_q" value="{{ files.q }}">
+      <input type="hidden" name="files_page_size" value="{{ files.page_size }}">
+      <input type="hidden" name="files_type" value="{{ files_type }}">
+      <input type="hidden" name="files_os" value="{{ files_os }}">
+
+      <div class="relative flex-1 min-w-[160px]">
+        <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
+        <input type="text" name="images_q" value="{{ images.q }}" placeholder="Görsel adı ara…" class="form-input form-input-icon py-1.5 text-sm">
+      </div>
+
+      <select name="images_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
+        {% for size in page_sizes %}
+        <option value="{{ size }}" {% if images.page_size == size %}selected{% endif %}>{{ size }} / sayfa</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
+        <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrele
+      </button>
+      {% if images.q %}
+      <a href="{{ qs_override(current_params, images_q='', tab='images') }}" title="Aramayı temizle"
+        class="shrink-0 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </a>
+      {% endif %}
+
+      <div class="flex-1"></div>
+
+      <button type="button" id="images-upload-btn" class="btn-primary py-1.5 px-3 text-xs shrink-0">
         <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
       </button>
       <input type="file" id="images-upload-input" accept="image/*" multiple class="hidden">
-      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5 shrink-0">
         <button type="button" data-view-btn="grid" data-view-target="images"
           class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
           <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
@@ -176,16 +232,21 @@
         </button>
       </div>
     </div>
+  </form>
+
+  <div class="flex items-center justify-between mb-3">
+    <p class="text-xs text-slate-400 dark:text-slate-500">
+      {{ images.total }} sonuç{% if images.q %} · "{{ images.q }}" için{% endif %} · Sayfa {{ images.page }}/{{ images.total_pages }}
+    </p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 hidden sm:flex items-center gap-1">
+      <i data-lucide="wand-2" class="w-3 h-3"></i> Kare ikona dönüştürmek için sihirli değnek ikonuna tıklayın.
+    </p>
   </div>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
-    Yüklenen görseller otomatik olarak sıkıştırılır. Kare ikona dönüştürmek için
-    <i data-lucide="wand-2" class="w-3 h-3 inline-block"></i> ikonuna tıklayın.
-  </p>
 
   <!-- Grid -->
   <div id="images-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-    {% for img in images %}
-    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors"
+    {% for img in images.results %}
+    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700"
       data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
       <div class="relative aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
         <img src="{{ img.url }}" alt="{{ img.display_name }}" class="max-w-full max-h-full object-contain">
@@ -209,19 +270,27 @@
           </button>
         </div>
       </div>
-      <div class="p-2">
-        <p class="media-card-name text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ img.display_name }}">{{ img.display_name }}</p>
-        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ img.size_human }}</p>
+      <div class="p-2.5 space-y-1.5">
+        <p class="media-card-name text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title="{{ img.display_name }}">{{ img.display_name }}</p>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ img.size_human }} · {{ img.modified | format_date('%d.%m.%Y') }}</p>
+        {% if img.uploaded_by %}
+        <p class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+          <i data-lucide="user-circle" class="w-2.5 h-2.5"></i> {{ img.uploaded_by }}
+        </p>
+        {% endif %}
+        {{ linked_badge(img, 'xs')|indent(8) }}
       </div>
     </div>
     {% else %}
-    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+      {% if images.q %}"{{ images.q }}" için sonuç bulunamadı.{% else %}Henüz görsel yüklenmemiş.{% endif %}
+    </p>
     {% endfor %}
   </div>
 
   <!-- Liste -->
   <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
-    {% for img in images %}
+    {% for img in images.results %}
     <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
       <button type="button" data-action="preview" class="relative shrink-0 group/thumb" title="Büyüt">
         <img src="{{ img.url }}" alt="" class="w-9 h-9 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-0.5">
@@ -230,9 +299,14 @@
         </span>
       </button>
       <div class="min-w-0 flex-1">
-        <p class="media-card-name text-sm text-slate-700 dark:text-slate-300 truncate">{{ img.display_name }}</p>
-        <p class="text-xs text-slate-400 dark:text-slate-500">{{ img.size_human }} · {{ img.modified | format_date('%d.%m.%Y %H:%M') }}</p>
+        <p class="media-card-name text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ img.display_name }}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 flex-wrap">
+          <span>{{ img.size_human }}</span> ·
+          <span>{{ img.modified | format_date('%d.%m.%Y %H:%M') }}</span>
+          {% if img.uploaded_by %}· <span class="flex items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3"></i>{{ img.uploaded_by }}</span>{% endif %}
+        </p>
       </div>
+      {{ linked_badge(img, 'xs') }}
       <div class="flex items-center gap-1 shrink-0">
         <button type="button" data-action="edit"
           class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Düzenle">
@@ -254,24 +328,89 @@
       </div>
     </div>
     {% else %}
-    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz görsel yüklenmemiş.</p>
+    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+      {% if images.q %}"{{ images.q }}" için sonuç bulunamadı.{% else %}Henüz görsel yüklenmemiş.{% endif %}
+    </p>
     {% endfor %}
   </div>
+
+  <!-- Sayfalama -->
+  {% if images.total_pages > 1 %}
+  <div class="flex items-center justify-between mt-4 px-1">
+    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ images.page }} / {{ images.total_pages }}</span>
+    <div class="pagination">
+      {% if images.page > 1 %}
+      <a href="{{ qs_override(current_params, tab='images', images_page=images.page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+      {% for p in pagination_range(images.page, images.total_pages) %}
+        {% if p is none %}
+        <span class="page-btn disabled">…</span>
+        {% else %}
+        <a href="{{ qs_override(current_params, tab='images', images_page=p) }}" class="page-btn {% if p == images.page %}active{% endif %}">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if images.page < images.total_pages %}
+      <a href="{{ qs_override(current_params, tab='images', images_page=images.page + 1) }}" class="page-btn"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
-<!-- ================================================================
-     DOSYA ARŞİVİ
-     ================================================================ -->
-<div id="tab-panel-files" data-tab-panel class="hidden">
+{# ================================================================
+   DOSYA ARŞİVİ
+   ================================================================ #}
+<div id="tab-panel-files" data-tab-panel {% if active_tab != 'files' %}class="hidden"{% endif %}>
 
-  <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-    <p class="text-xs text-slate-400 dark:text-slate-500">{{ files | length }} dosya</p>
-    <div class="flex items-center gap-2">
-      <button type="button" id="files-upload-btn" class="btn-primary py-1.5 px-3 text-xs">
+  <!-- Araç çubuğu: arama + tür/OS filtresi + sayfa boyutu + yükle + görünüm -->
+  <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="tab" value="files">
+      <input type="hidden" name="images_q" value="{{ images.q }}">
+      <input type="hidden" name="images_page_size" value="{{ images.page_size }}">
+
+      <div class="relative flex-1 min-w-[160px]">
+        <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
+        <input type="text" name="files_q" value="{{ files.q }}" placeholder="Dosya adı ara…" class="form-input form-input-icon py-1.5 text-sm">
+      </div>
+
+      <select name="files_type" class="form-input py-1.5 text-sm flex-[0_0_140px] min-w-0">
+        <option value="">— Tür —</option>
+        {% for key, label in type_categories.items() %}
+        <option value="{{ key }}" {% if files_type == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="files_os" class="form-input py-1.5 text-sm flex-[0_0_130px] min-w-0">
+        <option value="">— İşletim Sistemi —</option>
+        {% for os_val, os_label in [('windows','Windows'), ('macos','macOS'), ('linux','Linux'), ('android','Android'), ('ios','iOS'), ('web','Web')] %}
+        <option value="{{ os_val }}" {% if files_os == os_val %}selected{% endif %}>{{ os_label }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="files_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
+        {% for size in page_sizes %}
+        <option value="{{ size }}" {% if files.page_size == size %}selected{% endif %}>{{ size }} / sayfa</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
+        <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrele
+      </button>
+      {% if files.q or files_type or files_os %}
+      <a href="{{ qs_override(current_params, tab='files', files_q='', files_type='', files_os='') }}" title="Filtreleri temizle"
+        class="shrink-0 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </a>
+      {% endif %}
+
+      <div class="flex-1"></div>
+
+      <button type="button" id="files-upload-btn" class="btn-primary py-1.5 px-3 text-xs shrink-0">
         <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
       </button>
       <input type="file" id="files-upload-input" multiple class="hidden">
-      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5">
+      <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5 shrink-0">
         <button type="button" data-view-btn="grid" data-view-target="files"
           class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
           <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
@@ -282,20 +421,27 @@
         </button>
       </div>
     </div>
-  </div>
+  </form>
+
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
+    {{ files.total }} sonuç{% if files.q %} · "{{ files.q }}" için{% endif %} · Sayfa {{ files.page }}/{{ files.total_pages }}
+  </p>
 
   <!-- Grid -->
   <div id="files-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-    {% for f in files %}
-    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors"
+    {% for f in files.results %}
+    <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700"
       data-media-path="{{ f.url }}" data-media-kind="file" data-display-name="{{ f.display_name }}">
       <div class="relative aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
         {% if f.is_image %}
         <img src="{{ f.url }}" alt="{{ f.display_name }}" class="max-w-full max-h-full object-contain p-2">
         {% else %}
-        <span class="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 px-2 py-1 rounded-sm border border-slate-200 dark:border-slate-700">
-          .{{ f.ext or '?' }}
-        </span>
+        <div class="flex flex-col items-center gap-1.5">
+          <i data-lucide="{{ f.icon }}" class="w-7 h-7 text-slate-400 dark:text-slate-500"></i>
+          <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 px-1.5 py-0.5 rounded-sm border border-slate-200 dark:border-slate-700">
+            .{{ f.ext or '?' }}
+          </span>
+        </div>
         {% endif %}
         <div class="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Düzenle">
@@ -309,31 +455,47 @@
           </button>
         </div>
       </div>
-      <div class="p-2">
-        <p class="media-card-name text-xs text-slate-600 dark:text-slate-400 truncate" title="{{ f.display_name }}">{{ f.display_name }}</p>
-        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ f.size_human }}</p>
+      <div class="p-2.5 space-y-1.5">
+        <p class="media-card-name text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title="{{ f.display_name }}">{{ f.display_name }}</p>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ f.size_human }} · {{ f.modified | format_date('%d.%m.%Y') }}</p>
+        {% if f.uploaded_by %}
+        <p class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+          <i data-lucide="user-circle" class="w-2.5 h-2.5"></i> {{ f.uploaded_by }}
+        </p>
+        {% endif %}
+        {{ os_badges(f) }}
+        {{ linked_badge(f, 'xs')|indent(8) }}
       </div>
     </div>
     {% else %}
-    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+      {% if files.q or files_type or files_os %}Filtreye uyan dosya bulunamadı.{% else %}Henüz dosya yüklenmemiş.{% endif %}
+    </p>
     {% endfor %}
   </div>
 
   <!-- Liste -->
   <div id="files-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
-    {% for f in files %}
+    {% for f in files.results %}
     <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ f.url }}" data-media-kind="file" data-display-name="{{ f.display_name }}">
       <div class="w-9 h-9 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
         {% if f.is_image %}
         <img src="{{ f.url }}" alt="" class="w-full h-full object-contain p-0.5">
         {% else %}
-        <span class="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">.{{ f.ext or '?' }}</span>
+        <i data-lucide="{{ f.icon }}" class="w-4 h-4 text-slate-400 dark:text-slate-500"></i>
         {% endif %}
       </div>
       <div class="min-w-0 flex-1">
-        <p class="media-card-name text-sm text-slate-700 dark:text-slate-300 truncate">{{ f.display_name }}</p>
-        <p class="text-xs text-slate-400 dark:text-slate-500">{{ f.size_human }} · {{ f.modified | format_date('%d.%m.%Y %H:%M') }}</p>
+        <p class="media-card-name text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ f.display_name }}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 flex-wrap">
+          <span class="uppercase font-semibold text-slate-500 dark:text-slate-400">.{{ f.ext or '?' }}</span> ·
+          <span>{{ f.size_human }}</span> ·
+          <span>{{ f.modified | format_date('%d.%m.%Y %H:%M') }}</span>
+          {% if f.uploaded_by %}· <span class="flex items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3"></i>{{ f.uploaded_by }}</span>{% endif %}
+          {% if f.linked_download and f.linked_download.os_compatibility %}· {{ os_badges(f) }}{% endif %}
+        </p>
       </div>
+      {{ linked_badge(f, 'xs') }}
       <div class="flex items-center gap-1 shrink-0">
         <button type="button" data-action="edit"
           class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Düzenle">
@@ -351,21 +513,45 @@
       </div>
     </div>
     {% else %}
-    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">Henüz dosya yüklenmemiş.</p>
+    <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">
+      {% if files.q or files_type or files_os %}Filtreye uyan dosya bulunamadı.{% else %}Henüz dosya yüklenmemiş.{% endif %}
+    </p>
     {% endfor %}
   </div>
+
+  <!-- Sayfalama -->
+  {% if files.total_pages > 1 %}
+  <div class="flex items-center justify-between mt-4 px-1">
+    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ files.page }} / {{ files.total_pages }}</span>
+    <div class="pagination">
+      {% if files.page > 1 %}
+      <a href="{{ qs_override(current_params, tab='files', files_page=files.page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+      {% for p in pagination_range(files.page, files.total_pages) %}
+        {% if p is none %}
+        <span class="page-btn disabled">…</span>
+        {% else %}
+        <a href="{{ qs_override(current_params, tab='files', files_page=p) }}" class="page-btn {% if p == files.page %}active{% endif %}">{{ p }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if files.page < files.total_pages %}
+      <a href="{{ qs_override(current_params, tab='files', files_page=files.page + 1) }}" class="page-btn"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // ── Sekme geçişi ─────────────────────────────────────────
+  // ── Sekme geçişi (URL'e ?tab= yazar — tam sayfa yenilemede korunur) ──
   (function () {
     const tabBtns   = document.querySelectorAll('[data-tab-btn]');
     const tabPanels = document.querySelectorAll('[data-tab-panel]');
 
-    function activateTab(name) {
+    function activateTab(name, updateUrl) {
       tabBtns.forEach(function (btn) {
         const isActive = btn.dataset.tabBtn === name;
         btn.classList.toggle('border-blue-600', isActive);
@@ -380,11 +566,23 @@
       tabPanels.forEach(function (panel) {
         panel.classList.toggle('hidden', panel.id !== 'tab-panel-' + name);
       });
+      if (updateUrl) {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', name);
+        window.history.replaceState(null, '', url);
+      }
     }
 
     tabBtns.forEach(function (btn) {
-      btn.addEventListener('click', function () { activateTab(btn.dataset.tabBtn); });
+      btn.addEventListener('click', function () { activateTab(btn.dataset.tabBtn, true); });
     });
+
+    // Bir işlem sonrası hangi sekmede kalınacağını bilmek için global yardımcı.
+    window.__reloadMediaTab = function (kind) {
+      const url = new URL(window.location);
+      url.searchParams.set('tab', kind === 'image' ? 'images' : 'files');
+      window.location.href = url.toString();
+    };
   })();
 
   // ── Grid / Liste görünüm değiştirici (localStorage'da kalıcı) ────────
@@ -568,8 +766,8 @@
         if (!imagesUploadInput.files.length) return;
         const ok = await uploadQueue('/admin/upload/icon-image', imagesUploadInput.files);
         hideUploadProgress();
-        if (ok) window.location.reload();
         imagesUploadInput.value = '';
+        if (ok) window.__reloadMediaTab('image');
       });
     }
 
@@ -582,8 +780,8 @@
         if (!filesUploadInput.files.length) return;
         const ok = await uploadQueue('/admin/media/upload-file', filesUploadInput.files);
         hideUploadProgress();
-        if (ok) window.location.reload();
         filesUploadInput.value = '';
+        if (ok) window.__reloadMediaTab('file');
       });
     }
 
@@ -709,7 +907,7 @@
           .then(function () {
             hideUploadProgress();
             closeCropModal();
-            window.location.reload();
+            window.__reloadMediaTab('image');
           })
           .catch(function (e) {
             hideUploadProgress();
@@ -729,7 +927,7 @@
         .then(function (r) { if (!r.ok) throw new Error('İşlem başarısız oldu.'); return r.json(); })
         .then(function () {
           hideUploadProgress();
-          window.location.reload();
+          window.__reloadMediaTab('image');
         })
         .catch(function (e) {
           hideUploadProgress();
@@ -778,7 +976,7 @@
             .then(function () {
               hideUploadProgress();
               closeFileEditModal();
-              window.location.reload();
+              window.__reloadMediaTab('file');
             });
         })
         .catch(function () {
@@ -794,7 +992,7 @@
       const fd = new FormData();
       fd.append('path', path);
       fetch(endpoint, { method: 'POST', body: fd })
-        .then(function () { window.location.reload(); })
+        .then(function () { window.__reloadMediaTab(kind); })
         .catch(function () { alert('Silinemedi.'); });
     }
 

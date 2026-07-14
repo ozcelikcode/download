@@ -190,6 +190,7 @@ class MediaAsset(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     path: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    uploaded_by: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
