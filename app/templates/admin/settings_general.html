@@ -1,0 +1,114 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Ayarlar — Genel{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="breadcrumb mb-1">
+      <a href="/admin">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="text-slate-700 dark:text-slate-300">Ayarlar</span>
+    </div>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ayarlar</h1>
+  </div>
+</div>
+
+{% set active_settings_tab = 'general' %}
+{% include "admin/_settings_tabs.html" %}
+
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    Site Kimliği
+  </h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Site adı, ikonu ve ikon rengi — sitenin her yerinde anında yansır.</p>
+
+  <form method="post" action="/admin/settings/branding" class="space-y-4">
+    <div>
+      <label class="form-label">Site Adı</label>
+      <input name="site_name" type="text" required maxlength="100" value="{{ site_settings.site_name }}" class="form-input max-w-sm">
+    </div>
+
+    <div>
+      <label class="form-label">Site İkonu</label>
+      <div class="flex items-center gap-2">
+        <div id="branding-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+          <i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color" id="branding-icon-preview-glyph"
+            style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
+        </div>
+        <input id="branding-icon-input" name="site_icon" type="text" required value="{{ site_settings.site_icon }}" class="form-input max-w-xs" autocomplete="off">
+      </div>
+      <div id="branding-icon-picker" class="flex flex-wrap gap-1 mt-2">
+        {% for icon_name in ['download-cloud','home','layers','folder','tag','link','star','image','settings','globe','shield','download','heart','bookmark','grid-3x3','monitor','smartphone','newspaper'] %}
+        <button type="button" data-icon-pick="{{ icon_name }}"
+          class="p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
+                 hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          title="{{ icon_name }}">
+          <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
+        </button>
+        {% endfor %}
+      </div>
+      <p class="form-hint">
+        <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
+        üzerinden başka bir ikon adı da yazabilirsiniz.
+      </p>
+    </div>
+
+    <div>
+      <label class="form-label">İkon Rengi</label>
+      <div class="flex items-center gap-2 flex-wrap">
+        {% for color, hexes in icon_colors.items() %}
+        <label class="cursor-pointer" title="{{ color }}">
+          <input type="radio" name="site_icon_color" value="{{ color }}" class="peer sr-only"
+            {% if site_settings.site_icon_color == color %}checked{% endif %}
+            data-color-light="{{ hexes[0] }}" data-color-dark="{{ hexes[1] }}">
+          <span class="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
+            style="background: {{ hexes[0] }};"></span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary py-2 px-4 text-sm">
+      <i data-lucide="save" class="w-3.5 h-3.5"></i>
+      Site Kimliğini Kaydet
+    </button>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const iconInput  = document.getElementById('branding-icon-input');
+    const colorRadios = document.querySelectorAll('input[name="site_icon_color"]');
+
+    function setGlyph(name) {
+      const wrap = document.getElementById('branding-icon-preview-wrap');
+      wrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-5 h-5 site-icon-color" id="branding-icon-preview-glyph" style="' + wrap.querySelector('i').getAttribute('style') + '"></i>';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    document.querySelectorAll('#branding-icon-picker [data-icon-pick]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        iconInput.value = btn.dataset.iconPick;
+        setGlyph(btn.dataset.iconPick);
+      });
+    });
+    iconInput.addEventListener('input', function () { setGlyph(iconInput.value); });
+
+    colorRadios.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        const wrap = document.getElementById('branding-icon-preview-wrap');
+        const glyph = wrap.querySelector('i');
+        if (glyph) {
+          glyph.style.setProperty('--site-icon-light', radio.dataset.colorLight);
+          glyph.style.setProperty('--site-icon-dark', radio.dataset.colorDark);
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

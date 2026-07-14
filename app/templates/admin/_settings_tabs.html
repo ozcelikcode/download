@@ -1,0 +1,19 @@
+{% set _tabs = [
+  ('general', '/admin/settings/general', 'palette', 'Genel'),
+  ('account', '/admin/settings/account', 'user-cog', 'Hesap'),
+  ('menu', '/admin/settings/menu', 'menu', 'Menüler'),
+] %}
+<div class="flex items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-800">
+  {% for key, url, icon, label in _tabs %}
+  <a href="{{ url }}"
+    class="flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 -mb-px transition-colors
+    {% if active_settings_tab == key %}
+      border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium
+    {% else %}
+      border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300
+    {% endif %}">
+    <i data-lucide="{{ icon }}" class="w-3.5 h-3.5"></i>
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>

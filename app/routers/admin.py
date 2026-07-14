@@ -1276,6 +1276,53 @@ class _StringOrderPayload(BaseModel):
 
 
 @router.get("/settings", name="admin_settings")
+async def settings_root_redirect(_admin: str = Depends(require_admin)):
+    return _redirect("/admin/settings/general")
+
+
+@router.get("/settings/general", name="admin_settings_general")
+async def settings_general_view(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    site_settings = await crud.get_site_settings(session)
+    flash_message = request.session.pop("flash_message", None)
+    return templates.TemplateResponse(
+        "admin/settings_general.html",
+        {
+            "request": request,
+            "site_settings": site_settings,
+            "icon_colors": SITE_ICON_COLORS,
+            "admin_user": _admin,
+            "flash_message": flash_message,
+            "page_title": "Ayarlar",
+        },
+    )
+
+
+@router.get("/settings/account", name="admin_settings_account_view")
+async def settings_account_view(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    site_settings = await crud.get_site_settings(session)
+    flash_message = request.session.pop("flash_message", None)
+    return templates.TemplateResponse(
+        "admin/settings_account.html",
+        {
+            "request": request,
+            "site_settings": site_settings,
+            "effective_admin_username": site_settings.admin_username or settings.admin_username,
+            "icon_colors": SITE_ICON_COLORS,
+            "admin_user": _admin,
+            "flash_message": flash_message,
+            "page_title": "Ayarlar",
+        },
+    )
+
+
 @router.get("/settings/menu", name="admin_settings_menu")
 async def settings_menu_view(
     request: Request,
@@ -1293,7 +1340,7 @@ async def settings_menu_view(
     ] or ["search", "categories", "tags"]
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/menu_editor.html",
+        "admin/settings_menu.html",
         {
             "request": request,
             "navbar_items": navbar_items,
@@ -1303,7 +1350,6 @@ async def settings_menu_view(
             "tags": tags,
             "sidebar_block_order": sidebar_block_order,
             "site_settings": site_settings,
-            "effective_admin_username": site_settings.admin_username or settings.admin_username,
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
@@ -1327,7 +1373,7 @@ async def settings_branding_update(
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = "Site kimliği güncellendi."
-    return _redirect("/admin/settings/menu")
+    return _redirect("/admin/settings/general")
 
 
 @router.post("/settings/account", name="admin_settings_account")
@@ -1345,7 +1391,7 @@ async def settings_account_update(
 
     if not verify_admin_password(current_password, effective_hash):
         request.session["flash_message"] = "Mevcut şifre yanlış. Hiçbir şey değiştirilmedi."
-        return _redirect("/admin/settings")
+        return _redirect("/admin/settings/account")
 
     new_username = (new_username or "").strip()
     new_password = (new_password or "").strip()
@@ -1353,11 +1399,11 @@ async def settings_account_update(
 
     if new_password and new_password != new_password_confirm:
         request.session["flash_message"] = "Yeni şifreler eşleşmiyor. Hiçbir şey değiştirilmedi."
-        return _redirect("/admin/settings")
+        return _redirect("/admin/settings/account")
 
     if new_password and len(new_password) < 8:
         request.session["flash_message"] = "Yeni şifre en az 8 karakter olmalı. Hiçbir şey değiştirilmedi."
-        return _redirect("/admin/settings")
+        return _redirect("/admin/settings/account")
 
     password_hash = hash_admin_password(new_password) if new_password else None
     await crud.update_admin_credentials(session, new_username or None, password_hash)
@@ -1370,7 +1416,7 @@ async def settings_account_update(
     request.session["flash_message"] = (
         f"{' ve '.join(changed).capitalize()} güncellendi." if changed else "Değişiklik yapılmadı."
     )
-    return _redirect("/admin/settings")
+    return _redirect("/admin/settings/account")
 
 
 @router.post("/settings/session-duration", name="admin_settings_session_duration")
@@ -1384,7 +1430,7 @@ async def settings_session_duration_update(
     updated = await crud.update_session_max_age(session, minutes)
     refresh_session_max_age(updated.session_max_age_minutes)
     request.session["flash_message"] = "Oturum süresi güncellendi."
-    return _redirect("/admin/settings")
+    return _redirect("/admin/settings/account")
 
 
 @router.post("/settings/avatar", name="admin_settings_avatar")
@@ -1398,7 +1444,7 @@ async def settings_avatar_update(
     updated = await crud.update_admin_avatar(session, admin_icon, admin_icon_color)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = "Profil ikonu güncellendi."
-    return _redirect("/admin/settings")
+    return _redirect("/admin/settings/account")
 
 
 @router.post("/settings/categories/reorder", name="admin_categories_reorder")

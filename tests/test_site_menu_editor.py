@@ -94,7 +94,24 @@ async def test_category_description_shown_on_category_page(
 async def test_menu_editor_page_renders_all_sections(admin_client: AsyncClient):
     response = await admin_client.get("/admin/settings/menu")
     assert response.status_code == 200
-    assert "Site Kimliği" in response.text
     assert "Üst Menü (Navbar)" in response.text
     assert "Kategori Menüsü (Sidebar)" in response.text
     assert "Footer" in response.text
+
+
+async def test_settings_general_page_renders(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/settings/general")
+    assert response.status_code == 200
+    assert "Site Kimliği" in response.text
+
+
+async def test_settings_account_page_renders(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/settings/account")
+    assert response.status_code == 200
+    assert "Admin Hesabı" in response.text
+
+
+async def test_settings_root_redirects_to_general(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/settings", follow_redirects=False)
+    assert response.status_code in (302, 303, 307)
+    assert response.headers["location"].endswith("/admin/settings/general")
