@@ -399,10 +399,10 @@
 
     confirmBtn.addEventListener('click', () => {
       confirmBtn.disabled = true;
-      csrfFetch('/admin/downloads/{{ download.id }}/delete', { method: 'POST' })
+      csrfFetch('/admin/downloads/{{ download.id }}/delete?return_to=/admin/downloads', { method: 'POST' })
         .then((r) => {
           if (!r.ok) throw new Error();
-          window.location.href = '/';
+          window.location.href = '/admin/downloads';
         })
         .catch(() => {
           confirmBtn.disabled = false;

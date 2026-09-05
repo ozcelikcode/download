@@ -326,7 +326,7 @@ class Download(Base):
     )
     # İndirme logları
     logs: Mapped[List["DownloadLog"]] = relationship(
-        "DownloadLog", back_populates="download", lazy="select"
+        "DownloadLog", back_populates="download", lazy="select", passive_deletes=True
     )
     # Otomatik sürüm geçmişi: her düzenlemede sürüm değişirse eski hâl buraya kaydedilir
     version_history: Mapped[List["DownloadVersionHistory"]] = relationship(

@@ -38,7 +38,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 from fastapi import (
@@ -97,6 +97,20 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(requir
 
 def _redirect(path: str) -> RedirectResponse:
     return RedirectResponse(url=path, status_code=status.HTTP_302_FOUND)
+
+
+def _same_admin_page(request: Request, fallback: str) -> str:
+    """Yönlendirmeyi yalnızca bu uygulamadaki admin sayfalarında tutar."""
+    candidate = request.query_params.get("return_to") or fallback
+    parsed = urlsplit(candidate)
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or "\\" in candidate
+        or parsed.path not in {"/admin"} and not parsed.path.startswith("/admin/")
+    ):
+        return fallback
+    return candidate
 
 
 def _int_or_none(value: Optional[str]) -> Optional[int]:
@@ -933,7 +947,7 @@ async def download_new_post(
         )
 
     request.session["flash_message"] = f"\"{download.title}\" başarıyla eklendi."
-    return _redirect("/admin")
+    return _redirect(f"/admin/downloads/{download.id}/edit")
 
 
 # ---------------------------------------------------------------------------
@@ -1093,6 +1107,7 @@ async def download_edit_post(
 @router.post("/downloads/{download_id}/delete", name="admin_download_delete")
 async def download_delete(
     download_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1101,7 +1116,8 @@ async def download_delete(
         raise HTTPException(status_code=404, detail="Download bulunamadı.")
 
     await crud.delete_download(session, download)
-    return _redirect("/admin")
+    request.session["flash_message"] = f'"{download.title}" silindi.'
+    return _redirect(_same_admin_page(request, "/admin/downloads"))
 
 
 # ---------------------------------------------------------------------------

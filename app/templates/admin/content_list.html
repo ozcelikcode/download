@@ -167,7 +167,8 @@
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 Düzenle
               </a>
-              <form method="post" action="/admin/downloads/{{ d.id }}/delete" class="inline">
+              {% set return_to = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
+              <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit"
                   onclick="return confirm('{{ d.title }} silinecek. Onaylıyor musunuz?')"

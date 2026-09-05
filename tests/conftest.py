@@ -16,6 +16,7 @@ import re
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 — tüm modelleri Base.metadata'ya kaydeder
@@ -50,6 +51,12 @@ async def db_session(tmp_path) -> AsyncIterator[AsyncSession]:
     """Sıfırdan oluşturulmuş, izole bir test veritabanı sağlar."""
     db_path = tmp_path / "test.db"
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_foreign_keys(dbapi_connection, _connection_record) -> None:
+        # Test DB'si de uygulamadaki SQLite yabancı anahtar davranışını kullanır.
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
