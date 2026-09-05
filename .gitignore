@@ -1,7 +1,18 @@
 # Sanal ortam / bağımlılıklar
 .venv/
+.venv-*/
+.venv */
 __pycache__/
 *.pyc
+.DS_Store
+
+# SQLite çalışma dosyaları (ana .db dosyası korunur)
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Yarım kalmış atomik yüklemeler
+.upload-*.part
 
 # Test
 .pytest_cache/

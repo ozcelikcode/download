@@ -26,6 +26,7 @@
       {% endif %}
 
       <form method="post" action="/admin/tags" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
         <div>
           <label for="tag-name" class="form-label">Ad <span class="text-red-500">*</span></label>
           <input id="tag-name" name="name" type="text" required
@@ -73,6 +74,7 @@
                 Düzenle
               </button>
               <form method="post" action="/admin/tags/{{ t.id }}/delete" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit"
                   onclick="return confirm('#{{ t.name }} etiketi silinecek. Onaylıyor musunuz?')"
                   class="btn-danger py-1.5 px-2.5">
@@ -86,6 +88,7 @@
           <form id="tag-edit-{{ t.id }}" method="post"
             action="/admin/tags/{{ t.id }}/edit"
             class="hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
             <div class="flex items-center gap-2">
               <input name="name" type="text" required value="{{ t.name }}"
                 class="form-input text-sm flex-1">

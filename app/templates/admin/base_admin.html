@@ -18,6 +18,8 @@
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
   {% block head %}{% endblock %}
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <script src="/static/js/csrf.js"></script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
 
@@ -82,12 +84,13 @@
   </a>
 
   <!-- Çıkış -->
-  <a href="/admin/logout"
+  <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button type="submit"
     class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400
            px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-sm hover:border-red-200 dark:hover:border-red-500/40 transition-colors">
     <i data-lucide="log-out" class="w-3 h-3"></i>
     Çıkış
-  </a>
+  </button></form>
 </header>
 
 <!-- ================================================================
@@ -171,6 +174,9 @@
         Medya Arşivi
       </a>
 
+      <a href="/admin/links" class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm {% if request.url.path == '/admin/links' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10{% else %}text-slate-600 dark:text-slate-400{% endif %}"><i data-lucide="link-2" class="w-3.5 h-3.5"></i> Bağlantı Raporu</a>
+      <a href="/admin/audit" class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm {% if request.url.path == '/admin/audit' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10{% else %}text-slate-600 dark:text-slate-400{% endif %}"><i data-lucide="history" class="w-3.5 h-3.5"></i> İşlem Geçmişi</a>
+
       <a href="/admin/settings"
         class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
         {% if '/admin/settings' in request.url.path %}
@@ -186,6 +192,9 @@
 
   <!-- ── Ana İçerik ──────────────────────────────────── -->
   <main class="flex-1 min-w-0 p-6">
+    <nav class="sm:hidden flex flex-wrap gap-3 text-xs text-blue-600 dark:text-blue-400 mb-5" aria-label="Yönetim menüsü">
+      <a href="/admin">Panel</a><a href="/admin/downloads">İçerikler</a><a href="/admin/media">Medya</a><a href="/admin/links">Bağlantı Raporu</a><a href="/admin/audit">İşlem Geçmişi</a><a href="/admin/settings">Ayarlar</a>
+    </nav>
     {% if flash_message %}
     <div class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-sm text-sm text-emerald-800 dark:text-emerald-400 animate-fade-in">
       <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"></i>

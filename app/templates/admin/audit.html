@@ -1,0 +1,18 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}İşlem Geçmişi{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  <div><h1 class="text-xl font-semibold">İşlem Geçmişi</h1><p class="text-sm text-slate-500 mt-1">Yönetim panelindeki değişiklikler. {{ total }} kayıt. Parolalar ve gizli değerler saklanmaz.</p></div>
+  <form method="get" action="/admin/audit" class="flex items-center gap-2"><label class="text-sm whitespace-nowrap" for="audit-entity">Kayıt türü</label><select class="form-input w-auto" name="entity" id="audit-entity"><option value="">Tümü</option>{% for key, label in entities.items() %}<option value="{{ key }}" {% if key == entity %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn-primary" type="submit">Filtrele</button></form>
+  <div class="space-y-3">
+  {% for row in rows %}
+    <article class="p-4 border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
+      <div class="flex flex-wrap justify-between gap-2 text-xs text-slate-500"><span>{{ row.actor }} · {{ entities.get(row.entity, row.entity) }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</span><time>{{ row.created_at.strftime('%d.%m.%Y %H:%M:%S') }} UTC</time></div>
+      <p class="text-sm font-medium mt-2 break-all">{{ row.label }} <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span></p>
+      {% if changes[row.id] %}<details class="mt-3 text-xs"><summary class="cursor-pointer text-blue-600 dark:text-blue-400">Değişiklikleri göster</summary><div class="overflow-x-auto mt-2"><table class="w-full text-left"><thead><tr class="text-slate-500"><th class="p-2">Alan</th><th class="p-2">Önce</th><th class="p-2">Sonra</th></tr></thead><tbody>{% for field, values in changes[row.id].items() %}<tr class="border-t border-slate-100 dark:border-slate-800"><th class="p-2 font-medium">{{ fields.get(field, field) }}</th><td class="p-2 break-all">{{ values[0] if values[0] is not none else '—' }}</td><td class="p-2 break-all">{{ values[1] if values[1] is not none else '—' }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+    </article>
+  {% else %}<div class="p-8 border border-slate-200 dark:border-slate-800 rounded-sm text-center text-slate-500">Henüz işlem kaydı yok. Yeni değişiklikler burada görünecek.</div>{% endfor %}
+  </div>
+  <nav class="flex gap-4 text-sm" aria-label="Sayfalama">{% if page > 1 %}<a href="?page={{ page-1 }}&entity={{ entity|urlencode }}">← Önceki</a>{% endif %}<span>{{ page }} / {{ total_pages }}</span>{% if page < total_pages %}<a href="?page={{ page+1 }}&entity={{ entity|urlencode }}">Sonraki →</a>{% endif %}</nav>
+</div>
+{% endblock %}

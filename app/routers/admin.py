@@ -34,7 +34,6 @@ import asyncio
 import logging
 import math
 import mimetypes
-import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -64,6 +63,7 @@ from app.imaging import compress_image_file, make_square_icon
 from app.dependencies import (
     create_admin_session_token,
     get_db,
+    get_request_ip,
     hash_admin_password,
     refresh_session_max_age,
     require_admin,
@@ -71,6 +71,7 @@ from app.dependencies import (
     SESSION_COOKIE,
 )
 from app.models import FileType, IconType
+from app.media import ensure_unused, media_path, media_usage
 from app.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -82,13 +83,13 @@ from app.schemas import (
     TagCreate,
 )
 from app.templating import refresh_site_branding_globals, templates
+from app.uploads import save_upload
+from app.audit import add_event
+from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"])
-
-SESSION_MAX_AGE = 60 * 60 * 8  # 8 saat
-
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_csrf)])
 
 # ---------------------------------------------------------------------------
 # Yardımcılar
@@ -157,9 +158,8 @@ async def _save_upload(file: UploadFile) -> str:
     """Yüklenen dosyayı UPLOAD_DIR'e kaydeder, yolu döndürür."""
     upload_dir = settings.upload_path
     upload_dir.mkdir(parents=True, exist_ok=True)
-    dest = upload_dir / file.filename
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    dest = upload_dir / _unique_upload_filename(file.filename)
+    await save_upload(file, dest)
     logger.info("Dosya yüklendi: %s", dest)
     return str(dest)
 
@@ -181,8 +181,7 @@ async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    await save_upload(file, dest)
     if compress:
         compress_image_file(dest)
     logger.info("İkon yüklendi: %s (sıkıştırma=%s)", dest, compress)
@@ -200,24 +199,11 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
     değiştirir — dosya adı asla değişmez, sıkıştırma uygulanmaz (kaynak zaten
     işlenmiş kabul edilir)."""
     dest = _resolve_icon_path(existing_path)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    if not dest.is_file():
+        raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
+    await save_upload(file, dest)
     logger.info("İkon yerinde güncellendi (link değişmedi): %s", dest)
     return existing_path
-
-
-def _delete_icon_file(path: str) -> None:
-    """Verilen web yoluna karşılık gelen ikon dosyasını (varsa) diskten siler."""
-    filename = Path(unquote(path or "")).name
-    if not filename:
-        return
-    full = settings.upload_path / "icons" / filename
-    if full.exists() and full.is_file():
-        try:
-            full.unlink()
-        except OSError as exc:
-            logger.error("İkon silme hatası: %s", exc)
 
 
 # İlerleme durumu: {token: {"percent": int, "done": bool, "error": str|None, "path": str|None}}
@@ -227,6 +213,7 @@ _icon_fetch_progress: dict[str, dict] = {}
 
 async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
     """Dış URL'deki görseli akış halinde indirip icons/ dizinine kaydeder, ilerlemeyi günceller."""
+    dest: Optional[Path] = None
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
             async with client.stream("GET", url) as resp:
@@ -236,6 +223,8 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
                     raise ValueError("Bağlantı bir görsel dosyası döndürmüyor.")
 
                 total = int(resp.headers.get("content-length") or 0)
+                if total > settings.max_upload_size_bytes:
+                    raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
                 ext = mimetypes.guess_extension(content_type) or ".jpg"
                 icons_dir = settings.upload_path / "icons"
                 icons_dir.mkdir(parents=True, exist_ok=True)
@@ -245,8 +234,10 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
                 received = 0
                 with dest.open("wb") as out:
                     async for chunk in resp.aiter_bytes(chunk_size=65536):
-                        out.write(chunk)
                         received += len(chunk)
+                        if received > settings.max_upload_size_bytes:
+                            raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
+                        out.write(chunk)
                         # İndirme %0-90 aralığını kapsar; kalanı sıkıştırma aşamasına ayrılır.
                         percent = min(90, int(received * 90 / total)) if total else 90
                         _icon_fetch_progress[token]["percent"] = percent
@@ -255,12 +246,15 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
         compress_image_file(dest)
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
+            session.info["audit_actor"] = uploaded_by
             await crud.record_media_upload(session, final_path, uploaded_by)
         _icon_fetch_progress[token].update(
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
         logger.info("Dış görsel indirildi: %s -> %s", url, dest)
     except Exception as exc:
+        if dest is not None:
+            dest.unlink(missing_ok=True)
         logger.error("Dış görsel indirme hatası (%s): %s", url, exc)
         _icon_fetch_progress[token].update({"done": True, "error": str(exc)})
 
@@ -437,6 +431,9 @@ async def media_view(
 
     images = _list_media_files(icons_dir, "/static/uploads/icons")
     files = _list_media_files(upload_root, "/static/uploads")
+    usage = await media_usage(session, str(request.base_url))
+    for item in images + files:
+        item["used_by"] = usage.get(media_path(item["url"]), [])
 
     # Link (path) hiçbir zaman değişmez; kullanıcı yalnızca görünen adı
     # düzenler. Bu, fiziksel dosya adından bağımsız ayrı bir alandır.
@@ -476,8 +473,8 @@ async def media_view(
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
-        "admin/media.html",
-        {
+        request=request, name="admin/media.html",
+        context={
             "request": request,
             "images": images_ctx,
             "files": files_ctx,
@@ -497,7 +494,7 @@ async def media_view(
 
 def _unique_upload_filename(original_name: str) -> str:
     """Çakışmaları önlemek için orijinal dosya adının sonuna kısa bir uuid ekler."""
-    safe_name = Path(original_name or "dosya").name
+    safe_name = Path((original_name or "dosya").replace("\\", "/")).name
     stem = Path(safe_name).stem or "dosya"
     ext = Path(safe_name).suffix
     return f"{stem}-{uuid.uuid4().hex[:8]}{ext}"
@@ -514,8 +511,7 @@ async def media_upload_file(
     upload_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_upload_filename(file.filename)
     dest = upload_dir / filename
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    await save_upload(file, dest)
     web_path = f"/static/uploads/{quote(filename)}"
     await crud.record_media_upload(session, web_path, _admin)
     logger.info("Dosya arşivine yüklendi: %s", dest)
@@ -525,6 +521,7 @@ async def media_upload_file(
 @router.post("/media/replace-file", name="admin_media_replace_file")
 async def media_replace_file(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     path: str = Form(...),
     file: UploadFile = File(...),
 ):
@@ -533,29 +530,30 @@ async def media_replace_file(
     if not filename:
         raise HTTPException(status_code=400, detail="Geçersiz yol.")
     dest = settings.upload_path / filename
-    if not dest.exists():
+    if not dest.is_file():
         raise HTTPException(status_code=404, detail="Kaynak dosya bulunamadı.")
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    await save_upload(file, dest)
     logger.info("Dosya yerinde güncellendi (link değişmedi): %s", dest)
+    add_event(session, "replace", "media_assets", path)
+    await session.commit()
     return {"path": path}
 
 
 @router.post("/media/delete-file", name="admin_media_delete_file")
 async def media_delete_file(
+    request: Request,
     _admin: str = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
     """Dosya Arşivi'ndeki bir dosyayı (uploads kök dizininden) siler."""
-    filename = Path(unquote(path or "")).name
-    if filename:
-        full = settings.upload_path / filename
-        if full.exists() and full.is_file():
-            try:
-                full.unlink()
-            except OSError as exc:
-                logger.error("Dosya silme hatası: %s", exc)
+    full = await ensure_unused(session, path, str(request.base_url))
+    if full.is_file():
+        try:
+            full.unlink()
+        except OSError as exc:
+            logger.exception("Dosya silme hatası: %s", exc)
+            raise HTTPException(status_code=500, detail="Dosya silinemedi.") from exc
     await crud.delete_media_asset(session, path)
     return {"deleted": True}
 
@@ -592,6 +590,8 @@ async def upload_icon_image(
         # Yerinde güncelleme: link/dosya adı asla değişmez, sıkıştırma uygulanmaz
         # (kaynak — kırpma tuvali çıktısı — zaten işlenmiş kabul edilir).
         path = await _replace_icon_upload(file, replace_path)
+        add_event(session, "replace", "media_assets", path)
+        await session.commit()
     else:
         path = await _save_icon_upload(file, compress=not skip_compression)
         await crud.record_media_upload(session, path, _admin)
@@ -623,11 +623,18 @@ async def upload_progress(token: str, _admin: str = Depends(require_admin)):
 
 @router.post("/upload/icon-image-delete", name="admin_upload_icon_image_delete")
 async def delete_icon_image(
+    request: Request,
     _admin: str = Depends(require_admin),
     session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
-    _delete_icon_file(path)
+    full = await ensure_unused(session, path, str(request.base_url))
+    if full.is_file():
+        try:
+            full.unlink()
+        except OSError as exc:
+            logger.exception("İkon silme hatası: %s", exc)
+            raise HTTPException(status_code=500, detail="Görsel silinemedi.") from exc
     await crud.delete_media_asset(session, path)
     return {"deleted": True}
 
@@ -635,6 +642,7 @@ async def delete_icon_image(
 @router.post("/upload/icon-auto-crop", name="admin_upload_icon_auto_crop")
 async def upload_icon_auto_crop(
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     path: str = Form(...),
     size: int = Form(256),
     in_place: bool = Form(False),
@@ -660,6 +668,8 @@ async def upload_icon_auto_crop(
         logger.error("Otomatik ikon kırpma hatası (%s): %s", src, exc)
         raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
 
+    add_event(session, "crop", "media_assets", f"/static/uploads/icons/{dest.name}")
+    await session.commit()
     return {"path": f"/static/uploads/icons/{dest.name}"}
 
 
@@ -669,7 +679,7 @@ async def upload_icon_auto_crop(
 
 @router.get("/login", name="admin_login")
 async def login_get(request: Request):
-    return templates.TemplateResponse("admin/login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="admin/login.html", context={"request": request})
 
 
 @router.post("/login", name="admin_login_post")
@@ -679,6 +689,7 @@ async def login_post(
     username: str = Form(...),
     password: str = Form(...),
 ):
+    attempt_id = await reserve_login_attempt(session, get_request_ip(request))
     site_settings = await crud.get_site_settings(session)
     effective_username = site_settings.admin_username or settings.admin_username
     effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
@@ -686,17 +697,18 @@ async def login_post(
     if username != effective_username or not verify_admin_password(password, effective_hash):
         logger.warning("Başarısız admin giriş denemesi: username=%r", username)
         return templates.TemplateResponse(
-            "admin/login.html",
-            {"request": request, "error": "Kullanıcı adı veya şifre hatalı."},
+            request=request, name="admin/login.html",
+            context={"request": request, "error": "Kullanıcı adı veya şifre hatalı."},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
+    await clear_successful_attempt(session, attempt_id)
     token = create_admin_session_token(username)
     response = _redirect("/admin")
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
-        max_age=SESSION_MAX_AGE,
+        max_age=max(1, site_settings.session_max_age_minutes) * 60,
         httponly=True,
         samesite="lax",
     )
@@ -704,8 +716,9 @@ async def login_post(
     return response
 
 
-@router.get("/logout", name="admin_logout")
-async def logout():
+@router.post("/logout", name="admin_logout")
+async def logout(request: Request):
+    request.session.clear()
     response = _redirect("/admin/login")
     response.delete_cookie(SESSION_COOKIE)
     return response
@@ -729,8 +742,8 @@ async def dashboard(
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
-        "admin/dashboard.html",
-        {
+        request=request, name="admin/dashboard.html",
+        context={
             "request": request,
             "recent_items": recent_items,
             "stats": stats,
@@ -773,8 +786,8 @@ async def content_list(
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
-        "admin/content_list.html",
-        {
+        request=request, name="admin/content_list.html",
+        context={
             "request": request,
             "downloads": items,
             "total": total,
@@ -809,8 +822,8 @@ async def download_new_get(
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
-        "admin/file_form.html",
-        {
+        request=request, name="admin/file_form.html",
+        context={
             "request": request,
             "categories": categories,
             "tags": tags,
@@ -903,8 +916,8 @@ async def download_new_post(
             session, page=1, page_size=200, include_inactive=True
         )
         return templates.TemplateResponse(
-            "admin/file_form.html",
-            {
+            request=request, name="admin/file_form.html",
+            context={
                 "request": request,
                 "categories": categories,
                 "tags": tags,
@@ -947,8 +960,8 @@ async def download_edit_get(
     file_size_val, file_size_unit = _deconstruct_file_size(download.file_size_bytes)
 
     return templates.TemplateResponse(
-        "admin/file_form.html",
-        {
+        request=request, name="admin/file_form.html",
+        context={
             "request": request,
             "categories": categories,
             "tags": tags,
@@ -1053,8 +1066,8 @@ async def download_edit_post(
             session, page=1, page_size=200, include_inactive=True
         )
         return templates.TemplateResponse(
-            "admin/file_form.html",
-            {
+            request=request, name="admin/file_form.html",
+            context={
                 "request": request,
                 "categories": categories,
                 "tags": tags,
@@ -1151,8 +1164,8 @@ async def categories_view(
     counts = await crud.get_category_download_counts(session)
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/categories.html",
-        {
+        request=request, name="admin/categories.html",
+        context={
             "request": request,
             "categories": categories,
             "category_counts": counts,
@@ -1216,8 +1229,8 @@ async def tags_view(
     tags = await crud.get_tags(session)
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/tags.html",
-        {"request": request, "tags": tags, "admin_user": _admin, "flash_message": flash_message},
+        request=request, name="admin/tags.html",
+        context={"request": request, "tags": tags, "admin_user": _admin, "flash_message": flash_message},
     )
 
 
@@ -1289,8 +1302,8 @@ async def settings_general_view(
     site_settings = await crud.get_site_settings(session)
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/settings_general.html",
-        {
+        request=request, name="admin/settings_general.html",
+        context={
             "request": request,
             "site_settings": site_settings,
             "icon_colors": SITE_ICON_COLORS,
@@ -1310,8 +1323,8 @@ async def settings_account_view(
     site_settings = await crud.get_site_settings(session)
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/settings_account.html",
-        {
+        request=request, name="admin/settings_account.html",
+        context={
             "request": request,
             "site_settings": site_settings,
             "effective_admin_username": site_settings.admin_username or settings.admin_username,
@@ -1340,8 +1353,8 @@ async def settings_menu_view(
     ] or ["search", "categories", "tags"]
     flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(
-        "admin/settings_menu.html",
-        {
+        request=request, name="admin/settings_menu.html",
+        context={
             "request": request,
             "navbar_items": navbar_items,
             "footer_items": footer_items,

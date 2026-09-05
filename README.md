@@ -46,6 +46,30 @@ make dev
 make prod   # 2 worker, 0.0.0.0:8000
 ```
 
+### Veritabanı ve geçici dosyalar
+
+Ana veritabanı `download.db` dosyasıdır. `download.db-wal` ve
+`download.db-shm`, SQLite'ın WAL modunda kullandığı çalışma dosyalarıdır;
+yedek değildir. Sunucu çalışırken elle silmeyin. Sunucu kapatıldıktan ve
+veritabanını kullanan diğer uygulamalar kapandıktan sonra bekleyen yazıları
+ana dosyaya aktarmak için:
+
+```bash
+.venv/bin/python -c 'import sqlite3; c=sqlite3.connect("download.db"); print(c.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()); c.close()'
+```
+
+Çalışma dosyaları sunucu açıldığında yeniden oluşabilir ve Git tarafından
+yok sayılır. `app/static/uploads` medya arşividir; bir sayfada kullanılmayan
+dosyalar da arşivde saklanıyor olabilir.
+
+Yüklemelerin sınırı `.env` içindeki `MAX_UPLOAD_SIZE_MB` ile belirlenir
+(varsayılan 500 MB). Yeni yüklemeler benzersiz ad alır; medya arşivindeki
+yerinde değiştirme işlemi mevcut bağlantıyı korur.
+
+Ters proxy kullanıldığında yalnızca güvenilir proxy adreslerini Uvicorn'un
+`FORWARDED_ALLOW_IPS` ayarıyla tanımlayın. İndirme kotası, sunucunun bu
+kontrolden geçirdiği istemci adresini kullanır.
+
 ---
 
 ## Admin Paneli
@@ -108,6 +132,38 @@ download/
 - **Öne çıkanlar** — Featured dosyalar anasayfada ayrı bölümde
 - **Güvenli admin** — Bcrypt şifre, session cookie (HttpOnly)
 - **Sayfalama** — Tüm listelerde `?page=x` ile
+
+### Medya koruması, raporlar ve güvenlik
+
+- **Korumalı medya silme:** Medya arşivinde dosyanın kullanıldığı içerikler
+  gösterilir. Pasif içerikler, ikonlar, küçük görseller ve açıklamaya eklenen
+  bağlantılar da kontrol edilir. Kullanılan dosyanın silinmesi HTTP 409 ile
+  engellenir; önce ilgili içerikteki bağlantıyı kaldırın.
+- **Bağlantı Raporu — `/admin/links`:** Dış indirme adreslerini tek tek veya
+  sayfa başına en fazla 20 kayıt olarak kontrol eder. Sonuçlar kalıcıdır;
+  adres düzenlenirse eski sonuç gösterilmez. 404/410 kırık, 401/403/429 erişim
+  sınırlı olarak ayrılır. Özel ağlara ve bu ağlara yönlendirmelere erişim
+  engellenir. Dosya gövdesi indirilmez. Kontrol admin tarafından başlatılır.
+- **Admin güvenliği:** Girişlerde IP başına 15 dakikalık pencerede 5 deneme
+  sınırı uygulanır; başarılı denemenin rezervasyonu kaldırılır. Kota SQLite
+  üzerinde olduğundan worker'lar arasında paylaşılır. Admin POST işlemleri,
+  giriş ve çıkış dahil, oturuma bağlı CSRF jetonu ister. Formlar gizli alanla,
+  AJAX istekleri `X-CSRF-Token` başlığıyla gönderir. Eski açık sekmelerde
+  güvenlik doğrulaması hatası görülürse sayfayı yenileyin.
+- **SHA-256:** Yükleme arşivindeki yerel dosyaların detay sayfasında otomatik
+  hesaplanır ve gösterilir. Dosya değişirse önbellek yenilenir. Dış bağlantılı
+  dosyalara tahmini bir özet atanmaz. Karşılaştırmak için macOS'ta
+  `shasum -a 256 dosya.zip`, Windows PowerShell'de
+  `Get-FileHash dosya.zip -Algorithm SHA256` kullanılabilir.
+- **İşlem Geçmişi — `/admin/audit`:** İçerik, kategori, etiket, menü, ayar ve
+  medya değişikliklerinde kullanıcı, zaman ve değişen alanlar tutulur.
+  Silinen kayıtların geçmişi kalır. Parolalar maskelenir; geçmiş kayıtları
+  arayüzden düzenlenemez/silinemez. Zamanlar UTC gösterilir. Özellik
+  kurulmadan önceki işlemler için geçmiş üretilmez.
+
+Mevcut kurulumda yeni tabloları oluşturmak için sunucuyu durdurup
+`make migrate`, ardından `make dev` çalıştırın. Migration mevcut içerikleri
+korur; bu özellikler yeni bir Python bağımlılığı gerektirmez.
 
 ---
 

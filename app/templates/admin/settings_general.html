@@ -25,6 +25,7 @@
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Site adı, ikonu ve ikon rengi — sitenin her yerinde anında yansır.</p>
 
   <form method="post" action="/admin/settings/branding" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div>
       <label class="form-label">Site Adı</label>
       <input name="site_name" type="text" required maxlength="100" value="{{ site_settings.site_name }}" class="form-input max-w-sm">

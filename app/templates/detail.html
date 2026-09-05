@@ -242,6 +242,14 @@
     </div>
     {% endif %}
 
+    {% if sha256 %}
+    <div class="py-3 border-b border-slate-50 dark:border-slate-800">
+      <dt class="text-slate-400 dark:text-slate-500 mb-1">SHA-256</dt>
+      <dd class="font-mono text-xs break-all select-all text-slate-700 dark:text-slate-300">{{ sha256 }}</dd>
+      <dd class="text-xs text-slate-400 mt-1">İndirdiğiniz dosyanın özetini bu değerle karşılaştırarak bütünlüğünü doğrulayabilirsiniz.</dd>
+    </div>
+    {% endif %}
+
     {% if download.source_domain %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">Kaynak</dt>
@@ -391,7 +399,7 @@
 
     confirmBtn.addEventListener('click', () => {
       confirmBtn.disabled = true;
-      fetch('/admin/downloads/{{ download.id }}/delete', { method: 'POST' })
+      csrfFetch('/admin/downloads/{{ download.id }}/delete', { method: 'POST' })
         .then((r) => {
           if (!r.ok) throw new Error();
           window.location.href = '/';

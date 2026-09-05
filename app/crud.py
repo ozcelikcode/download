@@ -7,6 +7,7 @@ Dış slug üretimi python-slugify ile yapılır.
 
 from __future__ import annotations
 
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
@@ -16,6 +17,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.audit import add_event
 from app.models import (
     Category,
     Download,
@@ -135,6 +137,7 @@ async def reorder_categories(session: AsyncSession, ordered_ids: List[int]) -> N
         await session.execute(
             update(Category).where(Category.id == cat_id).values(position=position)
         )
+    add_event(session, "reorder", "categories", "Kategori sıralaması")
     await session.commit()
 
 
@@ -159,6 +162,7 @@ async def reorder_tags(session: AsyncSession, ordered_ids: List[int]) -> None:
         await session.execute(
             update(Tag).where(Tag.id == tag_id).values(position=position)
         )
+    add_event(session, "reorder", "tags", "Etiket sıralaması")
     await session.commit()
 
 
@@ -265,6 +269,7 @@ async def reorder_menu_items(session: AsyncSession, ordered_ids: List[int]) -> N
         await session.execute(
             update(MenuItem).where(MenuItem.id == item_id).values(position=position)
         )
+    add_event(session, "reorder", "menu_items", "Menü sıralaması")
     await session.commit()
 
 
@@ -429,6 +434,9 @@ async def delete_media_asset(session: AsyncSession, path: str) -> None:
     asset = result.scalar_one_or_none()
     if asset:
         await session.delete(asset)
+        await session.commit()
+    else:
+        add_event(session, "delete", "media_assets", path)
         await session.commit()
 
 
@@ -847,6 +855,11 @@ async def _sync_tags(
     session: AsyncSession, download: Download, tag_ids: List[int]
 ) -> None:
     """Download'ın tag ilişkilerini verilen id listesiyle eşitler."""
+    if session.info.get("audit_actor"):
+        previous_ids = sorted((await session.scalars(select(DownloadTag.tag_id).where(DownloadTag.download_id == download.id))).all())
+        if previous_ids != sorted(tag_ids):
+            add_event(session, "update", "downloads", download.title, download.id,
+                      changes={"etiketler": [previous_ids, sorted(tag_ids)]})
     # Mevcut junction kayıtlarını sil
     await session.execute(
         delete(DownloadTag).where(DownloadTag.download_id == download.id)

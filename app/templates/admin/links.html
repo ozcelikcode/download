@@ -1,0 +1,35 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Bağlantı Raporu{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div><h1 class="text-xl font-semibold">Bağlantı Raporu</h1><p class="text-sm text-slate-500 mt-1">Dış indirme adreslerinin son kontrol sonuçları. {{ total }} kayıt.</p></div>
+    {% if state == 'all' and rows %}
+    <form method="post" action="/admin/links/check?page={{ page }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Kontrol ediliyor…'">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <button class="btn-primary" type="submit">Bu sayfadaki bağlantıları kontrol et</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="text-xs text-slate-500">Dosyalar indirilmez. Erişim sınırlaması, bağlantının bozuk olduğu anlamına gelmez. En fazla 20 adres kontrol edilir; işlem yaklaşık iki dakika sürebilir.</p>
+  <form method="get" action="/admin/links" class="flex items-center gap-2">
+    <label for="link-state" class="text-sm">Durum</label>
+    <select class="form-input w-auto" name="state" id="link-state"><option value="all">Tümü</option>{% for key, label in statuses.items() %}<option value="{{ key }}" {% if key == state %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button type="submit" class="btn-primary">Filtrele</button>
+  </form>
+  <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
+    <table class="w-full text-sm text-left">
+      <thead class="text-xs text-slate-500 border-b border-slate-200 dark:border-slate-800"><tr><th class="p-3">İçerik</th><th class="p-3">Durum</th><th class="p-3">Son kontrol (UTC)</th><th class="p-3">İşlem</th></tr></thead>
+      <tbody>{% for download, check in rows %}
+        <tr class="border-b border-slate-100 dark:border-slate-800">
+          <td class="p-3"><a class="text-blue-600 dark:text-blue-400 hover:underline" href="/admin/downloads/{{ download.id }}/edit">{{ download.title }}</a><div class="text-xs text-slate-500 break-all mt-1">{{ download.source_domain or 'Adres eksik' }}</div></td>
+          <td class="p-3"><span class="font-medium {% if check and check.status == 'broken' %}text-red-600{% elif check and check.status == 'ok' %}text-green-600{% endif %}">{{ statuses[check.status] if check else statuses.unchecked }}</span>{% if check %}<p class="text-xs text-slate-500 mt-1">{% if check.http_status %}HTTP {{ check.http_status }} · {% endif %}{{ check.message }}</p>{% endif %}</td>
+          <td class="p-3 whitespace-nowrap text-xs">{{ check.checked_at.strftime('%d.%m.%Y %H:%M') if check else '—' }}</td>
+          <td class="p-3"><form method="post" action="/admin/links/{{ download.id }}/check"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="text-blue-600 dark:text-blue-400 hover:underline" type="submit">Kontrol et</button></form></td>
+        </tr>
+      {% else %}<tr><td colspan="4" class="p-8 text-center text-slate-500">Bu filtreye uygun bağlantı yok.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <nav class="flex gap-4 text-sm" aria-label="Sayfalama">{% if page > 1 %}<a href="?page={{ page-1 }}&state={{ state }}">← Önceki</a>{% endif %}<span>{{ page }} / {{ total_pages }}</span>{% if page < total_pages %}<a href="?page={{ page+1 }}&state={{ state }}">Sonraki →</a>{% endif %}</nav>
+</div>
+{% endblock %}

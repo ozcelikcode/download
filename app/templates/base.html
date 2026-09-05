@@ -23,6 +23,8 @@
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
 
   {% block head %}{% endblock %}
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <script src="/static/js/csrf.js"></script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
 
@@ -70,10 +72,11 @@
           class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
           <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Admin Panel
         </a>
-        <a href="/admin/logout"
+        <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button type="submit"
           class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Çıkış Yap
-        </a>
+        </button></form>
       </div>
     </div>
     {% endif %}

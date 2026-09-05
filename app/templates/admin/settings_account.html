@@ -26,6 +26,7 @@
 
   <!-- Profil ikonu -->
   <form method="post" action="/admin/settings/avatar" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label class="form-label">Profil İkonu</label>
     <div class="flex items-center gap-2">
       <div id="avatar-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
@@ -65,6 +66,7 @@
 
   <!-- Kullanıcı adı / şifre -->
   <form method="post" action="/admin/settings/account" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Kullanıcı Adı / Şifre Değiştir</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -101,6 +103,7 @@
 
   <!-- Oturum süresi -->
   <form method="post" action="/admin/settings/session-duration" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">Oturum Süresi</p>
     <div class="flex items-center gap-2">
       <input name="session_max_age_minutes" type="number" min="5" max="43200" step="5"

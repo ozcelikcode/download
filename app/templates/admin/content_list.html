@@ -168,6 +168,7 @@
                 Düzenle
               </a>
               <form method="post" action="/admin/downloads/{{ d.id }}/delete" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit"
                   onclick="return confirm('{{ d.title }} silinecek. Onaylıyor musunuz?')"
                   class="btn-danger py-1.5 px-2.5">

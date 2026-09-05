@@ -17,7 +17,11 @@ from app.branding import resolve_icon_color
 from app.config import settings
 from app.models import FileType, IconType, SiteSettings
 
+from app.security import csrf_token
+
 templates = Jinja2Templates(directory="app/templates")
+
+templates.env.globals["csrf_token"] = csrf_token
 
 
 # ---------------------------------------------------------------------------

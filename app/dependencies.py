@@ -12,11 +12,13 @@ import logging
 from typing import Optional
 
 import bcrypt
-from fastapi import Cookie, HTTPException, Request, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from app.config import settings
 from app.database import get_db  # noqa: F401 — re-export
+from app import audit  # noqa: F401 — işlem geçmişi olaylarını kaydeder
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,7 @@ def hash_admin_password(plain: str) -> str:
 async def require_admin(
     request: Request,
     admin_session: Optional[str] = Cookie(None, alias=SESSION_COOKIE),
+    session: AsyncSession = Depends(get_db),
 ) -> str:
     """
     Admin oturumu zorunlu kılan bağımlılık.
@@ -98,6 +101,7 @@ async def require_admin(
             status_code=status.HTTP_302_FOUND,
             headers={"Location": "/admin/login"},
         )
+    session.info["audit_actor"] = username
     return username
 
 
@@ -119,19 +123,11 @@ def get_optional_admin_username(request: Request) -> Optional[str]:
 # IP adresi çözümleme
 # ---------------------------------------------------------------------------
 def get_request_ip(request: Request) -> str:
-    """
-    Proxy arkasındaki gerçek IP'yi döndürür.
-    X-Forwarded-For → X-Real-IP → doğrudan bağlantı sırasına göre.
-    """
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        # Virgülle ayrılmış liste — ilk eleman gerçek istemci IP'si
-        return forwarded_for.split(",")[0].strip()
+    """Uvicorn'un güvenilir proxy kontrolünden geçmiş istemci adresi.
 
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
-
+    Ham yönlendirme başlıkları istemci tarafından değiştirilebilir; burada
+    tekrar yorumlanmaları indirme kotasının atlatılmasına yol açar.
+    """
     if request.client:
         return request.client.host
 

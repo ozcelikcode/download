@@ -191,6 +191,9 @@ class MediaAsset(Base):
     path: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     uploaded_by: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    checksum_size: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    checksum_mtime_ns: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -200,6 +203,38 @@ class MediaAsset(Base):
 
     def __repr__(self) -> str:
         return f"<MediaAsset id={self.id} path={self.path!r}>"
+
+
+class LinkCheck(Base):
+    __tablename__ = "link_checks"
+
+    download_id: Mapped[int] = mapped_column(ForeignKey("downloads.id", ondelete="CASCADE"), primary_key=True)
+    url: Mapped[str] = mapped_column(String(2000))
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    http_status: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    message: Mapped[str] = mapped_column(String(300))
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ip_address: Mapped[str] = mapped_column(String(45), index=True)
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    actor: Mapped[str] = mapped_column(String(100), index=True)
+    action: Mapped[str] = mapped_column(String(30))
+    entity: Mapped[str] = mapped_column(String(50), index=True)
+    entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    label: Mapped[str] = mapped_column(String(300))
+    changes: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 # ---------------------------------------------------------------------------

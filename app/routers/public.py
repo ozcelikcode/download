@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.config import settings
+from app.checksums import file_checksum
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.models import FileType
 from app.templating import templates
@@ -92,7 +93,7 @@ async def index(
         "meta_description": "Ücretsiz yazılım, araç ve belgeleri indirin.",
     }
     ctx.update(await _sidebar_context(request, session))
-    return templates.TemplateResponse("index.html", ctx)
+    return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +130,7 @@ async def category_view(
         "meta_description": category.description or f"{category.name} kategorisindeki indirmeler.",
     }
     ctx.update(await _sidebar_context(request, session))
-    return templates.TemplateResponse("index.html", ctx)
+    return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +167,7 @@ async def search(
         "meta_description": f"{q} için indirme sonuçları." if q else "İndirme arama.",
     }
     ctx.update(await _sidebar_context(request, session))
-    return templates.TemplateResponse("index.html", ctx)
+    return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +205,7 @@ async def tag_view(
         "meta_description": f"{tag.name} etiketli indirmeler.",
     }
     ctx.update(await _sidebar_context(request, session))
-    return templates.TemplateResponse("index.html", ctx)
+    return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -229,10 +230,11 @@ async def detail(
         "current_category": download.category,
         "current_search": None,
         "version_timeline": _build_version_timeline(download),
+        "sha256": await file_checksum(session, download.file_path) if download.file_type == FileType.local else None,
     }
     ctx.update(await _sidebar_context(request, session))
 
-    return templates.TemplateResponse("detail.html", ctx)
+    return templates.TemplateResponse(request=request, name="detail.html", context=ctx)
 
 
 def _build_version_timeline(download) -> list:
@@ -316,6 +318,17 @@ async def do_download(
             detail="Saatlik indirme limitine ulaştınız. Lütfen bekleyiniz.",
         )
 
+    # Yalnızca sunulabilecek dosyalar sayacı ve saatlik kotayı tüketir.
+    file_path = None
+    if download.file_type == FileType.local:
+        file_path = Path(download.file_path) if download.file_path else None
+        if file_path is None or not file_path.is_file():
+            logger.error("Dosya bulunamadı: %s", download.file_path)
+            raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadı.")
+    elif not download.external_url:
+        logger.error("Dış bağlantı bulunamadı: download_id=%d", download.id)
+        raise HTTPException(status_code=404, detail="İndirme bağlantısı bulunamadı.")
+
     # Log yaz + sayacı artır
     await crud.create_download_log(session, download.id, ip, ua[:500])
     await crud.increment_download_count(session, download.id)
@@ -330,11 +343,6 @@ async def do_download(
         )
 
     # Lokal dosya akışı
-    file_path = Path(download.file_path)
-    if not file_path.exists():
-        logger.error("Dosya bulunamadı: %s", file_path)
-        raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadı.")
-
     media_type, _ = mimetypes.guess_type(str(file_path))
     return FileResponse(
         path=str(file_path),

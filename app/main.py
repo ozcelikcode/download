@@ -15,7 +15,7 @@ from app import crud
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.dependencies import refresh_session_max_age
-from app.routers import admin, public
+from app.routers import admin, public, reports
 from app.templating import refresh_site_branding_globals, templates
 
 # ---------------------------------------------------------------------------
@@ -80,6 +80,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(public.router)
 app.include_router(admin.router)
+app.include_router(reports.router)
 
 
 # ---------------------------------------------------------------------------
@@ -88,8 +89,8 @@ app.include_router(admin.router)
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
     return templates.TemplateResponse(
-        "errors/404.html",
-        {
+        request=request, name="errors/404.html",
+        context={
             "request": request,
             "page_title": "Sayfa Bulunamadı",
             "sidebar_categories": [],
@@ -106,8 +107,8 @@ async def not_found_handler(request: Request, exc):
 async def server_error_handler(request: Request, exc):
     logger.error("500 hatası: %s", exc)
     return templates.TemplateResponse(
-        "errors/500.html",
-        {
+        request=request, name="errors/500.html",
+        context={
             "request": request,
             "page_title": "Sunucu Hatası",
             "sidebar_categories": [],
@@ -122,9 +123,15 @@ async def server_error_handler(request: Request, exc):
 
 @app.exception_handler(429)
 async def rate_limit_handler(request: Request, exc):
+    if request.url.path == "/admin/login":
+        return templates.TemplateResponse(
+            request=request, name="admin/login.html",
+            context={"request": request, "error": "Çok fazla giriş denemesi. 15 dakikalık sınır dolunca tekrar deneyin."},
+            status_code=429, headers=getattr(exc, "headers", None),
+        )
     return templates.TemplateResponse(
-        "errors/429.html",
-        {
+        request=request, name="errors/429.html",
+        context={
             "request": request,
             "page_title": "Çok Fazla İstek",
             "sidebar_categories": [],

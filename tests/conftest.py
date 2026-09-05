@@ -11,6 +11,7 @@ aracılığıyla) pytest tarafından otomatik temizlenir.
 from __future__ import annotations
 
 from typing import AsyncIterator
+import re
 
 import pytest
 import pytest_asyncio
@@ -72,6 +73,9 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """Kimliksiz istemci — herkese açık rotaları test etmek için."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.get("/admin/login")
+        token = re.search(r'name="csrf-token" content="([^"]+)"', login.text).group(1)
+        ac.headers["X-CSRF-Token"] = token
         yield ac
 
 
@@ -82,5 +86,8 @@ async def admin_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     token = create_admin_session_token("admin")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        ac.cookies.set(SESSION_COOKIE, token)
+        ac.cookies.set(SESSION_COOKIE, token, domain="test.local", path="/")
+        login = await ac.get("/admin/login")
+        csrf = re.search(r'name="csrf-token" content="([^"]+)"', login.text).group(1)
+        ac.headers["X-CSRF-Token"] = csrf
         yield ac
