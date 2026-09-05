@@ -1,4 +1,6 @@
-.PHONY: dev migrate seed install install-dev hash test tailwind-cli css css-watch
+.PHONY: dev migrate seed install install-dev hash test tailwind-cli css css-watch check-python
+
+PYTHON ?= python3
 
 TAILWIND_VERSION := 3.4.19
 TAILWIND_BIN := .bin/tailwindcss
@@ -36,8 +38,11 @@ migration:
 	.venv/bin/alembic revision --autogenerate -m "$(msg)"
 
 # Bağımlılıkları kur (+ Tailwind CLI indir ve CSS'i derle)
-install:
-	python3 -m venv .venv
+check-python:
+	@$(PYTHON) -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ gerekli'; print(f'Python {sys.version.split()[0]} doğrulandı')"
+
+install: check-python
+	$(PYTHON) -m venv .venv
 	.venv/bin/pip install -U pip
 	.venv/bin/pip install -r requirements.txt
 	$(MAKE) tailwind-cli
@@ -58,8 +63,8 @@ css-watch:
 	$(TAILWIND_BIN) -i app/static/css/tailwind_source.css -o app/static/css/tailwind.css --watch
 
 # Test bağımlılıkları dahil kur (geliştirme ortamı)
-install-dev:
-	python3 -m venv .venv
+install-dev: check-python
+	$(PYTHON) -m venv .venv
 	.venv/bin/pip install -U pip
 	.venv/bin/pip install -r requirements-dev.txt
 

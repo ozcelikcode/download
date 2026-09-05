@@ -1,4 +1,4 @@
-#!/Users/ozcelik/Documents/GitHub/download/.venv/bin/python3
+#!/Users/ozcelik/Documents/GitHub/download/.venv/bin/python
 import sys
 from fastapi.cli import main
 if __name__ == '__main__':
