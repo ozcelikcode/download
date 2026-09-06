@@ -48,7 +48,7 @@ async def test_delete_rejects_non_admin_or_malformed_return_target(admin_client,
         assert response.headers["location"] == "/admin/downloads"
 
 
-async def test_new_download_returns_to_its_edit_page(admin_client):
+async def test_new_download_returns_to_content_list(admin_client):
     response = await admin_client.post(
         "/admin/downloads/new",
         data={
@@ -60,8 +60,9 @@ async def test_new_download_returns_to_its_edit_page(admin_client):
         },
     )
     assert response.status_code == 302
-    assert response.headers["location"].startswith("/admin/downloads/")
-    assert response.headers["location"].endswith("/edit")
+    assert response.headers["location"] == "/admin/downloads"
+    content_list = await admin_client.get("/admin/downloads")
+    assert "Yeni kayıt” uygulaması eklendi." in content_list.text
 
 
 async def test_delete_preserves_every_list_filter_in_return_url(admin_client, db_session):

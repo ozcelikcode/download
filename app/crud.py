@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
+from urllib.parse import urlsplit, urlunsplit
 
 from slugify import slugify
 from sqlalchemy import delete, func, select, update
@@ -92,6 +93,29 @@ async def get_category_by_id(session: AsyncSession, category_id: int) -> Optiona
     return result.scalar_one_or_none()
 
 
+async def ensure_required_category(session: AsyncSession) -> Category:
+    """Korunan kategoriyi döndürür; eski ya da boş kurulumlarda oluşturur."""
+    category = await session.scalar(select(Category).where(Category.is_required.is_(True)).order_by(Category.id))
+    if category is not None:
+        return category
+    slug = await _unique_slug(session, Category, _make_slug("Genel"))
+    category = Category(name="Genel", slug=slug, is_required=True)
+    session.add(category)
+    await session.commit()
+    await session.refresh(category)
+    return category
+
+
+async def _replace_category_menu_urls(session: AsyncSession, old_slug: str, new_slug: str) -> None:
+    old_path = f"/category/{old_slug}"
+    new_path = f"/category/{new_slug}"
+    items = (await session.scalars(select(MenuItem))).all()
+    for item in items:
+        parsed = urlsplit(item.url)
+        if parsed.path == old_path:
+            item.url = urlunsplit((parsed.scheme, parsed.netloc, new_path, parsed.query, parsed.fragment))
+
+
 async def create_category(session: AsyncSession, data: CategoryCreate) -> Category:
     base_slug = data.slug or _make_slug(data.name)
     slug = await _unique_slug(session, Category, base_slug)
@@ -106,13 +130,22 @@ async def create_category(session: AsyncSession, data: CategoryCreate) -> Catego
 async def update_category(
     session: AsyncSession, category: Category, data: CategoryUpdate
 ) -> Category:
+    old_slug = category.slug
+    old_name = category.name
+    new_slug: Optional[str] = None
+    if data.slug is not None or (data.name is not None and data.name != old_name):
+        with session.no_autoflush:
+            new_slug = await _unique_slug(
+                session, Category, data.slug or _make_slug(data.name or category.name), exclude_id=category.id
+            )
     if data.name is not None:
         category.name = data.name
     if data.description is not None:
         category.description = data.description
-    if data.slug is not None:
-        slug = await _unique_slug(session, Category, data.slug, exclude_id=category.id)
-        category.slug = slug
+    if new_slug is not None:
+        category.slug = new_slug
+    if category.slug != old_slug:
+        await _replace_category_menu_urls(session, old_slug, category.slug)
     await session.commit()
     await session.refresh(category)
     logger.info("Kategori güncellendi: id=%d", category.id)
@@ -120,9 +153,36 @@ async def update_category(
 
 
 async def delete_category(session: AsyncSession, category: Category) -> None:
+    if category.is_required:
+        raise ValueError("Zorunlu kategori silinemez.")
     await session.delete(category)
     await session.commit()
     logger.info("Kategori silindi: id=%d", category.id)
+
+
+async def transfer_and_delete_categories(
+    session: AsyncSession, category_ids: List[int], target_category_id: int
+) -> int:
+    """İçerikleri hedef kategoriye taşır, ardından kaynak kategorileri siler."""
+    source_ids = sorted(set(category_ids) - {target_category_id})
+    if not source_ids:
+        raise ValueError("Silinecek kategori ve aktarım hedefi farklı olmalıdır.")
+    target = await get_category_by_id(session, target_category_id)
+    if target is None:
+        raise ValueError("Aktarım hedefi bulunamadı.")
+    sources = list((await session.scalars(select(Category).where(Category.id.in_(source_ids)))).all())
+    if len(sources) != len(source_ids):
+        raise ValueError("Silinecek kategorilerden biri bulunamadı.")
+    if any(category.is_required for category in sources):
+        raise ValueError("Zorunlu kategori silinemez.")
+    moved = await session.scalar(select(func.count()).select_from(Download).where(Download.category_id.in_(source_ids))) or 0
+    await session.execute(update(Download).where(Download.category_id.in_(source_ids)).values(category_id=target.id))
+    for source in sources:
+        await _replace_category_menu_urls(session, source.slug, target.slug)
+        await session.delete(source)
+    add_event(session, "transfer", "categories", f"{len(sources)} kategori {target.name} kategorisine aktarıldı", target.id, {"kategori_sayisi": [None, len(sources)], "icerik_sayisi": [None, moved]})
+    await session.commit()
+    return int(moved)
 
 
 async def get_categories_ordered(session: AsyncSession) -> List[Category]:
@@ -202,6 +262,18 @@ async def create_tag(session: AsyncSession, data: TagCreate) -> Tag:
 async def delete_tag(session: AsyncSession, tag: Tag) -> None:
     await session.delete(tag)
     await session.commit()
+
+
+async def bulk_delete_tags(session: AsyncSession, tag_ids: List[int]) -> int:
+    ids = sorted(set(tag_ids))
+    if not ids:
+        raise ValueError("En az bir etiket seçin.")
+    tags = list((await session.scalars(select(Tag).where(Tag.id.in_(ids)))).all())
+    for tag in tags:
+        await session.delete(tag)
+    add_event(session, "bulk", "tags", f"{len(tags)} etiket silindi", changes={"islem": [None, "silme"]})
+    await session.commit()
+    return len(tags)
 
 
 # ===========================================================================
@@ -296,6 +368,7 @@ async def update_site_settings(
     settings_row.site_name = data.site_name
     settings_row.site_icon = data.site_icon
     settings_row.site_icon_color = data.site_icon_color
+    settings_row.theme_color = data.theme_color
     await session.commit()
     await session.refresh(settings_row)
     logger.info("Site kimliği güncellendi: name=%r icon=%r color=%r",
@@ -329,6 +402,16 @@ async def update_admin_credentials(
 async def update_session_max_age(session: AsyncSession, minutes: int) -> SiteSettings:
     settings_row = await get_site_settings(session)
     settings_row.session_max_age_minutes = minutes
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
+async def update_audit_log_max_records(session: AsyncSession, max_records: int) -> SiteSettings:
+    if max_records not in {50, 100, 200, 500, 800}:
+        raise ValueError("Geçersiz günlük kayıt sınırı.")
+    settings_row = await get_site_settings(session)
+    settings_row.audit_log_max_records = max_records
     await session.commit()
     await session.refresh(settings_row)
     return settings_row
@@ -727,6 +810,31 @@ async def delete_download(session: AsyncSession, download: Download) -> None:
     await session.delete(download)
     await session.commit()
     logger.info("Download silindi: id=%d slug=%r", download.id, download.slug)
+
+
+async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], action: str) -> int:
+    """Seçili içerikler için geri alınabilir durum işlemleri veya silme uygular."""
+    ids = sorted(set(download_ids))
+    if not ids:
+        raise ValueError("En az bir içerik seçin.")
+    downloads = list((await session.scalars(select(Download).where(Download.id.in_(ids)))).all())
+    if action == "delete":
+        for download in downloads:
+            await session.delete(download)
+    else:
+        values = {
+            "publish": {"is_active": True},
+            "unpublish": {"is_active": False},
+            "feature": {"is_featured": True},
+            "unfeature": {"is_featured": False},
+        }.get(action)
+        if values is None:
+            raise ValueError("Geçersiz toplu işlem.")
+        await session.execute(update(Download).where(Download.id.in_(ids)).values(**values))
+    labels = {"delete": "silindi", "publish": "yayınlandı", "unpublish": "pasife alındı", "feature": "öne çıkarıldı", "unfeature": "öne çıkarma kaldırıldı"}
+    add_event(session, "bulk", "downloads", f"{len(downloads)} içerik {labels[action]}", changes={"islem": [None, action], "adet": [None, len(downloads)]})
+    await session.commit()
+    return len(downloads)
 
 
 async def increment_download_count(

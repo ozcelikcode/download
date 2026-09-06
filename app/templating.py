@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 from fastapi.templating import Jinja2Templates
 
-from app.branding import resolve_icon_color
+from app.branding import resolve_accent_theme, resolve_icon_color
 from app.config import settings
 from app.models import FileType, IconType, SiteSettings
 
@@ -22,6 +22,11 @@ from app.security import csrf_token
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals.update({
+    "theme_color": "blue", "theme_accent_light": "#2563eb", "theme_accent_dark": "#60a5fa",
+    "theme_surface_light": "#eff6ff", "theme_surface_dark": "#172554",
+    "theme_border_light": "#bfdbfe", "theme_border_dark": "#1d4ed8",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +199,14 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     light, dark = resolve_icon_color(site_settings.site_icon_color)
     templates.env.globals["site_icon_color_light"] = light
     templates.env.globals["site_icon_color_dark"] = dark
+    accent_light, accent_dark, surface_light, surface_dark, border_light, border_dark = resolve_accent_theme(site_settings.theme_color)
+    templates.env.globals["theme_color"] = site_settings.theme_color
+    templates.env.globals["theme_accent_light"] = accent_light
+    templates.env.globals["theme_accent_dark"] = accent_dark
+    templates.env.globals["theme_surface_light"] = surface_light
+    templates.env.globals["theme_surface_dark"] = surface_dark
+    templates.env.globals["theme_border_light"] = border_light
+    templates.env.globals["theme_border_dark"] = border_dark
 
     templates.env.globals["admin_icon"] = site_settings.admin_icon
     admin_light, admin_dark = resolve_icon_color(site_settings.admin_icon_color)

@@ -48,7 +48,7 @@
     </div>
   </div>
 
-  {# Özel silme onay kutusu — tarayıcı confirm() kullanılmaz #}
+  {# Özel silme onay penceresi #}
   <div id="admin-delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-sm p-5">
       <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1.5">
@@ -406,7 +406,9 @@
         })
         .catch(() => {
           confirmBtn.disabled = false;
-          alert('İçerik silinemedi.');
+          const message = modal.querySelector('p');
+          message.textContent = 'İçerik silinemedi. Lütfen tekrar deneyin.';
+          message.classList.add('text-red-600', 'dark:text-red-400');
         });
     });
   })();

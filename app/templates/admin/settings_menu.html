@@ -474,7 +474,7 @@
 
     saveBtn.addEventListener('click', function () {
       if (!labelField.value.trim() || !urlField.value.trim()) {
-        alert('Etiket ve bağlantı zorunludur.');
+        window.showAdminNotice('Etiket ve bağlantı zorunludur.');
         return;
       }
       const fd = new FormData();
@@ -491,15 +491,16 @@
 
       csrfFetch(endpoint, { method: 'POST', body: fd })
         .then(function (r) { if (!r.ok) throw new Error(); window.location.reload(); })
-        .catch(function () { alert('Kaydedilemedi.'); });
+        .catch(function () { window.showAdminNotice('Kaydedilemedi.'); });
     });
 
     deleteBtn.addEventListener('click', function () {
       if (!currentItemId) return;
-      if (!confirm('Bu menü öğesi silinecek. Onaylıyor musunuz?')) return;
-      csrfFetch('/admin/settings/menu/' + currentItemId + '/delete', { method: 'POST' })
-        .then(function (r) { if (!r.ok) throw new Error(); window.location.reload(); })
-        .catch(function () { alert('Silinemedi.'); });
+      window.showAdminConfirm('Bu menü öğesi kalıcı olarak silinecek. Devam edilsin mi?', function () {
+        csrfFetch('/admin/settings/menu/' + currentItemId + '/delete', { method: 'POST' })
+          .then(function (r) { if (!r.ok) throw new Error(); window.location.reload(); })
+          .catch(function () { window.showAdminNotice('Silinemedi.'); });
+      });
     });
   })();
 </script>

@@ -40,7 +40,7 @@ def isolated_branding_globals():
     process-genelinde mutable bir durumdur. Bir test bunu değiştirirse (ör.
     /admin/settings/branding), diğer testlere sızmasın diye önceki/sonraki
     değeri yedekleyip geri yükler."""
-    keys = ["site_name", "site_icon", "site_icon_color_light", "site_icon_color_dark"]
+    keys = ["site_name", "site_icon", "site_icon_color_light", "site_icon_color_dark", "theme_color", "theme_accent_light", "theme_accent_dark", "theme_surface_light", "theme_surface_dark", "theme_border_light", "theme_border_dark"]
     snapshot = {k: templates.env.globals.get(k) for k in keys}
     yield
     templates.env.globals.update(snapshot)

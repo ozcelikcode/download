@@ -17,6 +17,50 @@ summary::-webkit-details-marker { display: none; }
 .site-icon-color { color: var(--site-icon-light, #2563eb); }
 .dark .site-icon-color { color: var(--site-icon-dark, #60a5fa); }
 
+/* Merkezi renk teması. Şablonlar yalnızca değişkenleri verir; ortak bileşenler
+   ve Tailwind'in mevcut mavi vurgu yardımcıları aynı kaynaktan renk alır. */
+body { --theme-accent: var(--accent, #2563eb); --theme-surface: var(--accent-surface, #eff6ff); --theme-border: var(--accent-border, #bfdbfe); }
+.dark body { --theme-accent: var(--accent-dark, #60a5fa); --theme-surface: var(--accent-surface-dark, #172554); --theme-border: var(--accent-border-dark, #1d4ed8); }
+/* Sayfa zemini de vurgu rengiyle birlikte değişir; kartlar okunabilirlik için
+   nötr kalır. Böylece renk tüm yüzeyi taşımadan arayüzü birleştirir. */
+body { background-color: #f8fafc !important; }
+.dark body { background-color: #0f172a !important; }
+@supports (background: color-mix(in srgb, #fff, #000)) {
+  body { background-color: color-mix(in srgb, var(--theme-surface) 38%, #f8fafc) !important; }
+  .dark body { background-color: color-mix(in srgb, var(--theme-surface) 42%, #020617) !important; }
+}
+.site-icon-color { color: var(--theme-accent) !important; }
+.btn-primary, .btn-download { background: var(--theme-accent) !important; }
+.btn-primary:hover, .btn-download:hover { filter: brightness(.9); }
+.download-card:hover { border-color: var(--theme-border); box-shadow: 0 1px 6px color-mix(in srgb, var(--theme-accent) 15%, transparent); }
+.download-card.is-featured { border-left-color: var(--theme-accent); }
+.category-badge { background: var(--theme-surface); color: var(--theme-accent); }
+.category-badge:hover { filter: brightness(.97); }
+.tag-pill:hover, a:hover .tag-pill { color: var(--theme-accent); }
+.hero-section { background: linear-gradient(135deg, #f8fafc 0%, var(--theme-surface) 100%); }
+.hero-search-input { border-color: var(--theme-border); }
+.hero-search-input:focus, .form-input:focus { border-color: var(--theme-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 12%, transparent); }
+.dark .hero-section { background: linear-gradient(135deg, #0f172a 0%, var(--theme-surface) 100%); border-color: var(--theme-border); }
+.dark .hero-search-input { border-color: var(--theme-border); }
+.admin-checkbox:hover, .admin-checkbox:checked { border-color: var(--theme-accent); }
+.admin-checkbox:checked { background-color: var(--theme-accent); }
+
+/* Mevcut işaretleme sınıflarını tema değişkenine bağlar. Hata/uyarı renkleri
+   (kırmızı, sarı ve yeşil) anlamını korur; yalnızca ana mavi vurgu değişir. */
+[class~="text-blue-400"], [class~="text-blue-500"], [class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"],
+.dark [class~="dark:text-blue-400"], .dark [class~="dark:text-blue-500"], .dark [class~="dark:text-blue-600"] { color: var(--theme-accent) !important; }
+[class~="hover:text-blue-400"]:hover, [class~="hover:text-blue-500"]:hover, [class~="hover:text-blue-600"]:hover, [class~="hover:text-blue-700"]:hover,
+.dark [class~="dark:hover:text-blue-300"]:hover, .dark [class~="dark:hover:text-blue-400"]:hover { color: var(--theme-accent) !important; }
+[class~="bg-blue-50"], [class~="bg-blue-100"], [class~="bg-blue-500/10"], [class~="bg-blue-500/5"],
+.dark [class~="dark:bg-blue-500/10"], .dark [class~="dark:bg-blue-500/5"], .dark [class~="dark:bg-blue-500/20"] { background-color: var(--theme-surface) !important; }
+[class~="bg-blue-600"], [class~="bg-blue-500"], .dark [class~="dark:bg-blue-400"], .dark [class~="dark:bg-blue-500"] { background-color: var(--theme-accent) !important; }
+[class~="hover:bg-blue-50"]:hover, [class~="hover:bg-blue-100"]:hover, .dark [class~="dark:hover:bg-blue-500/10"]:hover, .dark [class~="dark:hover:bg-blue-500/5"]:hover { background-color: var(--theme-surface) !important; }
+[class~="border-blue-100"], [class~="border-blue-200"], [class~="border-blue-300"], [class~="border-blue-400"],
+.dark [class~="dark:border-blue-500"], .dark [class~="dark:border-blue-500/20"], .dark [class~="dark:border-blue-500/40"] { border-color: var(--theme-border) !important; }
+[class~="hover:border-blue-200"]:hover, [class~="hover:border-blue-300"]:hover, .dark [class~="dark:hover:border-blue-500/40"]:hover, .dark [class~="dark:hover:border-blue-500/50"]:hover { border-color: var(--theme-border) !important; }
+[class~="accent-blue-600"] { accent-color: var(--theme-accent); }
+.dark body[data-theme-color="amoled"] { background-color: #000 !important; background-image: none; }
+
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -289,6 +333,25 @@ body {
   color: inherit;
 }
 .form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.08); }
+
+/* Yönetim listelerindeki seçim kutuları: tarayıcı varsayılanı yerine site görünümü. */
+.admin-checkbox {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  border: 1px solid #94a3b8;
+  border-radius: 2px;
+  background: #fff center / 0.72rem no-repeat;
+  transition: background-color .15s, border-color .15s;
+}
+.admin-checkbox:hover { border-color: #2563eb; }
+.admin-checkbox:focus-visible { outline: 2px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+.admin-checkbox:checked { border-color: #2563eb; background-color: #2563eb; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m3 8 3 3 7-7'/%3E%3C/svg%3E"); }
+.admin-checkbox:disabled { cursor: not-allowed; opacity: .45; }
+.dark .admin-checkbox { border-color: #475569; background-color: #0f172a; }
+.dark .admin-checkbox:checked { border-color: #3b82f6; background-color: #2563eb; }
 .form-label { display: block; font-size: 0.8125rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
 .form-hint  { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
 .dark .form-input { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }

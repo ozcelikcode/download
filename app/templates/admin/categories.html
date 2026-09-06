@@ -1,154 +1,23 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Kategoriler{% endblock %}
-
 {% block content %}
-
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Kategoriler</h1>
-  <span class="text-xs text-slate-400 dark:text-slate-500">{{ categories | length }} kategori</span>
-</div>
-
+<div class="flex items-center justify-between mb-6"><h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Kategoriler</h1><span class="text-xs text-slate-400 dark:text-slate-500">{{ categories | length }} kategori</span></div>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-  <!-- Sol: Ekle formu -->
-  <div class="lg:col-span-1">
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 sticky top-20 transition-colors">
-      <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
-        <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-        Yeni Kategori
-      </h2>
-
-      {% if error %}
-      <div class="flex items-center gap-2 px-3 py-2 mb-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-sm">
-        <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-500 dark:text-red-400 shrink-0"></i>
-        <p class="text-xs text-red-700 dark:text-red-400">{{ error }}</p>
-      </div>
-      {% endif %}
-
-      <form method="post" action="/admin/categories" class="space-y-3">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-        <div>
-          <label for="cat-name" class="form-label">Ad <span class="text-red-500">*</span></label>
-          <input id="cat-name" name="name" type="text" required
-            placeholder="Örn: Geliştirici Araçları"
-            class="form-input">
-        </div>
-        <div>
-          <label for="cat-desc" class="form-label">Açıklama</label>
-          <input id="cat-desc" name="description" type="text"
-            placeholder="Kısa açıklama (opsiyonel)"
-            class="form-input">
-        </div>
-        <button type="submit" class="btn-primary w-full justify-center">
-          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-          Ekle
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Sağ: Kategori listesi -->
-  <div class="lg:col-span-2">
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
-      <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Mevcut Kategoriler</h2>
-      </div>
-
-      {% if categories %}
-      <ul class="divide-y divide-slate-50 dark:divide-slate-800">
-        {% for c in categories %}
-        <li class="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
-
-          <!-- Normal görünüm -->
-          <div id="cat-view-{{ c.id }}" class="flex items-center gap-3">
-
-            <div class="w-8 h-8 bg-blue-50 dark:bg-blue-500/10 rounded-sm flex items-center justify-center shrink-0">
-              <i data-lucide="folder" class="w-4 h-4 text-blue-500 dark:text-blue-400"></i>
-            </div>
-
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ c.name }}</p>
-              <p class="text-xs text-slate-400 dark:text-slate-500">
-                <span class="font-mono">{{ c.slug }}</span>
-                {% set cnt = category_counts.get(c.id, 0) %}
-                {% if cnt %} · {{ cnt }} dosya{% endif %}
-                {% if c.description %} · {{ c.description }}{% endif %}
-              </p>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" onclick="toggleCatEdit({{ c.id }})"
-                class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
-                       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <i data-lucide="pencil" class="w-3 h-3"></i>
-                Düzenle
-              </button>
-              <form method="post" action="/admin/categories/{{ c.id }}/delete" class="inline">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-                <button type="submit"
-                  onclick="return confirm('{{ c.name }} silinecek. Onaylıyor musunuz?')"
-                  class="btn-danger py-1.5 px-2.5">
-                  <i data-lucide="trash-2" class="w-3 h-3"></i>
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <!-- Düzenleme formu (gizli) -->
-          <form id="cat-edit-{{ c.id }}" method="post"
-            action="/admin/categories/{{ c.id }}/edit"
-            class="hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label class="form-label text-xs">Ad</label>
-                <input name="name" type="text" required value="{{ c.name }}" class="form-input text-sm">
-              </div>
-              <div>
-                <label class="form-label text-xs">Açıklama</label>
-                <input name="description" type="text" value="{{ c.description or '' }}"
-                  class="form-input text-sm" placeholder="Kısa açıklama">
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <button type="submit" class="btn-primary py-1.5 px-3 text-xs">
-                <i data-lucide="save" class="w-3 h-3"></i> Kaydet
-              </button>
-              <button type="button" onclick="toggleCatEdit({{ c.id }})"
-                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
-                       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                <i data-lucide="x" class="w-3 h-3"></i> İptal
-              </button>
-            </div>
-          </form>
-
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <div class="py-10 text-center">
-        <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
-        <p class="text-sm text-slate-400 dark:text-slate-500">Henüz kategori yok.</p>
-      </div>
-      {% endif %}
-    </div>
-  </div>
+  <div class="lg:col-span-1"><div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 sticky top-20"><h2 class="text-sm font-semibold mb-4">Yeni Kategori</h2><form method="post" action="/admin/categories" class="space-y-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><div><label class="form-label">Ad</label><input name="name" required class="form-input"></div><div><label class="form-label">Açıklama</label><input name="description" class="form-input"></div><button class="btn-primary w-full justify-center"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Ekle</button></form></div></div>
+  <div class="lg:col-span-2"><div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
+    <form id="category-bulk-form" method="post" action="/admin/categories/bulk-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>
+    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between"><h2 class="text-sm font-semibold">Mevcut Kategoriler</h2><button type="button" id="category-bulk-delete" class="hidden btn-danger py-1 px-2 text-xs">Seçilenleri aktar ve sil</button></div>
+    {% if categories %}<ul class="divide-y divide-slate-50 dark:divide-slate-800">{% for c in categories %}<li class="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 group">
+      <div id="cat-view-{{ c.id }}" class="flex items-center gap-3"><input type="checkbox" class="admin-checkbox category-select" name="category_ids" value="{{ c.id }}" form="category-bulk-form" {% if c.is_required %}disabled{% endif %} aria-label="{{ c.name }} seç"><div class="w-8 h-8 bg-blue-50 dark:bg-blue-500/10 rounded-sm flex items-center justify-center shrink-0"><i data-lucide="folder" class="w-4 h-4 text-blue-500"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ c.name }} {% if c.is_required %}<span class="text-xs text-blue-600 dark:text-blue-400">Zorunlu</span>{% endif %}</p><p class="text-xs text-slate-400"><span class="font-mono">{{ c.slug }}</span>{% set cnt = category_counts.get(c.id, 0) %}{% if cnt %} · {{ cnt }} dosya{% endif %}{% if c.description %} · {{ c.description }}{% endif %}</p></div><div class="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100"><button type="button" onclick="toggleCatEdit({{ c.id }})" class="btn-secondary py-1 px-2 text-xs">Düzenle</button>{% if not c.is_required %}<button type="button" onclick="openCategoryDelete([{{ c.id }}], '{{ c.name|e }}')" class="btn-danger py-1 px-2"><i data-lucide="trash-2" class="w-3 h-3"></i></button>{% endif %}</div></div>
+      <form id="cat-edit-{{ c.id }}" method="post" action="/admin/categories/{{ c.id }}/edit" class="hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><input name="name" required value="{{ c.name }}" class="form-input text-sm"><input name="description" value="{{ c.description or '' }}" class="form-input text-sm"></div><div class="flex gap-2"><button class="btn-primary py-1 px-2 text-xs">Kaydet</button><button type="button" onclick="toggleCatEdit({{ c.id }})" class="btn-secondary py-1 px-2 text-xs">İptal</button></div><p class="form-hint">Ad değişince kategori adresi ve bu kategoriye bağlı menü bağlantıları güncellenir.</p></form>
+    </li>{% endfor %}</ul>{% endif %}
+  </div></div>
 </div>
-
+<div id="category-delete-modal" class="hidden fixed inset-0 z-50 bg-slate-950/50 p-4 flex items-center justify-center"><div class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-sm p-5"><h2 class="text-base font-semibold">Kategorileri sil</h2><p id="category-delete-message" class="text-sm text-slate-500 mt-2">İçerikler silinmez; seçtiğiniz kategoriye aktarılır.</p><form id="category-delete-form" method="post" class="mt-4 space-y-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><div id="category-delete-ids"></div><label class="block"><span class="form-label">İçerikleri aktaracağınız kategori</span><select id="category-transfer-target" name="target_category_id" required class="form-input">{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></label><div class="flex justify-end gap-2"><button type="button" onclick="closeCategoryDelete()" class="btn-secondary py-1.5 px-3 text-xs">İptal</button><button class="btn-danger py-1.5 px-3 text-xs">Aktar ve sil</button></div></form></div></div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-function toggleCatEdit(id) {
-  var view = document.getElementById('cat-view-' + id);
-  var form = document.getElementById('cat-edit-' + id);
-  var vHidden = view.classList.contains('hidden');
-  view.classList.toggle('hidden');
-  form.classList.toggle('hidden');
-  if (!vHidden) {
-    var input = form.querySelector('input[name="name"]');
-    if (input) { input.focus(); }
-  }
-}
-</script>
-{% endblock %}
+{% block scripts %}<script>
+function toggleCatEdit(id){document.getElementById('cat-view-'+id).classList.toggle('hidden');document.getElementById('cat-edit-'+id).classList.toggle('hidden');}
+function openCategoryDelete(ids,label){var form=document.getElementById('category-delete-form'), holder=document.getElementById('category-delete-ids'), target=document.getElementById('category-transfer-target');form.action=ids.length===1?'/admin/categories/'+ids[0]+'/delete':'/admin/categories/bulk-delete';holder.innerHTML=ids.map(function(id){return '<input type="hidden" name="category_ids" value="'+id+'">';}).join('');Array.prototype.forEach.call(target.options,function(option){option.disabled=ids.indexOf(Number(option.value))>-1;});target.value=Array.prototype.find.call(target.options,function(option){return !option.disabled;}).value;document.getElementById('category-delete-message').textContent=(label||ids.length+' kategori')+' silinecek. İçerikler seçtiğiniz kategoriye aktarılacak.';document.getElementById('category-delete-modal').classList.remove('hidden');}
+function closeCategoryDelete(){document.getElementById('category-delete-modal').classList.add('hidden');}
+(function(){var boxes=document.querySelectorAll('.category-select'),button=document.getElementById('category-bulk-delete');boxes.forEach(function(box){box.addEventListener('change',function(){button.classList.toggle('hidden',!Array.prototype.some.call(boxes,function(item){return item.checked;}));});});button.addEventListener('click',function(){var ids=Array.prototype.filter.call(boxes,function(box){return box.checked;}).map(function(box){return Number(box.value);});openCategoryDelete(ids,ids.length+' kategori');});})();
+</script>{% endblock %}

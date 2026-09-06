@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import crud
+from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.dependencies import refresh_session_max_age
@@ -105,7 +106,17 @@ async def not_found_handler(request: Request, exc):
 
 @app.exception_handler(500)
 async def server_error_handler(request: Request, exc):
-    logger.error("500 hatası: %s", exc)
+    logger.exception("500 hatası: %s", exc)
+    try:
+        async with AsyncSessionLocal() as session:
+            add_event(
+                session, "error", "request", f"{request.method} {request.url.path} → 500",
+                changes={"durum": [None, 500], "hata_turu": [None, type(exc).__name__]},
+                actor="system", level="error",
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("500 hata kaydı yazılamadı")
     return templates.TemplateResponse(
         request=request, name="errors/500.html",
         context={

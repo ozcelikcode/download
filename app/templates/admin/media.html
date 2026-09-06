@@ -753,7 +753,7 @@
           await uploadOne(endpoint, file, 'Yükleniyor (' + (i + 1) + '/' + files.length + '): ' + file.name);
         } catch (e) {
           hideUploadProgress();
-          alert(file.name + ': ' + (e.message || 'yüklenemedi.'));
+          window.showAdminNotice(file.name + ': ' + (e.message || 'yüklenemedi.'));
           return false;
         }
       }
@@ -859,7 +859,7 @@
       const newName = cropNameInput.value.trim();
       renameMedia(cropTargetPath, newName)
         .then(function () { updateCardNamesInPlace(cropTargetPath, newName || cropTargetPath.split('/').pop()); })
-        .catch(function () { alert('Ad kaydedilemedi.'); });
+        .catch(function () { window.showAdminNotice('Ad kaydedilemedi.'); });
     });
 
     lockRatio.addEventListener('change', function () {
@@ -901,7 +901,7 @@
     cropSave.addEventListener('click', function () {
       if (!cropper || !cropTargetPath) return;
       const canvas = cropper.getCroppedCanvas();
-      if (!canvas) { alert('Görsel işlenemedi.'); return; }
+      if (!canvas) { window.showAdminNotice('Görsel işlenemedi.'); return; }
       canvas.toBlob(function (blob) {
         if (!blob) return;
         const file = new File([blob], 'cropped.png', { type: 'image/png' });
@@ -914,7 +914,7 @@
           })
           .catch(function (e) {
             hideUploadProgress();
-            alert(e.message || 'Kaydedilemedi.');
+            window.showAdminNotice(e.message || 'Kaydedilemedi.');
           });
       }, 'image/png');
     });
@@ -934,7 +934,7 @@
         })
         .catch(function (e) {
           hideUploadProgress();
-          alert(e.message || 'İşlem başarısız oldu.');
+          window.showAdminNotice(e.message || 'İşlem başarısız oldu.');
         });
     }
 
@@ -984,27 +984,28 @@
         })
         .catch(function () {
           hideUploadProgress();
-          alert('Kaydedilemedi.');
+          window.showAdminNotice('Kaydedilemedi.');
         });
     });
 
     // ── Silme ────────────────────────────────────────────────
     function handleDelete(path, kind) {
-      if (!confirm('Bu öğe silinecek. Onaylıyor musunuz?')) return;
-      const endpoint = kind === 'image' ? '/admin/upload/icon-image-delete' : '/admin/media/delete-file';
-      const fd = new FormData();
-      fd.append('path', path);
-      csrfFetch(endpoint, { method: 'POST', body: fd })
-        .then(async function (response) {
-          if (!response.ok) {
-            const data = await response.json();
-            const detail = data.detail;
-            const titles = detail.downloads ? detail.downloads.map(function (d) { return d.title; }).join('\n') : '';
-            throw new Error((detail.message || detail || 'Silinemedi.') + (titles ? '\n\n' + titles : ''));
-          }
-          window.__reloadMediaTab(kind);
-        })
-        .catch(function (error) { alert(error.message || 'Silinemedi.'); });
+      window.showAdminConfirm('Bu öğe kalıcı olarak silinecek. Devam edilsin mi?', function () {
+        const endpoint = kind === 'image' ? '/admin/upload/icon-image-delete' : '/admin/media/delete-file';
+        const fd = new FormData();
+        fd.append('path', path);
+        csrfFetch(endpoint, { method: 'POST', body: fd })
+          .then(async function (response) {
+            if (!response.ok) {
+              const data = await response.json();
+              const detail = data.detail;
+              const titles = detail.downloads ? detail.downloads.map(function (d) { return d.title; }).join('\n') : '';
+              throw new Error((detail.message || detail || 'Silinemedi.') + (titles ? '\n\n' + titles : ''));
+            }
+            window.__reloadMediaTab(kind);
+          })
+          .catch(function (error) { window.showAdminNotice(error.message || 'Silinemedi.'); });
+      });
     }
 
     // ── Eylem butonları için tek bir delegasyon dinleyicisi ─────

@@ -21,7 +21,7 @@
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   <script src="/static/js/csrf.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
+<body data-theme-color="{{ theme_color }}" class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen" style="--accent: {{ theme_accent_light }}; --accent-dark: {{ theme_accent_dark }}; --accent-surface: {{ theme_surface_light }}; --accent-surface-dark: {{ theme_surface_dark }}; --accent-border: {{ theme_border_light }}; --accent-border-dark: {{ theme_border_dark }};">
 
 <!-- ================================================================
      ADMIN HEADER
@@ -205,9 +205,60 @@
   </main>
 </div>
 
+<div id="admin-confirm-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title">
+  <div class="w-full max-w-sm rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+    <div class="flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i><h2 id="admin-confirm-title" class="text-sm font-semibold">İşlemi onayla</h2></div>
+    <p id="admin-confirm-message" class="mt-3 text-sm text-slate-500 dark:text-slate-400"></p>
+    <div class="mt-5 flex justify-end gap-2"><button type="button" id="admin-confirm-cancel" class="btn-secondary py-1.5 px-3 text-xs">Vazgeç</button><button type="button" id="admin-confirm-accept" class="btn-danger py-1.5 px-3 text-xs"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Devam et</button></div>
+  </div>
+</div>
+<div id="admin-notice-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-slate-950/50 p-4" role="alertdialog" aria-modal="true" aria-labelledby="admin-notice-title">
+  <div class="w-full max-w-sm rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900"><div class="flex items-center gap-2"><i data-lucide="circle-alert" class="w-4 h-4 text-amber-500"></i><h2 id="admin-notice-title" class="text-sm font-semibold">Bilgi</h2></div><p id="admin-notice-message" class="mt-3 whitespace-pre-line text-sm text-slate-500 dark:text-slate-400"></p><div class="mt-5 flex justify-end"><button type="button" id="admin-notice-close" class="btn-primary py-1.5 px-3 text-xs">Tamam</button></div></div>
+</div>
+
 <!-- Scripts -->
 <script>
   lucide.createIcons();
+
+  (function () {
+    var modal = document.getElementById('admin-confirm-modal');
+    var message = document.getElementById('admin-confirm-message');
+    var accept = document.getElementById('admin-confirm-accept');
+    var cancel = document.getElementById('admin-confirm-cancel');
+    var onAccept = null;
+    window.showAdminConfirm = function (text, callback) {
+      message.textContent = text;
+      onAccept = callback;
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      accept.focus();
+    };
+    function close() { modal.classList.add('hidden'); modal.classList.remove('flex'); onAccept = null; }
+    cancel.addEventListener('click', close);
+    modal.addEventListener('click', function (event) { if (event.target === modal) close(); });
+    document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
+    accept.addEventListener('click', function () { var callback = onAccept; close(); if (callback) callback(); });
+    document.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-confirm-message]');
+      if (!button) return;
+      event.preventDefault();
+      window.showAdminConfirm(button.dataset.confirmMessage, function () {
+        var form = button.form || (button.closest && button.closest('form'));
+        if (!form) return;
+        if (button.name) { var input = document.createElement('input'); input.type = 'hidden'; input.name = button.name; input.value = button.value; form.appendChild(input); }
+        form.submit();
+      });
+    });
+  })();
+
+  (function () {
+    var modal = document.getElementById('admin-notice-modal');
+    var message = document.getElementById('admin-notice-message');
+    var close = document.getElementById('admin-notice-close');
+    window.showAdminNotice = function (text) { message.textContent = text; modal.classList.remove('hidden'); modal.classList.add('flex'); close.focus(); };
+    function hide() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    close.addEventListener('click', hide);
+    modal.addEventListener('click', function (event) { if (event.target === modal) hide(); });
+  })();
 
   // Tema seçici: Aydınlık / Karanlık / Sistem
   (function () {

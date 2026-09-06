@@ -128,6 +128,7 @@ class SiteSettingsUpdate(BaseModel):
     site_name: str = Field(..., min_length=1, max_length=100)
     site_icon: str = Field(..., min_length=1, max_length=50)
     site_icon_color: str = Field(..., min_length=1, max_length=20)
+    theme_color: str = Field("blue", min_length=1, max_length=20)
 
 
 # ===========================================================================

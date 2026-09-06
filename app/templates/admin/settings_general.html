@@ -57,15 +57,15 @@
     </div>
 
     <div>
-      <label class="form-label">İkon Rengi</label>
+      <label class="form-label">Renk Teması</label>
+      <p class="form-hint mb-2">Bu seçim bağlantılar, butonlar ve vurgular dahil tüm arayüzün ana rengini değiştirir.</p>
       <div class="flex items-center gap-2 flex-wrap">
-        {% for color, hexes in icon_colors.items() %}
+        {% for color, label, hex in [('blue', 'Mavi', '#2563eb'), ('green', 'Yeşil', '#15803d'), ('red', 'Kırmızı', '#dc2626'), ('yellow', 'Sarı', '#a16207'), ('cream', 'Krem', '#92400e'), ('amoled', 'AMOLED Siyah', '#111827')] %}
         <label class="cursor-pointer" title="{{ color }}">
-          <input type="radio" name="site_icon_color" value="{{ color }}" class="peer sr-only"
-            {% if site_settings.site_icon_color == color %}checked{% endif %}
-            data-color-light="{{ hexes[0] }}" data-color-dark="{{ hexes[1] }}">
+          <input type="radio" name="theme_color" value="{{ color }}" class="peer sr-only"
+            {% if site_settings.theme_color == color %}checked{% endif %}>
           <span class="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
-            style="background: {{ hexes[0] }};"></span>
+            style="background: {{ hex }};"></span>
         </label>
         {% endfor %}
       </div>
@@ -78,13 +78,23 @@
   </form>
 </div>
 
+<div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i> İşlem Geçmişi</h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Başarılı işlemler, değişiklikler ve hatalar bu sınıra kadar saklanır.</p>
+  <form method="post" action="/admin/settings/audit-log-limit" class="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label class="block"><span class="form-label">Maksimum kayıt</span><select name="max_records" class="form-input w-32">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm"><i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet</button>
+    <a href="/admin/audit" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Kayıtları görüntüle</a>
+  </form>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
   (function () {
     const iconInput  = document.getElementById('branding-icon-input');
-    const colorRadios = document.querySelectorAll('input[name="site_icon_color"]');
 
     function setGlyph(name) {
       const wrap = document.getElementById('branding-icon-preview-wrap');
@@ -100,16 +110,6 @@
     });
     iconInput.addEventListener('input', function () { setGlyph(iconInput.value); });
 
-    colorRadios.forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        const wrap = document.getElementById('branding-icon-preview-wrap');
-        const glyph = wrap.querySelector('i');
-        if (glyph) {
-          glyph.style.setProperty('--site-icon-light', radio.dataset.colorLight);
-          glyph.style.setProperty('--site-icon-dark', radio.dataset.colorDark);
-        }
-      });
-    });
   })();
 </script>
 {% endblock %}

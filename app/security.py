@@ -46,7 +46,8 @@ async def reserve_login_attempt(session: AsyncSession, ip: str) -> int:
         await session.rollback()
         if oldest.tzinfo is None:
             oldest = oldest.replace(tzinfo=timezone.utc)
-        retry = max(1, int((oldest + timedelta(seconds=LOGIN_WINDOW_SECONDS) - now).total_seconds()) + 1)
+        # Zaman yuvarlaması pencerenin tam başında 901 üretmesin.
+        retry = min(LOGIN_WINDOW_SECONDS, max(1, int((oldest + timedelta(seconds=LOGIN_WINDOW_SECONDS) - now).total_seconds()) + 1))
         raise HTTPException(status_code=429, detail="Çok fazla giriş denemesi. Daha sonra tekrar deneyin.", headers={"Retry-After": str(retry)})
     attempt = LoginAttempt(ip_address=ip, attempted_at=now)
     session.add(attempt)

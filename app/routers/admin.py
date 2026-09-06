@@ -710,6 +710,8 @@ async def login_post(
 
     if username != effective_username or not verify_admin_password(password, effective_hash):
         logger.warning("Başarısız admin giriş denemesi: username=%r", username)
+        add_event(session, "error", "login", "Başarısız yönetici giriş denemesi", changes={"kullanici": [None, username[:100]]}, actor=username[:100], level="error")
+        await session.commit()
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
             context={"request": request, "error": "Kullanıcı adı veya şifre hatalı."},
@@ -717,6 +719,8 @@ async def login_post(
         )
 
     await clear_successful_attempt(session, attempt_id)
+    add_event(session, "login", "login", "Yönetici oturumu açıldı", actor=username)
+    await session.commit()
     token = create_admin_session_token(username)
     response = _redirect("/admin")
     response.set_cookie(
@@ -795,6 +799,8 @@ async def content_list(
         include_inactive=True,
         pin_featured=False,
     )
+
+
     total_pages = max(1, math.ceil(total / page_size))
     categories = await crud.get_categories(session)
     flash_message = request.session.pop("flash_message", None)
@@ -816,6 +822,23 @@ async def content_list(
             "flash_message": flash_message,
         },
     )
+
+
+@router.post("/downloads/bulk", name="admin_download_bulk")
+async def download_bulk(
+    request: Request,
+    action: str = Form(...),
+    download_ids: List[int] = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        count = await crud.bulk_update_downloads(session, download_ids, action)
+    except ValueError as exc:
+        request.session["flash_message"] = str(exc)
+    else:
+        request.session["flash_message"] = f"{count} içerik için toplu işlem tamamlandı."
+    return _redirect(_same_admin_page(request, "/admin/downloads"))
 
 
 # ---------------------------------------------------------------------------
@@ -946,8 +969,8 @@ async def download_new_post(
             status_code=422,
         )
 
-    request.session["flash_message"] = f"\"{download.title}\" başarıyla eklendi."
-    return _redirect(f"/admin/downloads/{download.id}/edit")
+    request.session["flash_message"] = f'“{download.title}” uygulaması eklendi.'
+    return _redirect("/admin/downloads")
 
 
 # ---------------------------------------------------------------------------
@@ -1176,6 +1199,7 @@ async def categories_view(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
+    await crud.ensure_required_category(session)
     categories = await crud.get_categories(session)
     counts = await crud.get_category_download_counts(session)
     flash_message = request.session.pop("flash_message", None)
@@ -1222,13 +1246,39 @@ async def category_edit(
 @router.post("/categories/{category_id}/delete", name="admin_category_delete")
 async def category_delete(
     category_id: int,
+    request: Request,
+    target_category_id: Optional[int] = Form(None),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
     category = await crud.get_category_by_id(session, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Kategori bulunamadı.")
-    await crud.delete_category(session, category)
+    if target_category_id is None:
+        target_category_id = (await crud.ensure_required_category(session)).id
+    try:
+        moved = await crud.transfer_and_delete_categories(session, [category.id], target_category_id)
+    except ValueError as exc:
+        request.session["flash_message"] = str(exc)
+    else:
+        request.session["flash_message"] = f'Kategori silindi; {moved} içerik hedef kategoriye aktarıldı.'
+    return _redirect("/admin/categories")
+
+
+@router.post("/categories/bulk-delete", name="admin_category_bulk_delete")
+async def category_bulk_delete(
+    request: Request,
+    target_category_id: int = Form(...),
+    category_ids: List[int] = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        moved = await crud.transfer_and_delete_categories(session, category_ids, target_category_id)
+    except ValueError as exc:
+        request.session["flash_message"] = str(exc)
+    else:
+        request.session["flash_message"] = f"Kategoriler silindi; {moved} içerik aktarıldı."
     return _redirect("/admin/categories")
 
 
@@ -1289,6 +1339,22 @@ async def tag_delete(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag bulunamadı.")
     await crud.delete_tag(session, tag)
+    return _redirect("/admin/tags")
+
+
+@router.post("/tags/bulk-delete", name="admin_tag_bulk_delete")
+async def tag_bulk_delete(
+    request: Request,
+    tag_ids: List[int] = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        count = await crud.bulk_delete_tags(session, tag_ids)
+    except ValueError as exc:
+        request.session["flash_message"] = str(exc)
+    else:
+        request.session["flash_message"] = f"{count} etiket silindi."
     return _redirect("/admin/tags")
 
 
@@ -1394,14 +1460,33 @@ async def settings_branding_update(
     _admin: str = Depends(require_admin),
     site_name: str = Form(...),
     site_icon: str = Form(...),
-    site_icon_color: str = Form(...),
+    theme_color: Optional[str] = Form(None),
+    site_icon_color: Optional[str] = Form(None),
 ):
+    selected_theme = theme_color if theme_color in {"blue", "green", "red", "yellow", "cream", "amoled"} else "blue"
     data = SiteSettingsUpdate(
-        site_name=site_name, site_icon=site_icon, site_icon_color=site_icon_color
+        site_name=site_name, site_icon=site_icon,
+        site_icon_color=site_icon_color or selected_theme, theme_color=selected_theme,
     )
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = "Site kimliği güncellendi."
+    return _redirect("/admin/settings/general")
+
+
+@router.post("/settings/audit-log-limit", name="admin_settings_audit_log_limit")
+async def settings_audit_log_limit_update(
+    request: Request,
+    max_records: int = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        await crud.update_audit_log_max_records(session, max_records)
+    except ValueError as exc:
+        request.session["flash_message"] = str(exc)
+    else:
+        request.session["flash_message"] = "İşlem geçmişi kayıt sınırı güncellendi."
     return _redirect("/admin/settings/general")
 
 

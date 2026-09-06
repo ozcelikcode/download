@@ -920,17 +920,17 @@
         if (!file) return;
         uploadFile(file, 'Görsel yükleniyor…')
           .then(showPreview)
-          .catch(function (e) { alert(e.message || 'Görsel yüklenemedi.'); });
+          .catch(function (e) { window.showAdminNotice(e.message || 'Görsel yüklenemedi.'); });
       });
     }
 
     if (urlUploadBtn) {
       urlUploadBtn.addEventListener('click', function () {
         const url = (urlInput.value || '').trim();
-        if (!url) { alert('Lütfen bir görsel URL girin.'); return; }
+        if (!url) { window.showAdminNotice('Lütfen bir görsel URL girin.'); return; }
         uploadFromUrl(url)
           .then(showPreview)
-          .catch(function (e) { alert(e.message || 'Görsel indirilemedi.'); });
+          .catch(function (e) { window.showAdminNotice(e.message || 'Görsel indirilemedi.'); });
       });
     }
 
@@ -967,7 +967,7 @@
           })
           .catch(function (e) {
             hideProgress();
-            alert(e.message || 'Otomatik ikon oluşturulamadı.');
+            window.showAdminNotice(e.message || 'Otomatik ikon oluşturulamadı.');
           });
       });
     }
@@ -1063,7 +1063,7 @@
       cropSaveBtn.addEventListener('click', function () {
         if (!cropper) return;
         const canvas = cropper.getCroppedCanvas();
-        if (!canvas) { alert('Görsel işlenemedi.'); return; }
+        if (!canvas) { window.showAdminNotice('Görsel işlenemedi.'); return; }
         canvas.toBlob(function (blob) {
           if (!blob) return;
           const oldPath = finalPathInput.value;
@@ -1078,7 +1078,7 @@
                 csrfFetch('/admin/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
               }
             })
-            .catch(function (e) { alert(e.message || 'Kaydedilemedi.'); });
+            .catch(function (e) { window.showAdminNotice(e.message || 'Kaydedilemedi.'); });
         }, 'image/png');
       });
     }
@@ -1115,17 +1115,18 @@
         setEditing(row, false);
       } else if (action === 'save') {
         const newVersion = row.querySelector('.version-history-input').value.trim();
-        if (!newVersion) { alert('Sürüm boş olamaz.'); return; }
+        if (!newVersion) { window.showAdminNotice('Sürüm boş olamaz.'); return; }
         const fd = new FormData();
         fd.append('version', newVersion);
         csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/edit', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
-          .catch(function () { alert('Kaydedilemedi.'); });
+          .catch(function () { window.showAdminNotice('Kaydedilemedi.'); });
       } else if (action === 'delete') {
-        if (!confirm('Bu sürüm geçmişi kaydı silinecek. Onaylıyor musunuz?')) return;
-        csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
-          .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
-          .catch(function () { alert('Silinemedi.'); });
+        window.showAdminConfirm('Bu sürüm geçmişi kaydı kalıcı olarak silinecek. Devam edilsin mi?', function () {
+          csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
+            .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
+            .catch(function () { window.showAdminNotice('Silinemedi.'); });
+        });
       }
     });
   })();

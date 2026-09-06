@@ -88,6 +88,8 @@ class Category(Base):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Sidebar'daki "Kategori Menüsü" sıralaması (admin panelinden sürüklenerek değiştirilir)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
+    # Bir kategori her zaman korunur; adı ve açıklaması düzenlenebilir.
+    is_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -159,6 +161,8 @@ class SiteSettings(Base):
     site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Download Sitesi")
     site_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="download-cloud")
     site_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
+    # Sitenin tüm vurgu bileşenlerinde kullanılan merkezi renk teması.
+    theme_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
     # Sidebar blok sırası, virgülle ayrılmış: "search,categories,tags"
     sidebar_block_order: Mapped[str] = mapped_column(
         String(100), nullable=False, default="search,categories,tags"
@@ -171,6 +175,7 @@ class SiteSettings(Base):
     admin_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="slate")
     # Admin oturumunun dakika cinsinden geçerlilik süresi
     session_max_age_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=480)
+    audit_log_max_records: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
@@ -230,6 +235,7 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     actor: Mapped[str] = mapped_column(String(100), index=True)
     action: Mapped[str] = mapped_column(String(30))
+    level: Mapped[str] = mapped_column(String(20), nullable=False, default="success", index=True)
     entity: Mapped[str] = mapped_column(String(50), index=True)
     entity_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     label: Mapped[str] = mapped_column(String(300))

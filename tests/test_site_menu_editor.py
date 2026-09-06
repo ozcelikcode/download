@@ -35,6 +35,21 @@ async def test_branding_update_requires_admin(client: AsyncClient):
     assert response.headers["location"] == "/admin/login"
 
 
+async def test_theme_color_is_reflected_in_public_and_admin_pages(
+    admin_client: AsyncClient, client: AsyncClient
+):
+    response = await admin_client.post(
+        "/admin/settings/branding",
+        data={"site_name": "Tema", "site_icon": "palette", "theme_color": "green"},
+    )
+    assert response.status_code == 302
+    home = await client.get("/")
+    admin_login = await client.get("/admin/login")
+    assert 'data-theme-color="green"' in home.text
+    assert "--accent: #15803d" in home.text
+    assert 'data-theme-color="green"' in admin_login.text
+
+
 async def test_navbar_and_footer_items_are_independent(
     admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ):

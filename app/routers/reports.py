@@ -79,15 +79,17 @@ async def check_one(download_id: int, session: AsyncSession = Depends(get_db)) -
 
 
 @router.get("/audit", name="admin_audit")
-async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str = "", session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
+async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str = "", level: str = "", session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
     query = select(AuditLog)
     if entity:
         query = query.where(AuditLog.entity == entity)
+    if level in {"success", "error"}:
+        query = query.where(AuditLog.level == level)
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     rows = (await session.scalars(query.order_by(AuditLog.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
     return templates.TemplateResponse(request=request, name="admin/audit.html", context={
         "request": request, "admin_user": admin, "rows": rows,
         "changes": {row.id: json.loads(row.changes) for row in rows},
-        "entities": ENTITY_LABELS, "actions": ACTION_LABELS, "fields": FIELD_LABELS, "entity": entity,
+        "entities": ENTITY_LABELS, "actions": ACTION_LABELS, "fields": FIELD_LABELS, "entity": entity, "level": level,
         "page": page, "total": total, "total_pages": max(1, math.ceil(total/PAGE_SIZE)),
     })
