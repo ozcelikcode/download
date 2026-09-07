@@ -6,7 +6,7 @@
   <meta name="description" content="{% block meta_description %}Güvenli ve ücretsiz yazılımları indirin.{% endblock %}">
   <title>{% block title %}{% if page_title %}{{ page_title }} — {% endif %}{{ site_name }}{% endblock %}</title>
 
-  <!-- Tema — FOUC önleyici (Tailwind'den önce çalışmalı) -->
+  {# Tema — FOUC önleyici (Tailwind'den önce çalışmalı) #}
   <script>
     (function () {
       var stored = localStorage.getItem('theme') || 'system';
@@ -15,12 +15,13 @@
     })();
   </script>
 
-  <!-- Tailwind (önceden derlenmiş statik CSS — make css ile üretilir) -->
+  {# Tailwind (önceden derlenmiş statik CSS — make css ile üretilir) #}
   <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
 
-  <!-- Custom CSS + Lucide -->
+  {# Custom CSS + Lucide #}
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
+  <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
 
   {% block head %}{% endblock %}
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
@@ -28,20 +29,20 @@
 </head>
 <body data-theme-color="{{ theme_color }}" class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col" style="--accent: {{ theme_accent_light }}; --accent-dark: {{ theme_accent_dark }}; --accent-surface: {{ theme_surface_light }}; --accent-surface-dark: {{ theme_surface_dark }}; --accent-border: {{ theme_border_light }}; --accent-border-dark: {{ theme_border_dark }};">
 
-<!-- ================================================================
+{# ================================================================
      HEADER
-     ================================================================ -->
+     ================================================================ #}
 <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 transition-colors">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-5">
 
-    <!-- Logo -->
+    {# Logo #}
     <a href="/" id="site-logo" class="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 shrink-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
       <i data-lucide="{{ site_icon }}" class="w-5 h-5 site-icon-color"
         style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
       <span>{{ site_name }}</span>
     </a>
 
-    <!-- Nav (desktop) — /admin/settings/menu üzerinden yönetilir -->
+    {# Nav (desktop) — /admin/settings/menu üzerinden yönetilir #}
     <nav class="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto">
       {% for item in menu_items | default([]) %}
       <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
@@ -58,7 +59,7 @@
     </nav>
 
     {% if is_admin %}
-    <!-- Admin oturum durumu -->
+    {# Admin oturum durumu #}
     <div class="relative ml-auto md:ml-0 shrink-0" id="admin-menu-wrap">
       <button type="button" id="admin-toggle-btn"
         class="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors">
@@ -81,14 +82,14 @@
     </div>
     {% endif %}
 
-    <!-- Tema seçici: Aydınlık / Karanlık / Sistem -->
+    {# Tema seçici: Aydınlık / Karanlık / Sistem #}
     <div class="relative {% if not is_admin %}ml-auto md:ml-0{% endif %} shrink-0" id="theme-menu-wrap">
       <button type="button" id="theme-toggle-btn"
         class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
         aria-label="Tema seç">
         <span data-theme-icon="light"><i data-lucide="sun" class="w-4.5 h-4.5"></i></span>
         <span data-theme-icon="dark" class="hidden"><i data-lucide="moon" class="w-4.5 h-4.5"></i></span>
-        <span data-theme-icon="system" class="hidden"><i data-lucide="monitor" class="w-4.5 h-4.5"></i></span>
+        <span data-theme-icon="system" class="hidden"><i data-lucide="sun-moon" class="w-4.5 h-4.5"></i></span>
       </button>
       <div id="theme-menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
         <button type="button" data-theme-option="light"
@@ -106,7 +107,7 @@
       </div>
     </div>
 
-    <!-- Mobile menu toggle -->
+    {# Mobile menu toggle #}
     <button id="mobile-menu-btn"
       class="md:hidden p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-sm transition-colors"
       aria-label="Menüyü aç">
@@ -114,7 +115,7 @@
     </button>
   </div>
 
-  <!-- Mobile dropdown menu — /admin/settings/menu üzerinden yönetilir -->
+  {# Mobile dropdown menu — /admin/settings/menu üzerinden yönetilir #}
   <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
     {% for item in menu_items | default([]) %}
     <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
@@ -126,18 +127,18 @@
   </div>
 </header>
 
-<!-- ================================================================
+{# ================================================================
      MAIN
-     ================================================================ -->
+     ================================================================ #}
 <main class="max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex-1">
   <div class="flex gap-8 items-start">
 
-    <!-- ── Left: page content ──────────────────────────────── -->
+    {# ── Left: page content ──────────────────────────────── #}
     <div class="flex-1 min-w-0">
       {% block content %}{% endblock %}
     </div>
 
-    <!-- ── Right: Sidebar ─────────────────────────────────── -->
+    {# ── Right: Sidebar ─────────────────────────────────── #}
     <aside class="w-56 shrink-0 hidden lg:block">
       <div class="sticky top-20 space-y-6">
 
@@ -232,14 +233,14 @@
 
       </div>
     </aside>
-    <!-- ── /Sidebar ─────────────────────────────────────────── -->
+    {# ── /Sidebar ─────────────────────────────────────────── #}
 
   </div>
 </main>
 
-<!-- ================================================================
+{# ================================================================
      FOOTER
-     ================================================================ -->
+     ================================================================ #}
 <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto transition-colors">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap text-xs text-slate-400 dark:text-slate-500">
     <div class="flex items-center gap-1.5">
@@ -247,7 +248,7 @@
         style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
       <span class="font-medium text-slate-500 dark:text-slate-400">{{ site_name }}</span>
     </div>
-    <!-- Footer bağlantıları — /admin/settings/menu üzerinden yönetilir -->
+    {# Footer bağlantıları — /admin/settings/menu üzerinden yönetilir #}
     <div class="flex items-center gap-4 flex-wrap">
       {% for item in footer_menu_items | default([]) %}
       <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
@@ -260,9 +261,9 @@
   </div>
 </footer>
 
-<!-- ================================================================
+{# ================================================================
      SCRIPTS
-     ================================================================ -->
+     ================================================================ #}
 <script>
   lucide.createIcons();
 
@@ -288,58 +289,6 @@
     });
   })();
 
-  // Tema seçici: Aydınlık / Karanlık / Sistem
-  (function () {
-    const menuWrap = document.getElementById('theme-menu-wrap');
-    if (!menuWrap) return;
-    const btn = document.getElementById('theme-toggle-btn');
-    const menu = document.getElementById('theme-menu');
-    const mql = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function isDarkFor(mode) {
-      return mode === 'dark' || (mode === 'system' && mql.matches);
-    }
-
-    function applyTheme(mode, persist) {
-      document.documentElement.classList.toggle('dark', isDarkFor(mode));
-      if (persist) localStorage.setItem('theme', mode);
-
-      btn.querySelectorAll('[data-theme-icon]').forEach((el) => el.classList.add('hidden'));
-      const activeIcon = btn.querySelector('[data-theme-icon="' + mode + '"]');
-      if (activeIcon) activeIcon.classList.remove('hidden');
-
-      document.querySelectorAll('.theme-option-btn').forEach((opt) => {
-        const active = opt.dataset.themeOption === mode;
-        opt.classList.toggle('text-blue-600', active);
-        opt.classList.toggle('dark:text-blue-400', active);
-        opt.classList.toggle('bg-blue-50', active);
-        opt.classList.toggle('dark:bg-blue-500/10', active);
-      });
-    }
-
-    applyTheme(localStorage.getItem('theme') || 'system', false);
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.classList.toggle('hidden');
-    });
-    document.addEventListener('click', (e) => {
-      if (!menuWrap.contains(e.target)) menu.classList.add('hidden');
-    });
-    document.querySelectorAll('.theme-option-btn').forEach((opt) => {
-      opt.addEventListener('click', () => {
-        applyTheme(opt.dataset.themeOption, true);
-        menu.classList.add('hidden');
-      });
-    });
-
-    // Sistem teması değişirse ve seçili mod 'system' ise anında yansıt.
-    mql.addEventListener('change', () => {
-      if ((localStorage.getItem('theme') || 'system') === 'system') {
-        applyTheme('system', false);
-      }
-    });
-  })();
 </script>
 {% block scripts %}{% endblock %}
 </body>

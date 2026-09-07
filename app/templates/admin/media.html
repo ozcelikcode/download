@@ -15,7 +15,7 @@
   </div>
 </div>
 
-<!-- Kopyalama geri bildirimi -->
+{# Kopyalama geri bildirimi #}
 <div id="media-copy-toast" class="fixed top-4 left-4 z-50 hidden">
   <div class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-2.5">
     <i data-lucide="check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"></i>
@@ -23,7 +23,7 @@
   </div>
 </div>
 
-<!-- Yükleme ilerleme çubuğu (Progress Bar) -->
+{# Yükleme ilerleme çubuğu (Progress Bar) #}
 <div id="media-upload-toast" class="fixed top-4 right-4 z-50 hidden">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 w-72">
     <div class="flex items-center justify-between mb-2 gap-2">
@@ -36,7 +36,7 @@
   </div>
 </div>
 
-<!-- Tam boyutlu görsel önizleme (lightbox) -->
+{# Tam boyutlu görsel önizleme (lightbox) #}
 <div id="media-lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 p-6">
   <button type="button" id="media-lightbox-close"
     class="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors" title="Kapat">
@@ -45,7 +45,7 @@
   <img id="media-lightbox-img" src="" alt="" class="max-w-full max-h-full object-contain">
 </div>
 
-<!-- Görsel düzenleme modalı: ad değiştirme + kırpma -->
+{# Görsel düzenleme modalı: ad değiştirme + kırpma #}
 <div id="media-crop-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-lg p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
@@ -53,7 +53,7 @@
       Görseli Düzenle
     </h3>
 
-    <!-- Görsel adı — bağımsız olarak kaydedilir, link asla değişmez -->
+    {# Görsel adı — bağımsız olarak kaydedilir, link asla değişmez #}
     <div class="mb-4">
       <label class="form-label text-xs">Görsel Adı</label>
       <div class="flex items-center gap-1.5">
@@ -101,7 +101,7 @@
   </div>
 </div>
 
-<!-- Dosya düzenleme modalı: ad değiştirme + içerik değiştirme -->
+{# Dosya düzenleme modalı: ad değiştirme + içerik değiştirme #}
 <div id="media-file-edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-md p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
@@ -135,7 +135,7 @@
   </div>
 </div>
 
-<!-- Sekmeler -->
+{# Sekmeler #}
 <div class="flex items-center gap-1 mb-5 border-b border-slate-200 dark:border-slate-800">
   <button type="button" data-tab-btn="images"
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
@@ -187,7 +187,7 @@
    ================================================================ #}
 <div id="tab-panel-images" data-tab-panel {% if active_tab != 'images' %}class="hidden"{% endif %}>
 
-  <!-- Araç çubuğu: arama + sayfa boyutu + yükle + görünüm -->
+  {# Araç çubuğu: arama + sayfa boyutu + yükle + görünüm #}
   <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
     <div class="flex flex-wrap items-center gap-2">
       <input type="hidden" name="tab" value="images">
@@ -245,7 +245,7 @@
     </p>
   </div>
 
-  <!-- Grid -->
+  {# Grid #}
   <div id="images-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for img in images.results %}
     <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700"
@@ -290,7 +290,7 @@
     {% endfor %}
   </div>
 
-  <!-- Liste -->
+  {# Liste #}
   <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for img in images.results %}
     <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
@@ -336,7 +336,7 @@
     {% endfor %}
   </div>
 
-  <!-- Sayfalama -->
+  {# Sayfalama #}
   {% if images.total_pages > 1 %}
   <div class="flex items-center justify-between mt-4 px-1">
     <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ images.page }} / {{ images.total_pages }}</span>
@@ -364,7 +364,7 @@
    ================================================================ #}
 <div id="tab-panel-files" data-tab-panel {% if active_tab != 'files' %}class="hidden"{% endif %}>
 
-  <!-- Araç çubuğu: arama + tür/OS filtresi + sayfa boyutu + yükle + görünüm -->
+  {# Araç çubuğu: arama + tür/OS filtresi + sayfa boyutu + yükle + görünüm #}
   <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
     <div class="flex flex-wrap items-center gap-2">
       <input type="hidden" name="tab" value="files">
@@ -429,7 +429,7 @@
     {{ files.total }} sonuç{% if files.q %} · "{{ files.q }}" için{% endif %} · Sayfa {{ files.page }}/{{ files.total_pages }}
   </p>
 
-  <!-- Grid -->
+  {# Grid #}
   <div id="files-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
     {% for f in files.results %}
     <div class="media-card group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700"
@@ -476,7 +476,7 @@
     {% endfor %}
   </div>
 
-  <!-- Liste -->
+  {# Liste #}
   <div id="files-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for f in files.results %}
     <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ f.url }}" data-media-kind="file" data-display-name="{{ f.display_name }}">
@@ -521,7 +521,7 @@
     {% endfor %}
   </div>
 
-  <!-- Sayfalama -->
+  {# Sayfalama #}
   {% if files.total_pages > 1 %}
   <div class="flex items-center justify-between mt-4 px-1">
     <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ files.page }} / {{ files.total_pages }}</span>
@@ -633,12 +633,23 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1600);
       }
+      function fallback() {
+        const field = document.createElement('textarea');
+        field.value = url;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        const copied = document.execCommand('copy');
+        field.remove();
+        if (copied) done();
+        else if (window.showAdminNotice) window.showAdminNotice('Bağlantı kopyalanamadı. Lütfen tekrar deneyin.');
+      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(done).catch(function () {
-          window.prompt('Bağlantıyı kopyalayın:', url);
-        });
+        navigator.clipboard.writeText(url).then(done).catch(fallback);
       } else {
-        window.prompt('Bağlantıyı kopyalayın:', url);
+        fallback();
       }
     };
   })();

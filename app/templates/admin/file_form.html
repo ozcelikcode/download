@@ -10,9 +10,9 @@
 
 {% block content %}
 
-<!-- ================================================================
+{# ================================================================
      Yükleme ilerleme göstergesi — dinamik, sol üst köşe
-     ================================================================ -->
+     ================================================================ #}
 <div id="upload-progress-toast" class="fixed top-4 right-4 z-50 hidden">
   <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 min-w-[230px]">
     <div class="relative w-9 h-9 shrink-0">
@@ -31,9 +31,9 @@
   </div>
 </div>
 
-<!-- ================================================================
+{# ================================================================
      Görsel kırpma / boyutlandırma modalı
-     ================================================================ -->
+     ================================================================ #}
 <div id="icon-crop-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 dark:bg-slate-950/70 p-4">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-lg p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
@@ -75,7 +75,7 @@
   </div>
 </div>
 
-<!-- Sayfa başlığı -->
+{# Sayfa başlığı #}
 <div class="flex items-center justify-between mb-6">
   <div>
     <div class="breadcrumb mb-1">
@@ -93,7 +93,7 @@
   </a>
 </div>
 
-<!-- Hata mesajı -->
+{# Hata mesajı #}
 {% if error %}
 <div class="flex items-start gap-2 px-3 py-2.5 mb-5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-sm">
   <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5"></i>
@@ -108,10 +108,10 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
-  <!-- ══════════════════════════ SOL SÜTUN ══════════════════════════ -->
+  {# ══════════════════════════ SOL SÜTUN ══════════════════════════ #}
   <div class="lg:col-span-3 space-y-5">
 
-  <!-- ── Temel Bilgiler ──────────────────────────────── -->
+  {# ── Temel Bilgiler ──────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -120,7 +120,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-      <!-- Başlık -->
+      {# Başlık #}
       <div class="sm:col-span-2">
         <label for="f-title" class="form-label">Başlık <span class="text-red-500">*</span></label>
         <input id="f-title" name="title" type="text" required
@@ -129,7 +129,7 @@
           class="form-input">
       </div>
 
-      <!-- Sürüm -->
+      {# Sürüm #}
       <div>
         <label for="f-version" class="form-label">Sürüm</label>
         <input id="f-version" name="version" type="text"
@@ -138,7 +138,7 @@
           class="form-input">
       </div>
 
-      <!-- İkon türü -->
+      {# İkon türü #}
       <div>
         <label for="f-icon-type" class="form-label">İkon Türü</label>
         <select id="f-icon-type" name="icon_type" class="form-input">
@@ -156,7 +156,7 @@
         <p class="form-hint">İndirme listesinde gösterilecek ikonu seçin.</p>
       </div>
 
-      <!-- Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) -->
+      {# Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) #}
       <div id="section-icon-extension" class="sm:col-span-2 space-y-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
         <label for="f-icon-extension" class="form-label text-xs">Dosya Uzantısı</label>
         <div class="flex items-center gap-2">
@@ -171,14 +171,14 @@
         <p class="form-hint">Uzantıya göre otomatik en uygun ikon eşlenir (bilinmeyen uzantılarda genel dosya ikonu kullanılır).</p>
       </div>
 
-      <!-- İkon detayları (Sadece 'Resim' seçildiğinde açılır) -->
+      {# İkon detayları (Sadece 'Resim' seçildiğinde açılır) #}
       <div id="section-icon-image" class="sm:col-span-2 space-y-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
         <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
           <i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
           Uygulama Görseli / Resmi
         </p>
 
-        <!-- Görsel önizleme + Sil / Düzenle -->
+        {# Görsel önizleme + Sil / Düzenle #}
         <div id="icon-preview-wrap"
           class="flex items-center gap-3 {% if not (download and (download.icon_image_path or download.icon_image_url)) %}hidden{% endif %}">
           <img id="icon-preview-img"
@@ -207,11 +207,11 @@
           </div>
         </div>
 
-        <!-- Görsel seçim alanı (dosya veya URL — her ikisi de sisteme yüklenir) -->
+        {# Görsel seçim alanı (dosya veya URL — her ikisi de sisteme yüklenir) #}
         <div id="icon-input-wrap"
           class="space-y-3 {% if download and (download.icon_image_path or download.icon_image_url) %}hidden{% endif %}">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Görsel Dosyası Yükleme -->
+            {# Görsel Dosyası Yükleme #}
             <div>
               <label for="f-icon-image-file" class="form-label text-xs">Görsel Dosyası</label>
               <input id="f-icon-image-file" type="file" accept="image/*"
@@ -219,7 +219,7 @@
               <p class="form-hint text-[10px]">PNG, JPG, SVG, WebP. Seçilince otomatik yüklenir.</p>
             </div>
 
-            <!-- Görsel URL'si -->
+            {# Görsel URL'si #}
             <div>
               <label for="f-icon-image-url" class="form-label text-xs">veya Görsel URL</label>
               <div class="flex gap-1.5">
@@ -233,7 +233,7 @@
           </div>
         </div>
 
-        <!-- Nihai (sisteme yüklenmiş) görsel yolu ve eski davranış için gizli alanlar -->
+        {# Nihai (sisteme yüklenmiş) görsel yolu ve eski davranış için gizli alanlar #}
         <input type="hidden" id="f-icon-image-final-path" name="icon_image_final_path"
           value="{{ download.icon_image_path if download and download.icon_image_path else '' }}">
         <input type="hidden" id="f-icon-image-url-hidden" name="icon_image_url"
@@ -241,7 +241,7 @@
         <input type="hidden" id="f-icon-image-cleared" name="icon_image_cleared" value="">
       </div>
 
-      <!-- Ön Açıklama — ana sayfa kartlarında gösterilen kısa özet -->
+      {# Ön Açıklama — ana sayfa kartlarında gösterilen kısa özet #}
       <div class="sm:col-span-2">
         <label for="f-short-description" class="form-label">Ön Açıklama</label>
         <input id="f-short-description" name="short_description" type="text" maxlength="300"
@@ -251,7 +251,7 @@
         <p class="form-hint">Boş bırakılırsa ana sayfada aşağıdaki açıklamanın kısaltılmış hâli gösterilir.</p>
       </div>
 
-      <!-- Açıklama (WYSIWYG) -->
+      {# Açıklama (WYSIWYG) #}
       <div class="sm:col-span-2">
         <label class="form-label">Açıklama</label>
         <div id="f-description-wrap" class="quill-editor-wrap rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -263,7 +263,7 @@
     </div>
   </div>
 
-  <!-- ── Sınıflandırma ────────────────────────────────── -->
+  {# ── Sınıflandırma ────────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -272,7 +272,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-      <!-- Kategori -->
+      {# Kategori #}
       <div>
         <label for="f-category" class="form-label">Kategori</label>
         <select id="f-category" name="category_id" class="form-input">
@@ -285,7 +285,7 @@
         </select>
       </div>
 
-      <!-- Üst kayıt (sürüm ilişkisi) -->
+      {# Üst kayıt (sürüm ilişkisi) #}
       <div>
         <label for="f-parent" class="form-label">Üst Kayıt (Eski Sürüm İçin)</label>
         <select id="f-parent" name="parent_id" class="form-input">
@@ -301,16 +301,16 @@
         <p class="form-hint">Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.</p>
       </div>
 
-      <!-- Etiketler -->
+      {# Etiketler #}
       <div class="sm:col-span-2">
         <label class="form-label">Etiketler</label>
         {% if tags %}
         <div class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
           {% for t in tags %}
-          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+          <label class="choice-card inline-flex items-center px-2.5 py-1.5 select-none">
             <input type="checkbox" name="tag_ids" value="{{ t.id }}"
               {% if download and t in download.tags %}checked{% endif %}
-              class="accent-blue-600 rounded-sm">
+              class="choice-input">
             <span class="text-sm text-slate-700 dark:text-slate-300">#{{ t.name }}</span>
           </label>
           {% endfor %}
@@ -326,37 +326,37 @@
   </div>
 
   </div>
-  <!-- ══════════════════════════ /SOL SÜTUN ══════════════════════════ -->
+  {# ══════════════════════════ /SOL SÜTUN ══════════════════════════ #}
 
-  <!-- ══════════════════════════ SAĞ SÜTUN ══════════════════════════ -->
+  {# ══════════════════════════ SAĞ SÜTUN ══════════════════════════ #}
   <div class="lg:col-span-2 space-y-5">
 
-  <!-- ── Dosya Kaynağı ───────────────────────────────── -->
+  {# ── Dosya Kaynağı ───────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
       Dosya Kaynağı
     </h2>
 
-    <!-- Tür seçici -->
+    {# Tür seçici #}
     <div class="flex gap-3 mb-4">
       <label id="type-external-label"
-        class="flex-1 flex items-center gap-2.5 p-3 border rounded-sm cursor-pointer transition-colors
+        class="choice-card flex-1 flex items-center gap-2.5 p-3
                {% if not download or download.file_type.value == 'external' %}border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}">
         <input type="radio" name="file_type" value="external" id="type-external"
           {% if not download or download.file_type.value == 'external' %}checked{% endif %}
-          class="text-blue-600 accent-blue-600">
+          class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Dış Bağlantı</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">GitHub, resmi site vb.</p>
         </div>
       </label>
       <label id="type-local-label"
-        class="flex-1 flex items-center gap-2.5 p-3 border rounded-sm cursor-pointer transition-colors
+        class="choice-card flex-1 flex items-center gap-2.5 p-3
                {% if download and download.file_type.value == 'local' %}border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}">
         <input type="radio" name="file_type" value="local" id="type-local"
           {% if download and download.file_type.value == 'local' %}checked{% endif %}
-          class="text-blue-600 accent-blue-600">
+          class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Lokal Dosya</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">Sunucuya yükle</p>
@@ -364,7 +364,7 @@
       </label>
     </div>
 
-    <!-- Dış URL bölümü -->
+    {# Dış URL bölümü #}
     <div id="section-external" class="space-y-3 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
       <div>
         <label for="f-external-url" class="form-label">Dış URL</label>
@@ -381,16 +381,16 @@
         </p>
       </div>
 
-      <!-- Kaynak türü: resmî site / üçüncü parti -->
+      {# Kaynak türü: resmî site / üçüncü parti #}
       <div>
         <label class="form-label">Kaynak Türü</label>
         <div class="flex gap-3">
-          <label class="flex-1 flex items-center gap-2.5 p-2.5 border rounded-sm cursor-pointer transition-colors
+          <label class="choice-card flex-1 flex items-center gap-2.5 p-2.5
                  {% if not download or download.is_official_source %}border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}"
                  data-source-type-label="true">
-            <input type="radio" name="is_official_source" value="true"
+            <input type="radio" name="is_official_source" value="true" required
               {% if not download or download.is_official_source %}checked{% endif %}
-              class="accent-green-600">
+              class="choice-input">
             <div>
               <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <i data-lucide="badge-check" class="w-3.5 h-3.5 text-green-600 dark:text-green-400"></i>
@@ -399,12 +399,12 @@
               <p class="text-xs text-slate-400 dark:text-slate-500">Yazılımın kendi resmî kaynağı</p>
             </div>
           </label>
-          <label class="flex-1 flex items-center gap-2.5 p-2.5 border rounded-sm cursor-pointer transition-colors
+          <label class="choice-card flex-1 flex items-center gap-2.5 p-2.5
                  {% if download and not download.is_official_source %}border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}"
                  data-source-type-label="false">
-            <input type="radio" name="is_official_source" value="false"
+            <input type="radio" name="is_official_source" value="false" required
               {% if download and not download.is_official_source %}checked{% endif %}
-              class="accent-amber-600">
+              class="choice-input">
             <div>
               <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"></i>
@@ -417,7 +417,7 @@
       </div>
     </div>
 
-    <!-- Lokal dosya bölümü -->
+    {# Lokal dosya bölümü #}
     <div id="section-local" class="space-y-3 {% if not download or download.file_type.value == 'external' %}hidden{% endif %}">
       <div>
         <label for="f-upload" class="form-label">Dosya Yükle</label>
@@ -434,7 +434,7 @@
       </div>
     </div>
 
-    <!-- Dosya boyutu -->
+    {# Dosya boyutu #}
     <div class="mt-4">
       <label for="f-size" class="form-label">Dosya Boyutu</label>
       <div class="flex gap-2 w-full">
@@ -453,7 +453,7 @@
     </div>
   </div>
 
-  <!-- ── İşletim Sistemi Uyumu ────────────────────────── -->
+  {# ── İşletim Sistemi Uyumu ────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -475,12 +475,11 @@
         ('ios', 'iOS', 'tablet'),
         ('web', 'Web / Tarayıcı', 'globe')
       ] %}
-      <label class="flex items-center gap-2 px-3 py-2 border rounded-sm cursor-pointer transition-colors border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50
+      <label class="choice-card flex items-center gap-2 px-3 py-2 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50
                     {% if os_val in current_os %}border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-500/10{% endif %}">
         <input type="checkbox" name="os_tags" value="{{ os_val }}"
           {% if os_val in current_os %}checked{% endif %}
-          class="accent-blue-600 rounded-sm"
-          onchange="this.parentElement.classList.toggle('bg-blue-50', this.checked); this.parentElement.classList.toggle('dark:bg-blue-500/10', this.checked); this.parentElement.classList.toggle('border-blue-400', this.checked); this.parentElement.classList.toggle('dark:border-blue-500', this.checked); this.parentElement.classList.toggle('border-slate-200', !this.checked); this.parentElement.classList.toggle('dark:border-slate-800', !this.checked);">
+          class="choice-input">
         <i data-lucide="{{ os_icon }}" class="w-3.5 h-3.5 text-slate-500 dark:text-slate-400"></i>
         <span class="text-sm text-slate-700 dark:text-slate-300">{{ os_label }}</span>
       </label>
@@ -488,7 +487,7 @@
     </div>
   </div>
 
-  <!-- ── Ayarlar ─────────────────────────────────────── -->
+  {# ── Ayarlar ─────────────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="settings" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -496,20 +495,20 @@
     </h2>
 
     <div class="space-y-3">
-      <label class="flex items-center gap-3 cursor-pointer">
+      <label class="choice-card flex items-center gap-3 p-3">
         <input type="checkbox" name="is_active" value="true"
           {% if not download or download.is_active %}checked{% endif %}
-          class="accent-blue-600 w-4 h-4 rounded-sm">
+          class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Aktif</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">Pasif dosyalar sitede görünmez.</p>
         </div>
       </label>
 
-      <label class="flex items-center gap-3 cursor-pointer">
+      <label class="choice-card flex items-center gap-3 p-3">
         <input type="checkbox" name="is_featured" value="true"
           {% if download and download.is_featured %}checked{% endif %}
-          class="accent-blue-600 w-4 h-4 rounded-sm">
+          class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Öne Çıkar</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">Ana sayfanın "Öne Çıkanlar" bölümünde gösterilir.</p>
@@ -518,7 +517,7 @@
     </div>
   </div>
 
-  <!-- ── Sürüm Geçmişi (otomatik — yalnızca düzelt/sil, ekleme yok) ──── -->
+  {# ── Sürüm Geçmişi (otomatik — yalnızca düzelt/sil, ekleme yok) ──── #}
   {% if edit_mode and download.version_history %}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
@@ -555,12 +554,12 @@
   {% endif %}
 
   </div>
-  <!-- ══════════════════════════ /SAĞ SÜTUN ══════════════════════════ -->
+  {# ══════════════════════════ /SAĞ SÜTUN ══════════════════════════ #}
 
   </div>
-  <!-- ══════════════════════════ /GRID ══════════════════════════ -->
+  {# ══════════════════════════ /GRID ══════════════════════════ #}
 
-  <!-- ── Kaydet / İptal ──────────────────────────────── -->
+  {# ── Kaydet / İptal ──────────────────────────────── #}
   <div class="flex items-center gap-3 justify-end mt-5">
     <a href="/admin" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600 dark:text-slate-400
        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -627,8 +626,6 @@
   const radios   = document.querySelectorAll('input[name="file_type"]');
   const secExt   = document.getElementById('section-external');
   const secLocal = document.getElementById('section-local');
-  const lblExt   = document.getElementById('type-external-label');
-  const lblLocal = document.getElementById('type-local-label');
 
   function updateFileType() {
     const checked = document.querySelector('input[name="file_type"]:checked');
@@ -637,41 +634,8 @@
     secExt.classList.toggle('hidden', !isExt);
     secLocal.classList.toggle('hidden', isExt);
 
-    lblExt.classList.toggle('border-blue-400', isExt);
-    lblExt.classList.toggle('dark:border-blue-500', isExt);
-    lblExt.classList.toggle('bg-blue-50', isExt);
-    lblExt.classList.toggle('dark:bg-blue-500/10', isExt);
-    lblExt.classList.toggle('border-slate-200', !isExt);
-    lblExt.classList.toggle('dark:border-slate-800', !isExt);
-
-    lblLocal.classList.toggle('border-blue-400', !isExt);
-    lblLocal.classList.toggle('dark:border-blue-500', !isExt);
-    lblLocal.classList.toggle('bg-blue-50', !isExt);
-    lblLocal.classList.toggle('dark:bg-blue-500/10', !isExt);
-    lblLocal.classList.toggle('border-slate-200', isExt);
-    lblLocal.classList.toggle('dark:border-slate-800', isExt);
   }
   radios.forEach(function(r) { r.addEventListener('change', updateFileType); });
-
-  // ── Kaynak türü (resmî / üçüncü parti) seçim stilleri ─────────────
-  document.querySelectorAll('input[name="is_official_source"]').forEach(function (radio) {
-    radio.addEventListener('change', function () {
-      document.querySelectorAll('[data-source-type-label]').forEach(function (label) {
-        const isOfficial = label.dataset.sourceTypeLabel === 'true';
-        const selected = label.querySelector('input').checked;
-        label.classList.toggle('border-green-400', selected && isOfficial);
-        label.classList.toggle('dark:border-green-500', selected && isOfficial);
-        label.classList.toggle('bg-green-50', selected && isOfficial);
-        label.classList.toggle('dark:bg-green-500/10', selected && isOfficial);
-        label.classList.toggle('border-amber-400', selected && !isOfficial);
-        label.classList.toggle('dark:border-amber-500', selected && !isOfficial);
-        label.classList.toggle('bg-amber-50', selected && !isOfficial);
-        label.classList.toggle('dark:bg-amber-500/10', selected && !isOfficial);
-        label.classList.toggle('border-slate-200', !selected);
-        label.classList.toggle('dark:border-slate-800', !selected);
-      });
-    });
-  });
 
   // ── Uzantı → ikon otomatik algılama ─────────────────
   var EXT_ICON = {

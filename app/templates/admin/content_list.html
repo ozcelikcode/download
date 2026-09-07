@@ -18,7 +18,7 @@
   </a>
 </div>
 
-<!-- Arama + filtre — tek satır, kompakt -->
+{# Arama + filtre — tek satır, kompakt #}
 <form method="get" action="/admin/downloads"
   class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-4 transition-colors">
   <div class="flex flex-wrap items-center gap-2">
@@ -60,7 +60,7 @@
   </div>
 </form>
 
-<!-- İndirme tablosu -->
+{# İndirme tablosu #}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Sonuçlar</h2>
@@ -98,11 +98,11 @@
         {% for d in downloads %}
         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
 
-          <!-- ID -->
+          {# ID #}
           <td class="px-3 py-3"><input class="admin-checkbox download-select" type="checkbox" name="download_ids" value="{{ d.id }}" form="download-bulk-form" aria-label="{{ d.title }} seç"></td>
           <td class="px-2 py-3 text-xs text-slate-400 dark:text-slate-500 tabular-nums">{{ d.id }}</td>
 
-          <!-- Başlık + sürüm -->
+          {# Başlık + sürüm #}
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
               {% set icon_css = d.icon_type.value %}
@@ -126,7 +126,7 @@
             </div>
           </td>
 
-          <!-- Kategori -->
+          {# Kategori #}
           <td class="px-4 py-3 hidden md:table-cell">
             {% if d.category %}
             <span class="category-badge">{{ d.category.name }}</span>
@@ -135,7 +135,7 @@
             {% endif %}
           </td>
 
-          <!-- Tür -->
+          {# Tür #}
           <td class="px-4 py-3 hidden sm:table-cell">
             {% if d.file_type.value == 'external' %}
             <span class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
@@ -148,12 +148,12 @@
             {% endif %}
           </td>
 
-          <!-- İndirme sayısı -->
+          {# İndirme sayısı #}
           <td class="px-4 py-3 hidden lg:table-cell text-right text-xs text-slate-500 dark:text-slate-400 tabular-nums">
             {{ d.download_count }}
           </td>
 
-          <!-- Durum badge -->
+          {# Durum badge #}
           <td class="px-4 py-3 text-center">
             {% if d.is_active %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20">
@@ -166,7 +166,7 @@
             {% endif %}
           </td>
 
-          <!-- İşlemler -->
+          {# İşlemler #}
           <td class="px-4 py-3">
             <div class="flex items-center justify-end gap-1">
               <a href="/download/{{ d.slug }}" target="_blank" rel="noopener noreferrer"
@@ -196,7 +196,7 @@
     </table>
   </div>
 
-  <!-- Sayfalama (ellipsis'li, taşma önlenir) -->
+  {# Sayfalama (ellipsis'li, taşma önlenir) #}
   {% if total_pages > 1 %}
   {% set qs = { 'q': q, 'category_id': category_id, 'status_filter': status_filter, 'file_type_filter': file_type_filter } %}
   {% macro page_href(p) %}?page={{ p }}{% for k, v in qs.items() %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}{% endmacro %}

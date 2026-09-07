@@ -23,9 +23,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals.update({
-    "theme_color": "blue", "theme_accent_light": "#2563eb", "theme_accent_dark": "#60a5fa",
-    "theme_surface_light": "#eff6ff", "theme_surface_dark": "#172554",
-    "theme_border_light": "#bfdbfe", "theme_border_dark": "#1d4ed8",
+    "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",
+    "theme_surface_light": "#eaf2fc", "theme_surface_dark": "#152033",
+    "theme_border_light": "#b8d0ee", "theme_border_dark": "#36577f",
 })
 
 

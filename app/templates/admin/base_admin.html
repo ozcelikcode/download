@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Admin{% endblock %} — {{ site_name }}</title>
 
-  <!-- Tema — FOUC önleyici (Tailwind'den önce çalışmalı) -->
+  {# Tema — FOUC önleyici (Tailwind'den önce çalışmalı) #}
   <script>
     (function () {
       var stored = localStorage.getItem('theme') || 'system';
@@ -17,18 +17,19 @@
   <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
+  <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
   {% block head %}{% endblock %}
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   <script src="/static/js/csrf.js"></script>
 </head>
 <body data-theme-color="{{ theme_color }}" class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen" style="--accent: {{ theme_accent_light }}; --accent-dark: {{ theme_accent_dark }}; --accent-surface: {{ theme_surface_light }}; --accent-surface-dark: {{ theme_surface_dark }}; --accent-border: {{ theme_border_light }}; --accent-border-dark: {{ theme_border_dark }};">
 
-<!-- ================================================================
+{# ================================================================
      ADMIN HEADER
-     ================================================================ -->
+     ================================================================ #}
 <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-12 flex items-center px-4 gap-4 sticky top-0 z-40 transition-colors">
 
-  <!-- Logo -->
+  {# Logo #}
   <a href="/" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0">
     <i data-lucide="{{ site_icon }}" class="w-4 h-4 site-icon-color"
       style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
@@ -41,7 +42,7 @@
 
   <div class="flex-1"></div>
 
-  <!-- Admin kullanıcı -->
+  {# Admin kullanıcı #}
   {% if admin_user is defined %}
   <div class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
     <i data-lucide="{{ admin_icon }}" class="w-3.5 h-3.5 site-icon-color"
@@ -50,14 +51,14 @@
   </div>
   {% endif %}
 
-  <!-- Tema seçici: Aydınlık / Karanlık / Sistem -->
+  {# Tema seçici: Aydınlık / Karanlık / Sistem #}
   <div class="relative shrink-0" id="theme-menu-wrap">
     <button type="button" id="theme-toggle-btn"
       class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
       aria-label="Tema seç">
       <span data-theme-icon="light"><i data-lucide="sun" class="w-4 h-4"></i></span>
       <span data-theme-icon="dark" class="hidden"><i data-lucide="moon" class="w-4 h-4"></i></span>
-      <span data-theme-icon="system" class="hidden"><i data-lucide="monitor" class="w-4 h-4"></i></span>
+      <span data-theme-icon="system" class="hidden"><i data-lucide="sun-moon" class="w-4 h-4"></i></span>
     </button>
     <div id="theme-menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
       <button type="button" data-theme-option="light"
@@ -75,7 +76,7 @@
     </div>
   </div>
 
-  <!-- Siteye dön -->
+  {# Siteye dön #}
   <a href="/" target="_blank"
     class="hidden sm:inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400
            px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-sm hover:border-blue-200 dark:hover:border-blue-500/40 transition-colors">
@@ -83,7 +84,7 @@
     Siteye Git
   </a>
 
-  <!-- Çıkış -->
+  {# Çıkış #}
   <form method="post" action="/admin/logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button type="submit"
     class="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400
@@ -93,12 +94,12 @@
   </button></form>
 </header>
 
-<!-- ================================================================
+{# ================================================================
      MAIN LAYOUT
-     ================================================================ -->
+     ================================================================ #}
 <div class="flex min-h-[calc(100vh-3rem)]">
 
-  <!-- ── Sol Sidebar Nav ──────────────────────────────── -->
+  {# ── Sol Sidebar Nav ──────────────────────────────── #}
   <aside class="w-44 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
     <nav class="space-y-0.5">
 
@@ -190,7 +191,7 @@
     </nav>
   </aside>
 
-  <!-- ── Ana İçerik ──────────────────────────────────── -->
+  {# ── Ana İçerik ──────────────────────────────────── #}
   <main class="flex-1 min-w-0 p-6">
     <nav class="sm:hidden flex flex-wrap gap-3 text-xs text-blue-600 dark:text-blue-400 mb-5" aria-label="Yönetim menüsü">
       <a href="/admin">Panel</a><a href="/admin/downloads">İçerikler</a><a href="/admin/media">Medya</a><a href="/admin/links">Bağlantı Raporu</a><a href="/admin/audit">İşlem Geçmişi</a><a href="/admin/settings">Ayarlar</a>
@@ -216,7 +217,7 @@
   <div class="w-full max-w-sm rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900"><div class="flex items-center gap-2"><i data-lucide="circle-alert" class="w-4 h-4 text-amber-500"></i><h2 id="admin-notice-title" class="text-sm font-semibold">Bilgi</h2></div><p id="admin-notice-message" class="mt-3 whitespace-pre-line text-sm text-slate-500 dark:text-slate-400"></p><div class="mt-5 flex justify-end"><button type="button" id="admin-notice-close" class="btn-primary py-1.5 px-3 text-xs">Tamam</button></div></div>
 </div>
 
-<!-- Scripts -->
+{# Scripts #}
 <script>
   lucide.createIcons();
 
@@ -260,58 +261,6 @@
     modal.addEventListener('click', function (event) { if (event.target === modal) hide(); });
   })();
 
-  // Tema seçici: Aydınlık / Karanlık / Sistem
-  (function () {
-    const menuWrap = document.getElementById('theme-menu-wrap');
-    if (!menuWrap) return;
-    const btn = document.getElementById('theme-toggle-btn');
-    const menu = document.getElementById('theme-menu');
-    const mql = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function isDarkFor(mode) {
-      return mode === 'dark' || (mode === 'system' && mql.matches);
-    }
-
-    function applyTheme(mode, persist) {
-      document.documentElement.classList.toggle('dark', isDarkFor(mode));
-      if (persist) localStorage.setItem('theme', mode);
-
-      btn.querySelectorAll('[data-theme-icon]').forEach((el) => el.classList.add('hidden'));
-      const activeIcon = btn.querySelector('[data-theme-icon="' + mode + '"]');
-      if (activeIcon) activeIcon.classList.remove('hidden');
-
-      document.querySelectorAll('.theme-option-btn').forEach((opt) => {
-        const active = opt.dataset.themeOption === mode;
-        opt.classList.toggle('text-blue-600', active);
-        opt.classList.toggle('dark:text-blue-400', active);
-        opt.classList.toggle('bg-blue-50', active);
-        opt.classList.toggle('dark:bg-blue-500/10', active);
-      });
-    }
-
-    applyTheme(localStorage.getItem('theme') || 'system', false);
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.classList.toggle('hidden');
-    });
-    document.addEventListener('click', (e) => {
-      if (!menuWrap.contains(e.target)) menu.classList.add('hidden');
-    });
-    document.querySelectorAll('.theme-option-btn').forEach((opt) => {
-      opt.addEventListener('click', () => {
-        applyTheme(opt.dataset.themeOption, true);
-        menu.classList.add('hidden');
-      });
-    });
-
-    // Sistem teması değişirse ve seçili mod 'system' ise anında yansıt.
-    mql.addEventListener('change', () => {
-      if ((localStorage.getItem('theme') || 'system') === 'system') {
-        applyTheme('system', false);
-      }
-    });
-  })();
 </script>
 {% block scripts %}{% endblock %}
 </body>

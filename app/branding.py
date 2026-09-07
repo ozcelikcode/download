@@ -23,17 +23,17 @@ SITE_ICON_COLORS: dict[str, tuple[str, str]] = {
     "slate": ("#475569", "#94a3b8"),
     "yellow": ("#a16207", "#facc15"),
     "cream": ("#92400e", "#fde68a"),
-    "amoled": ("#111827", "#e5e7eb"),
+    "amoled": ("#5b3fbd", "#7758cf"),
 }
 
 # key → açık vurgu, koyu vurgu, açık yüzey, koyu yüzey, açık kenarlık, koyu kenarlık
 ACCENT_THEMES: dict[str, tuple[str, str, str, str, str, str]] = {
-    "blue": ("#2563eb", "#60a5fa", "#eff6ff", "#172554", "#bfdbfe", "#1d4ed8"),
-    "green": ("#15803d", "#4ade80", "#f0fdf4", "#052e16", "#bbf7d0", "#166534"),
-    "red": ("#dc2626", "#f87171", "#fef2f2", "#450a0a", "#fecaca", "#991b1b"),
-    "yellow": ("#a16207", "#facc15", "#fefce8", "#422006", "#fde68a", "#854d0e"),
-    "cream": ("#92400e", "#fde68a", "#fffbeb", "#29200d", "#fde68a", "#78350f"),
-    "amoled": ("#111827", "#e5e7eb", "#f3f4f6", "#000000", "#9ca3af", "#374151"),
+    "blue": ("#356fd4", "#72a7e8", "#eaf2fc", "#152033", "#b8d0ee", "#36577f"),
+    "green": ("#247a4d", "#66c58b", "#edf8f1", "#14271c", "#b9ddc7", "#365f45"),
+    "red": ("#bf4f58", "#e68188", "#fcedee", "#2b181a", "#e7bec1", "#734247"),
+    "yellow": ("#9a6a0c", "#dfbd60", "#fbf6e8", "#292313", "#e6d49b", "#6d5b2f"),
+    "cream": ("#8a6735", "#d8bd8b", "#faf5e9", "#282218", "#dfcfad", "#66573c"),
+    "amoled": ("#5b3fbd", "#7758cf", "#f2effb", "#000000", "#c9bff0", "#3d3263"),
 }
 
 DEFAULT_ICON_COLOR = "blue"

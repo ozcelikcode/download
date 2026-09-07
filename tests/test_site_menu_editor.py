@@ -46,7 +46,7 @@ async def test_theme_color_is_reflected_in_public_and_admin_pages(
     home = await client.get("/")
     admin_login = await client.get("/admin/login")
     assert 'data-theme-color="green"' in home.text
-    assert "--accent: #15803d" in home.text
+    assert "--accent: #247a4d" in home.text
     assert 'data-theme-color="green"' in admin_login.text
 
 

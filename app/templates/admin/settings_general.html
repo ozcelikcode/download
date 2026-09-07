@@ -59,13 +59,14 @@
     <div>
       <label class="form-label">Renk Teması</label>
       <p class="form-hint mb-2">Bu seçim bağlantılar, butonlar ve vurgular dahil tüm arayüzün ana rengini değiştirir.</p>
-      <div class="flex items-center gap-2 flex-wrap">
-        {% for color, label, hex in [('blue', 'Mavi', '#2563eb'), ('green', 'Yeşil', '#15803d'), ('red', 'Kırmızı', '#dc2626'), ('yellow', 'Sarı', '#a16207'), ('cream', 'Krem', '#92400e'), ('amoled', 'AMOLED Siyah', '#111827')] %}
-        <label class="cursor-pointer" title="{{ color }}">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
+        {% for color, label, hex in [('blue', 'Mavi', '#356fd4'), ('green', 'Yeşil', '#247a4d'), ('red', 'Kırmızı', '#bf4f58'), ('yellow', 'Sarı', '#9a6a0c'), ('cream', 'Krem', '#8a6735'), ('amoled', 'AMOLED', '#5b3fbd')] %}
+        <label class="theme-color-choice cursor-pointer">
           <input type="radio" name="theme_color" value="{{ color }}" class="peer sr-only"
             {% if site_settings.theme_color == color %}checked{% endif %}>
-          <span class="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
-            style="background: {{ hex }};"></span>
+          <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-2.5 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">
+            <span class="w-4 h-4 rounded-sm border border-black/10 dark:border-white/10" style="background: {{ hex }};"></span>{{ label }}
+          </span>
         </label>
         {% endfor %}
       </div>
