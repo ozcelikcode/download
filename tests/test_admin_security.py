@@ -52,3 +52,40 @@ async def test_logout_requires_post_and_csrf(admin_client):
     response = await admin_client.post("/admin/logout")
     assert response.status_code == 302
     assert (await admin_client.get("/admin")).status_code == 302
+
+
+async def test_failed_login_is_critical_with_trusted_ip(client, db_session):
+    from app.models import AuditLog
+    response = await client.post('/admin/login', data={'username': 'attacker', 'password': 'never-log-this'}, headers={'X-Forwarded-For': '203.0.113.42'})
+    assert response.status_code == 401
+    row = await db_session.scalar(select(AuditLog).where(AuditLog.entity == 'login'))
+    assert row.level == 'critical'
+    assert '127.0.0.1' in row.changes
+    assert '203.0.113.42' not in row.changes
+    assert 'never-log-this' not in row.changes
+
+
+async def test_changed_credentials_revoke_existing_session(admin_client, db_session):
+    from app import crud
+    row = await crud.get_site_settings(db_session)
+    row.admin_password_hash = 'changed-credential-hash'
+    await db_session.commit()
+    assert (await admin_client.get('/admin')).status_code == 302
+
+
+def test_scrypt_password_storage():
+    from app.dependencies import hash_admin_password, verify_admin_password
+    password = 'long unique password with spaces '
+    first = hash_admin_password(password)
+    second = hash_admin_password(password)
+    assert first != second
+    assert first.startswith('scrypt$')
+    assert verify_admin_password(password, first)
+    assert not verify_admin_password(password.strip(), first)
+    assert not verify_admin_password('incorrect', first)
+
+
+async def test_admin_pages_are_not_cacheable(client):
+    response = await client.get('/admin/login')
+    assert response.headers['Cache-Control'] == 'no-store'
+    assert response.headers['X-Frame-Options'] == 'DENY'

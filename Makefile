@@ -76,7 +76,6 @@ freeze:
 test:
 	.venv/bin/pytest -v
 
-# Admin şifre hash'i üret
-# Kullanım: make hash pw=yenisifre
+# Admin şifre özeti üret; parola terminalde gizli olarak sorulur.
 hash:
-	.venv/bin/python3 -c "import bcrypt; h=bcrypt.hashpw(b'$(pw)', bcrypt.gensalt(12)).decode(); print(h)"
+	.venv/bin/python3 -c "from getpass import getpass; from app.dependencies import hash_admin_password; print(hash_admin_password(getpass('Yeni parola: ')))"

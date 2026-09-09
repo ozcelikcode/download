@@ -83,7 +83,7 @@ async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str =
     query = select(AuditLog)
     if entity:
         query = query.where(AuditLog.entity == entity)
-    if level in {"success", "error"}:
+    if level in {"success", "error", "critical"}:
         query = query.where(AuditLog.level == level)
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     rows = (await session.scalars(query.order_by(AuditLog.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()

@@ -133,6 +133,7 @@ class MenuItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
+    label_en: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
@@ -163,6 +164,21 @@ class SiteSettings(Base):
     site_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
     # Sitenin tüm vurgu bileşenlerinde kullanılan merkezi renk teması.
     theme_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
+    logo_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="icon_text")
+    logo_light_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    logo_dark_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    hero_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    hero_background: Mapped[str] = mapped_column(String(20), nullable=False, default="soft")
+    hero_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    hero_components: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default='[{"type":"eyebrow","text":"İndirme Merkezi","text_en":"Download Center"},{"type":"title","text":"Güvenli ve Ücretsiz Yazılımlar","text_en":"Safe and Free Software"},{"type":"description","text":"Aradığınız yazılımı bulun, tek tıkla indirin.","text_en":"Find the software you need and download it in one click."},{"type":"search","text":"Yazılım, araç veya kategori ara…","text_en":"Search for software, tools, or categories…"},{"type":"stats","text":"","text_en":""}]',
+    )
+    navbar_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    footer_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    sidebar_category_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    sidebar_tag_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=25)
     # Sidebar blok sırası, virgülle ayrılmış: "search,categories,tags"
     sidebar_block_order: Mapped[str] = mapped_column(
         String(100), nullable=False, default="search,categories,tags"
@@ -259,6 +275,7 @@ class Download(Base):
     # Boşsa kart, tam açıklamanın (WYSIWYG) etiketsiz kısaltmasına düşer.
     short_description: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    is_latest_version: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Dosya bilgileri
     file_type: Mapped[FileType] = mapped_column(

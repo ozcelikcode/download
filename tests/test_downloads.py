@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.models import Download
 from app.schemas import DownloadCreate
+from pydantic import ValidationError
+import pytest
 
 
 async def _create_external(session: AsyncSession, **overrides) -> Download:
@@ -20,6 +22,47 @@ async def _create_external(session: AsyncSession, **overrides) -> Download:
         **overrides,
     )
     return await crud.create_download(session, data)
+
+
+async def test_latest_version_external_link_is_localized(
+    admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
+):
+    response = await admin_client.post(
+        "/admin/downloads/new",
+        data={
+            "title": "Always Fresh",
+            "version": "v1.0",
+            "is_latest_version": "true",
+            "file_type": "external",
+            "external_url": "https://example.com/latest",
+            "icon_type": "auto",
+            "is_active": "true",
+            "is_official_source": "true",
+        },
+    )
+    assert response.status_code == 302
+    download = await crud.get_download_by_slug(db_session, "always-fresh")
+    assert download is not None
+    assert download.is_latest_version is True
+    assert download.version is None
+
+    turkish = await client.get(f"/download/{download.slug}")
+    assert "Güncel sürüm" in turkish.text
+    assert "Güncel sürüm" in (await client.get("/")).text
+    client.cookies.set("ui_language", "en")
+    english = await client.get(f"/download/{download.slug}")
+    assert "Latest version" in english.text
+    assert "Latest version" in (await client.get("/")).text
+
+
+def test_latest_version_rejects_local_source():
+    with pytest.raises(ValidationError):
+        DownloadCreate(
+            title="Local",
+            file_type="local",
+            file_path="/tmp/local.zip",
+            is_latest_version=True,
+        )
 
 
 async def test_source_domain_includes_subdomain(db_session: AsyncSession):

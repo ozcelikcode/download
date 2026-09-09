@@ -23,7 +23,7 @@ SITE_ICON_COLORS: dict[str, tuple[str, str]] = {
     "slate": ("#475569", "#94a3b8"),
     "yellow": ("#a16207", "#facc15"),
     "cream": ("#92400e", "#fde68a"),
-    "amoled": ("#5b3fbd", "#7758cf"),
+    "amoled": ("#52525b", "#c4c4ca"),
 }
 
 # key → açık vurgu, koyu vurgu, açık yüzey, koyu yüzey, açık kenarlık, koyu kenarlık
@@ -33,7 +33,7 @@ ACCENT_THEMES: dict[str, tuple[str, str, str, str, str, str]] = {
     "red": ("#bf4f58", "#e68188", "#fcedee", "#2b181a", "#e7bec1", "#734247"),
     "yellow": ("#9a6a0c", "#dfbd60", "#fbf6e8", "#292313", "#e6d49b", "#6d5b2f"),
     "cream": ("#8a6735", "#d8bd8b", "#faf5e9", "#282218", "#dfcfad", "#66573c"),
-    "amoled": ("#5b3fbd", "#7758cf", "#f2effb", "#000000", "#c9bff0", "#3d3263"),
+    "amoled": ("#52525b", "#c4c4ca", "#f4f4f5", "#000000", "#d4d4d8", "#3f3f46"),
 }
 
 DEFAULT_ICON_COLOR = "blue"

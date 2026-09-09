@@ -98,6 +98,7 @@ class TagRead(TagBase):
 
 class MenuItemBase(BaseModel):
     label: str = Field(..., min_length=1, max_length=100)
+    label_en: Optional[str] = Field(None, max_length=100)
     url: str = Field(..., min_length=1, max_length=500)
     icon: Optional[str] = Field(None, max_length=50)
     is_active: bool = True
@@ -110,6 +111,7 @@ class MenuItemCreate(MenuItemBase):
 
 class MenuItemUpdate(BaseModel):
     label: Optional[str] = Field(None, min_length=1, max_length=100)
+    label_en: Optional[str] = Field(None, max_length=100)
     url: Optional[str] = Field(None, min_length=1, max_length=500)
     icon: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
@@ -131,6 +133,17 @@ class SiteSettingsUpdate(BaseModel):
     theme_color: str = Field("blue", min_length=1, max_length=20)
 
 
+class AppearanceSettingsUpdate(BaseModel):
+    logo_mode: str = Field(pattern="^(icon_text|image_text|image)$")
+    hero_enabled: bool = True
+    hero_background: str = Field(pattern="^(soft|mesh|lines|image)$")
+    hero_components: str
+    navbar_limit: int = Field(8, ge=3, le=12)
+    footer_limit: int = Field(8, ge=3, le=12)
+    sidebar_category_limit: int = Field(10, ge=3, le=20)
+    sidebar_tag_limit: int = Field(25, ge=5, le=25)
+
+
 # ===========================================================================
 # Download
 # ===========================================================================
@@ -140,6 +153,7 @@ class DownloadBase(BaseModel):
     description: Optional[str] = None
     short_description: Optional[str] = Field(None, max_length=300)
     version: Optional[str] = Field(None, max_length=50)
+    is_latest_version: bool = False
     file_type: FileType = FileType.external
     file_path: Optional[str] = Field(None, max_length=500)
     external_url: Optional[str] = Field(None, max_length=2000)
@@ -160,6 +174,8 @@ class DownloadBase(BaseModel):
     def check_file_source(self) -> "DownloadBase":
         if self.file_type == FileType.local and not self.file_path:
             raise ValueError("file_type='local' seçildiğinde file_path zorunludur.")
+        if self.file_type == FileType.local and self.is_latest_version:
+            raise ValueError("Güncel sürüm seçeneği yalnızca dış bağlantılarda kullanılabilir.")
         if self.file_type == FileType.external and not self.external_url:
             raise ValueError("file_type='external' seçildiğinde external_url zorunludur.")
         return self
@@ -180,6 +196,7 @@ class DownloadUpdate(BaseModel):
     description: Optional[str] = None
     short_description: Optional[str] = Field(None, max_length=300)
     version: Optional[str] = Field(None, max_length=50)
+    is_latest_version: Optional[bool] = None
     file_type: Optional[FileType] = None
     file_path: Optional[str] = Field(None, max_length=500)
     external_url: Optional[str] = Field(None, max_length=2000)
@@ -206,6 +223,7 @@ class DownloadRead(BaseModel):
     slug: str
     description: Optional[str]
     version: Optional[str]
+    is_latest_version: bool
     file_type: FileType
     file_path: Optional[str]
     external_url: Optional[str]
@@ -236,6 +254,7 @@ class DownloadListItem(BaseModel):
     title: str
     slug: str
     version: Optional[str]
+    is_latest_version: bool
     file_type: FileType
     file_size_human: Optional[str]
     source_domain: Optional[str]

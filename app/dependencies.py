@@ -9,6 +9,9 @@ FastAPI bağımlılıkları (Dependencies).
 from __future__ import annotations
 
 import logging
+import hashlib
+import hmac
+import secrets
 from typing import Optional
 
 import bcrypt
@@ -38,8 +41,13 @@ def refresh_session_max_age(minutes: int) -> None:
     SESSION_MAX_AGE = max(1, int(minutes)) * 60
 
 
-def create_admin_session_token(username: str) -> str:
-    return _serializer.dumps({"u": username}, salt="admin-session")
+def credential_stamp(username: str, password_hash: str) -> str:
+    return hmac.new(settings.app_secret_key.encode(), (username + "\0" + password_hash).encode(), hashlib.sha256).hexdigest()
+
+
+def create_admin_session_token(username: str, password_hash: str | None = None) -> str:
+    stamp = credential_stamp(username, settings.admin_password_hash if password_hash is None else password_hash)
+    return _serializer.dumps({"u": username, "v": stamp, "nonce": secrets.token_urlsafe(16)}, salt="admin-session")
 
 
 def verify_admin_session_token(token: str) -> Optional[str]:
@@ -70,15 +78,27 @@ def verify_admin_password(plain: str, stored_hash: Optional[str] = None) -> bool
         )
         return False
     try:
+        if len(plain.encode()) > 1024:
+            return False
+        if effective_hash.startswith("scrypt$"):
+            _, salt, digest = effective_hash.split("$")
+            derived = hashlib.scrypt(plain.encode(), salt=bytes.fromhex(salt), n=131072, r=8, p=1, maxmem=256*1024*1024)
+            return secrets.compare_digest(derived.hex(), digest)
+        if len(plain.encode()) > 72:
+            return False
         return bcrypt.checkpw(plain.encode(), effective_hash.encode())
-    except Exception as exc:
-        logger.error("bcrypt doğrulama hatası: %s", exc)
+    except (ValueError, TypeError):
+        logger.error("Yönetici parola özeti doğrulanamadı")
         return False
 
 
 def hash_admin_password(plain: str) -> str:
-    """Yeni bir admin şifresini bcrypt ile hash'ler (Ayarlar'dan şifre değişimi için)."""
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+    """Rastgele salt ile bellek maliyetli scrypt parola özeti üretir."""
+    if len(plain.encode()) > 1024:
+        raise ValueError("Parola çok uzun")
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(plain.encode(), salt=salt, n=131072, r=8, p=1, maxmem=256*1024*1024)
+    return f"scrypt${salt.hex()}${digest.hex()}"
 
 
 async def require_admin(
@@ -101,6 +121,13 @@ async def require_admin(
             status_code=status.HTTP_302_FOUND,
             headers={"Location": "/admin/login"},
         )
+    from app.crud import get_site_settings
+    account = await get_site_settings(session)
+    current_username = account.admin_username or settings.admin_username
+    current_hash = account.admin_password_hash or settings.admin_password_hash
+    data = _serializer.loads(admin_session, salt="admin-session", max_age=SESSION_MAX_AGE)
+    if username != current_username or not secrets.compare_digest(str(data.get("v", "")), credential_stamp(current_username, current_hash)):
+        raise HTTPException(status_code=302, headers={"Location": "/admin/login"})
     session.info["audit_actor"] = username
     return username
 

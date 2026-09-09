@@ -12,9 +12,11 @@ Rotalar:
 from __future__ import annotations
 
 import logging
+import json
 import math
 import mimetypes
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
@@ -24,6 +26,7 @@ from app import crud
 from app.config import settings
 from app.checksums import file_checksum
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
+from app.i18n import translate
 from app.models import FileType
 from app.templating import templates
 
@@ -34,6 +37,23 @@ router = APIRouter(tags=["public"])
 PAGE_SIZE = 12
 
 
+@router.get("/language/{language}", name="set_language")
+async def set_language(language: str, return_to: str = Query("/")) -> RedirectResponse:
+    if language not in {"tr", "en"}:
+        raise HTTPException(status_code=404, detail="Dil bulunamadı.")
+    parsed = urlsplit(return_to)
+    target = return_to if not parsed.scheme and not parsed.netloc and return_to.startswith("/") and "\\" not in return_to else "/"
+    response = RedirectResponse(target, status_code=status.HTTP_302_FOUND)
+    response.set_cookie(
+        "ui_language",
+        language,
+        max_age=365 * 24 * 60 * 60,
+        samesite="lax",
+        secure=settings.app_base_url.startswith("https://"),
+    )
+    return response
+
+
 # ---------------------------------------------------------------------------
 # Yardımcı: sidebar context (kategoriler + tag'lar her sayfada)
 # ---------------------------------------------------------------------------
@@ -42,22 +62,30 @@ async def _sidebar_context(request: Request, session: AsyncSession) -> dict:
     categories = await crud.get_categories_ordered(session)
     tags = await crud.get_tags_ordered(session)
     counts = await crud.get_category_download_counts(session)
-    menu_items = await crud.get_menu_items(session, active_only=True, location="navbar")
-    footer_menu_items = await crud.get_menu_items(session, active_only=True, location="footer")
     site_settings = await crud.get_site_settings(session)
+    menu_items = (await crud.get_menu_items(session, active_only=True, location="navbar"))[:site_settings.navbar_limit]
+    footer_menu_items = (await crud.get_menu_items(session, active_only=True, location="footer"))[:site_settings.footer_limit]
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
     ] or ["search", "categories", "tags"]
     admin_username = get_optional_admin_username(request)
+    try:
+        hero_components = json.loads(site_settings.hero_components)
+    except (TypeError, json.JSONDecodeError):
+        hero_components = []
     return {
-        "sidebar_categories": categories,
-        "sidebar_tags": tags,
+        "sidebar_categories": categories[:site_settings.sidebar_category_limit],
+        "sidebar_tags": tags[:site_settings.sidebar_tag_limit],
+        "total_categories": len(categories),
+        "total_tags": len(tags),
         "category_counts": counts,
         "menu_items": menu_items,
         "footer_menu_items": footer_menu_items,
         "sidebar_block_order": sidebar_block_order,
         "is_admin": bool(admin_username),
         "admin_username": admin_username,
+        "site_settings": site_settings,
+        "hero_components": hero_components,
     }
 
 
@@ -89,8 +117,8 @@ async def index(
         "total_pages": total_pages,
         "current_category": None,
         "current_search": None,
-        "page_title": "Tüm İndirmeler",
-        "meta_description": "Ücretsiz yazılım, araç ve belgeleri indirin.",
+        "page_title": translate(request, "all_downloads"),
+        "meta_description": translate(request, "meta_default"),
     }
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
@@ -127,7 +155,7 @@ async def category_view(
         "current_category": category,
         "current_search": None,
         "page_title": category.name,
-        "meta_description": category.description or f"{category.name} kategorisindeki indirmeler.",
+        "meta_description": category.description or f"{category.name} {translate(request, 'category_meta')}",
     }
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
@@ -163,8 +191,8 @@ async def search(
         "total_pages": total_pages,
         "current_category": None,
         "current_search": q,
-        "page_title": f'"{q}" için arama sonuçları' if q else "Arama",
-        "meta_description": f"{q} için indirme sonuçları." if q else "İndirme arama.",
+        "page_title": f'"{q}" {translate(request, "search_results")}' if q else translate(request, "search_page"),
+        "meta_description": f"{q} {translate(request, 'search_meta')}" if q else translate(request, "search_meta_default"),
     }
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
@@ -202,7 +230,7 @@ async def tag_view(
         "current_tag": tag,
         "current_search": None,
         "page_title": f"#{tag.name}",
-        "meta_description": f"{tag.name} etiketli indirmeler.",
+        "meta_description": f"{tag.name} {translate(request, 'tag_meta')}",
     }
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
@@ -254,6 +282,7 @@ def _build_version_timeline(download) -> list:
 
     entries = [{
         "version": download.version or download.title,
+        "is_latest": download.is_latest_version,
         "date": download.updated_at,
         "url": None,
         "is_current": True,
@@ -264,6 +293,7 @@ def _build_version_timeline(download) -> list:
             continue
         entries.append({
             "version": v.version or v.title,
+            "is_latest": v.is_latest_version,
             "date": v.created_at,
             "url": f"/download/{v.slug}",
             "is_current": False,
@@ -272,6 +302,7 @@ def _build_version_timeline(download) -> list:
     if root.id != download.id:
         entries.append({
             "version": root.version or root.title,
+            "is_latest": root.is_latest_version,
             "date": root.created_at,
             "url": f"/download/{root.slug}",
             "is_current": False,
@@ -280,6 +311,7 @@ def _build_version_timeline(download) -> list:
     for h in download.version_history:
         entries.append({
             "version": h.version,
+            "is_latest": False,
             "date": h.changed_at,
             "url": None,
             "is_current": False,

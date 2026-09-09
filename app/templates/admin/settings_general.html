@@ -60,7 +60,7 @@
       <label class="form-label">Renk Teması</label>
       <p class="form-hint mb-2">Bu seçim bağlantılar, butonlar ve vurgular dahil tüm arayüzün ana rengini değiştirir.</p>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
-        {% for color, label, hex in [('blue', 'Mavi', '#356fd4'), ('green', 'Yeşil', '#247a4d'), ('red', 'Kırmızı', '#bf4f58'), ('yellow', 'Sarı', '#9a6a0c'), ('cream', 'Krem', '#8a6735'), ('amoled', 'AMOLED', '#5b3fbd')] %}
+        {% for color, label, hex in [('blue', 'Mavi', '#356fd4'), ('green', 'Yeşil', '#247a4d'), ('red', 'Kırmızı', '#bf4f58'), ('yellow', 'Sarı', '#9a6a0c'), ('cream', 'Krem', '#8a6735'), ('amoled', 'AMOLED', '#a1a1aa')] %}
         <label class="theme-color-choice cursor-pointer">
           <input type="radio" name="theme_color" value="{{ color }}" class="peer sr-only"
             {% if site_settings.theme_color == color %}checked{% endif %}>
@@ -82,11 +82,11 @@
 <div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i> İşlem Geçmişi</h2>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Başarılı işlemler, değişiklikler ve hatalar bu sınıra kadar saklanır.</p>
-  <form method="post" action="/admin/settings/audit-log-limit" class="flex flex-wrap items-end gap-3">
+  <form method="post" action="/admin/settings/audit-log-limit" class="grid grid-cols-1 sm:grid-cols-[minmax(10rem,14rem)_auto] gap-3 items-end max-w-md">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <label class="block"><span class="form-label">Maksimum kayıt</span><select name="max_records" class="form-input w-32">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-    <button type="submit" class="btn-primary py-2 px-4 text-sm"><i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet</button>
-    <a href="/admin/audit" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">Kayıtları görüntüle</a>
+    <label class="block"><span class="form-label">Maksimum kayıt</span><select name="max_records" class="form-input">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet</button>
+    <a href="/admin/audit" class="sm:col-span-2 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"><i data-lucide="history" class="w-3.5 h-3.5"></i>Kayıtları görüntüle</a>
   </form>
 </div>
 

@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    if len(settings.app_secret_key) < 32 or settings.app_secret_key == "change-me-in-production":
+        raise RuntimeError("APP_SECRET_KEY en az 32 karakterlik rastgele bir sır olmalıdır.")
     settings.upload_path  # upload klasörünü oluştur
     async with AsyncSessionLocal() as session:
         site_settings = await crud.get_site_settings(session)
@@ -73,8 +75,21 @@ app.add_middleware(
     session_cookie="session",
     max_age=60 * 60 * 8,
     same_site="lax",
-    https_only=False,
+    https_only=settings.app_base_url.startswith("https://"),
 )
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    if request.url.path.startswith("/admin"):
+        response.headers["Cache-Control"] = "no-store"
+    if settings.app_base_url.startswith("https://"):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return response
+
 
 # ---------------------------------------------------------------------------
 # Routers

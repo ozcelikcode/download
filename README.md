@@ -25,11 +25,11 @@ make migrate
 | `APP_SECRET_KEY` | Session şifreleme anahtarı — `openssl rand -hex 32` ile yenileyin |
 | `APP_BASE_URL` | Sitenizin tam adresi (örn. `https://download.example.com`) |
 | `ADMIN_USERNAME` | Admin paneli kullanıcı adı |
-| `ADMIN_PASSWORD_HASH` | bcrypt hash — aşağıdaki komutla üretin |
+| `ADMIN_PASSWORD_HASH` | scrypt parola özeti — aşağıdaki komutla üretin |
 
 **Yeni admin şifresi üretmek:**
 ```bash
-make hash pw=yenisifreniz
+make hash
 # Çıktıyı .env dosyasındaki ADMIN_PASSWORD_HASH değerine yapıştırın
 ```
 
@@ -39,6 +39,10 @@ make hash pw=yenisifreniz
 make dev
 # → http://127.0.0.1:8000
 ```
+
+Sunucuyu, `make dev` komutunun çalıştığı terminalde `Ctrl+C` ile kapatın.
+Komut tamamlanıp terminal istemi geri geldikten sonra yeniden `make dev`
+çalıştırabilirsiniz.
 
 ### 4. Prodüksiyon Sunucusu
 
@@ -82,11 +86,7 @@ kontrolden geçirdiği istemci adresini kullanır.
 | `/admin/categories` | Kategori yönetimi |
 | `/admin/tags` | Etiket yönetimi |
 
-**Varsayılan kimlik bilgileri:**
-- Kullanıcı adı: `admin`
-- Şifre: `admin123`
-
-> ⚠️ Üretime geçmeden önce mutlaka `.env`'deki `ADMIN_PASSWORD_HASH` değerini güncelleyin.
+Kurulumda ortak bir varsayılan parola bulunmaz. `make hash` ile yalnız size ait bir parola özeti üretin.
 
 ---
 

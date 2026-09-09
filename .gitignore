@@ -19,3 +19,8 @@ __pycache__/
 
 # Tailwind bağımsız CLI ikili dosyası (make tailwind-cli ile indirilir, ~45MB)
 .bin/
+
+# Gizli yapılandırma
+.env
+.env.*
+!.env.example

@@ -31,6 +31,7 @@ Rotalar:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import mimetypes
@@ -79,6 +80,7 @@ from app.schemas import (
     DownloadUpdate,
     MenuItemCreate,
     MenuItemUpdate,
+    AppearanceSettingsUpdate,
     SiteSettingsUpdate,
     TagCreate,
 )
@@ -86,6 +88,8 @@ from app.templating import refresh_site_branding_globals, templates
 from app.uploads import save_upload
 from app.audit import add_event
 from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
+from starlette.concurrency import run_in_threadpool
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -703,14 +707,24 @@ async def login_post(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    attempt_id = await reserve_login_attempt(session, get_request_ip(request))
+    ip = get_request_ip(request)
+    try:
+        attempt_id = await reserve_login_attempt(session, ip)
+    except HTTPException as exc:
+        if exc.status_code == 429:
+            add_event(session, "error", "login", "Kritik: giriş denemesi sınırı aşıldı",
+                      changes={"ip_address": [None, ip]}, actor="anonymous", level="critical")
+            await session.commit()
+            logger.critical("Giriş denemesi sınırı aşıldı: ip=%r", ip)
+        raise
     site_settings = await crud.get_site_settings(session)
     effective_username = site_settings.admin_username or settings.admin_username
     effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
 
-    if username != effective_username or not verify_admin_password(password, effective_hash):
-        logger.warning("Başarısız admin giriş denemesi: username=%r", username)
-        add_event(session, "error", "login", "Başarısız yönetici giriş denemesi", changes={"kullanici": [None, username[:100]]}, actor=username[:100], level="error")
+    password_valid = await run_in_threadpool(verify_admin_password, password, effective_hash)
+    if not secrets.compare_digest(username.encode(), effective_username.encode()) or not password_valid:
+        logger.critical("Başarısız admin giriş denemesi: ip=%r", ip)
+        add_event(session, "error", "login", "Başarısız yönetici giriş denemesi", changes={"ip_address": [None, ip]}, actor="anonymous", level="critical")
         await session.commit()
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
@@ -718,17 +732,22 @@ async def login_post(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
+    if not effective_hash.startswith("scrypt$"):
+        site_settings.admin_password_hash = await run_in_threadpool(hash_admin_password, password)
+        await session.commit()
     await clear_successful_attempt(session, attempt_id)
-    add_event(session, "login", "login", "Yönetici oturumu açıldı", actor=username)
+    request.session.clear()
+    add_event(session, "login", "login", "Yönetici oturumu açıldı", changes={"ip_address": [None, ip]}, actor=username)
     await session.commit()
-    token = create_admin_session_token(username)
+    token = create_admin_session_token(username, site_settings.admin_password_hash or settings.admin_password_hash)
     response = _redirect("/admin")
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
         max_age=max(1, site_settings.session_max_age_minutes) * 60,
         httponly=True,
-        samesite="lax",
+        samesite="strict",
+        secure=settings.app_base_url.startswith("https://"),
     )
     logger.info("Admin girişi başarılı: username=%r", username)
     return response
@@ -882,6 +901,7 @@ async def download_new_post(
     description: Optional[str] = Form(None),
     short_description: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
+    is_latest_version: bool = Form(False),
     file_type: str = Form(...),
     external_url: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
@@ -926,7 +946,8 @@ async def download_new_post(
             title=title,
             description=description or None,
             short_description=short_description or None,
-            version=version or None,
+            version=None if is_latest_version and file_type == "external" else version or None,
+            is_latest_version=is_latest_version and file_type == "external",
             file_type=FileType(file_type),
             file_path=file_path,
             external_url=external_url or None,
@@ -1023,6 +1044,7 @@ async def download_edit_post(
     description: Optional[str] = Form(None),
     short_description: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
+    is_latest_version: bool = Form(False),
     file_type: Optional[str] = Form(None),
     external_url: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
@@ -1076,7 +1098,8 @@ async def download_edit_post(
             title=title,
             description=description or None,
             short_description=short_description or None,
-            version=version or None,
+            version=None if is_latest_version and file_type == "external" else version or None,
+            is_latest_version=is_latest_version and file_type == "external",
             file_type=FileType(file_type) if file_type else None,
             file_path=file_path or download.file_path,
             external_url=external_url or None,
@@ -1449,8 +1472,118 @@ async def settings_menu_view(
             "admin_user": _admin,
             "flash_message": flash_message,
             "page_title": "Ayarlar",
+            "navbar_limit": site_settings.navbar_limit,
+            "footer_limit": site_settings.footer_limit,
         },
     )
+
+
+@router.get("/settings/appearance", name="admin_settings_appearance")
+async def settings_appearance_view(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    site_settings = await crud.get_site_settings(session)
+    try:
+        hero_components = json.loads(site_settings.hero_components)
+    except (TypeError, json.JSONDecodeError):
+        hero_components = []
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/settings_appearance.html",
+        context={
+            "request": request,
+            "site_settings": site_settings,
+            "hero_components": hero_components,
+            "admin_user": _admin,
+            "flash_message": request.session.pop("flash_message", None),
+            "page_title": "Görünüm",
+        },
+    )
+
+
+@router.post("/settings/appearance", name="admin_settings_appearance_update")
+async def settings_appearance_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    logo_mode: str = Form("icon_text"),
+    logo_light_file: Optional[UploadFile] = File(None),
+    logo_dark_file: Optional[UploadFile] = File(None),
+    clear_logo_light: bool = Form(False),
+    clear_logo_dark: bool = Form(False),
+    hero_enabled: bool = Form(False),
+    hero_background: str = Form("soft"),
+    hero_image_file: Optional[UploadFile] = File(None),
+    clear_hero_image: bool = Form(False),
+    component_type: List[str] = Form([]),
+    component_text: List[str] = Form([]),
+    component_text_en: List[str] = Form([]),
+):
+    current = await crud.get_site_settings(session)
+    logo_light = None if clear_logo_light else current.logo_light_path
+    logo_dark = None if clear_logo_dark else current.logo_dark_path
+    hero_image = None if clear_hero_image else current.hero_image_path
+    if logo_light_file and logo_light_file.filename:
+        logo_light = await _save_icon_upload(logo_light_file)
+    if logo_dark_file and logo_dark_file.filename:
+        logo_dark = await _save_icon_upload(logo_dark_file)
+    if hero_image_file and hero_image_file.filename:
+        hero_image = await _save_icon_upload(hero_image_file)
+
+    allowed = {"eyebrow", "title", "description", "search", "stats"}
+    components = []
+    seen_singletons = set()
+    for index, kind in enumerate(component_type):
+        if kind not in allowed or kind in seen_singletons:
+            continue
+        seen_singletons.add(kind)
+        text = component_text[index] if index < len(component_text) else ""
+        text_en = component_text_en[index] if index < len(component_text_en) else ""
+        components.append({"type": kind, "text": text.strip()[:300], "text_en": text_en.strip()[:300]})
+    if not components:
+        components = [{"type": "title", "text": "Güvenli ve Ücretsiz Yazılımlar", "text_en": "Safe and Free Software"}]
+    payload = AppearanceSettingsUpdate(
+        logo_mode=logo_mode if logo_mode in {"icon_text", "image_text", "image"} else "icon_text",
+        hero_enabled=hero_enabled,
+        hero_background=hero_background if hero_background in {"soft", "mesh", "lines", "image"} else "soft",
+        hero_components=json.dumps(components, ensure_ascii=False),
+        navbar_limit=current.navbar_limit,
+        footer_limit=current.footer_limit,
+        sidebar_category_limit=current.sidebar_category_limit,
+        sidebar_tag_limit=current.sidebar_tag_limit,
+    )
+    if payload.logo_mode in {"image", "image_text"} and not logo_light:
+        request.session["flash_message"] = "Resimli logo modu için aydınlık logo yükleyin."
+        return _redirect("/admin/settings/appearance")
+    updated = await crud.update_appearance_settings(
+        session,
+        **payload.model_dump(),
+        logo_light_path=logo_light,
+        logo_dark_path=logo_dark,
+        hero_image_path=hero_image,
+    )
+    refresh_site_branding_globals(updated)
+    request.session["flash_message"] = "Görünüm ayarları güncellendi."
+    return _redirect("/admin/settings/appearance")
+
+
+@router.post("/settings/menu-limits", name="admin_settings_menu_limits")
+async def settings_menu_limits_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    navbar_limit: int = Form(...),
+    footer_limit: int = Form(...),
+    sidebar_category_limit: int = Form(...),
+    sidebar_tag_limit: int = Form(...),
+):
+    await crud.update_menu_limits(
+        session, navbar_limit, footer_limit, sidebar_category_limit, sidebar_tag_limit
+    )
+    request.session["flash_message"] = "Menü görünürlük sınırları güncellendi."
+    return _redirect("/admin/settings/menu")
 
 
 @router.post("/settings/branding", name="admin_settings_branding")
@@ -1508,18 +1641,18 @@ async def settings_account_update(
         return _redirect("/admin/settings/account")
 
     new_username = (new_username or "").strip()
-    new_password = (new_password or "").strip()
-    new_password_confirm = (new_password_confirm or "").strip()
+    new_password = new_password or ""
+    new_password_confirm = new_password_confirm or ""
 
     if new_password and new_password != new_password_confirm:
         request.session["flash_message"] = "Yeni şifreler eşleşmiyor. Hiçbir şey değiştirilmedi."
         return _redirect("/admin/settings/account")
 
-    if new_password and len(new_password) < 8:
-        request.session["flash_message"] = "Yeni şifre en az 8 karakter olmalı. Hiçbir şey değiştirilmedi."
+    if new_password and (len(new_password) < 12 or len(new_password.encode()) > 1024):
+        request.session["flash_message"] = "Yeni şifre en az 12 karakter ve en fazla 1024 bayt olmalı. Hiçbir şey değiştirilmedi."
         return _redirect("/admin/settings/account")
 
-    password_hash = hash_admin_password(new_password) if new_password else None
+    password_hash = await run_in_threadpool(hash_admin_password, new_password) if new_password else None
     await crud.update_admin_credentials(session, new_username or None, password_hash)
 
     changed = []
@@ -1597,19 +1730,61 @@ async def menu_item_create(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     label: str = Form(...),
+    label_en: Optional[str] = Form(None),
     url: str = Form(...),
     icon: Optional[str] = Form(None),
     is_active: bool = Form(False),
     open_in_new_tab: bool = Form(False),
     location: str = Form("navbar"),
 ):
+    site_settings = await crud.get_site_settings(session)
+    limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
+    if len(await crud.get_menu_items(session, location=location)) >= limit:
+        request.session["flash_message"] = f"Bu bölüm en fazla {limit} menü öğesi içerebilir."
+        return _redirect("/admin/settings/menu")
     data = MenuItemCreate(
-        label=label, url=url, icon=icon or None,
+        label=label, label_en=label_en or None, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,
         location=location,
     )
     await crud.create_menu_item(session, data)
     request.session["flash_message"] = f"\"{label}\" menü öğesi eklendi."
+    return _redirect("/admin/settings/menu")
+
+
+@router.post("/settings/menu/from-source", name="admin_menu_from_source")
+async def menu_item_from_source(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    source_type: str = Form(...),
+    source_id: int = Form(...),
+    location: str = Form("navbar"),
+):
+    if location not in {"navbar", "footer"}:
+        raise HTTPException(status_code=422, detail="Geçersiz menü konumu.")
+    site_settings = await crud.get_site_settings(session)
+    limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
+    items = await crud.get_menu_items(session, location=location)
+    if len(items) >= limit:
+        request.session["flash_message"] = f"Bu bölüm en fazla {limit} menü öğesi içerebilir."
+        return _redirect("/admin/settings/menu")
+    if source_type == "category":
+        source = await crud.get_category_by_id(session, source_id)
+        label, url, icon = (source.name, f"/category/{source.slug}", "folder") if source else (None, None, None)
+    elif source_type == "tag":
+        source = await crud.get_tag_by_id(session, source_id)
+        label, url, icon = (f"#{source.name}", f"/tag/{source.slug}", "tag") if source else (None, None, None)
+    else:
+        source = None
+        label = url = icon = None
+    if not source:
+        raise HTTPException(status_code=404, detail="Kaynak bulunamadı.")
+    if any(item.url == url for item in items):
+        request.session["flash_message"] = "Bu bağlantı seçilen menüde zaten var."
+        return _redirect("/admin/settings/menu")
+    await crud.create_menu_item(session, MenuItemCreate(label=label, url=url, icon=icon, location=location))
+    request.session["flash_message"] = f'"{label}" menüye eklendi.'
     return _redirect("/admin/settings/menu")
 
 
@@ -1620,6 +1795,7 @@ async def menu_item_edit(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     label: str = Form(...),
+    label_en: Optional[str] = Form(None),
     url: str = Form(...),
     icon: Optional[str] = Form(None),
     is_active: bool = Form(False),
@@ -1629,7 +1805,7 @@ async def menu_item_edit(
     if not item:
         raise HTTPException(status_code=404, detail="Menü öğesi bulunamadı.")
     data = MenuItemUpdate(
-        label=label, url=url, icon=icon or None,
+        label=label, label_en=label_en or None, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,
     )
     await crud.update_menu_item(session, item, data)

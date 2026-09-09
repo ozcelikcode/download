@@ -18,10 +18,13 @@ from app.config import settings
 from app.models import FileType, IconType, SiteSettings
 
 from app.security import csrf_token
+from app.i18n import translate, ui_language
 
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["t"] = translate
+templates.env.globals["ui_language"] = ui_language
 templates.env.globals.update({
     "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",
     "theme_surface_light": "#eaf2fc", "theme_surface_dark": "#152033",
@@ -175,6 +178,9 @@ templates.env.globals["css_asset_v"] = _css_asset_version()
 # Global: site başlığı (.env APP_NAME'den gelir) — SiteSettings yüklenene kadarki varsayılan.
 templates.env.globals["site_name"] = settings.app_name
 templates.env.globals["site_icon"] = "download-cloud"
+templates.env.globals["logo_mode"] = "icon_text"
+templates.env.globals["logo_light_path"] = None
+templates.env.globals["logo_dark_path"] = None
 templates.env.globals["site_icon_color_light"], templates.env.globals["site_icon_color_dark"] = (
     resolve_icon_color("blue")
 )
@@ -196,6 +202,9 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     """
     templates.env.globals["site_name"] = site_settings.site_name
     templates.env.globals["site_icon"] = site_settings.site_icon
+    templates.env.globals["logo_mode"] = site_settings.logo_mode
+    templates.env.globals["logo_light_path"] = site_settings.logo_light_path
+    templates.env.globals["logo_dark_path"] = site_settings.logo_dark_path
     light, dark = resolve_icon_color(site_settings.site_icon_color)
     templates.env.globals["site_icon_color_light"] = light
     templates.env.globals["site_icon_color_dark"] = dark

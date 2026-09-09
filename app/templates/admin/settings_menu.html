@@ -17,6 +17,34 @@
 {% set active_settings_tab = 'menu' %}
 {% include "admin/_settings_tabs.html" %}
 
+<form method="post" action="/admin/settings/menu-limits" class="mb-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-48"><h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="ruler" class="w-4 h-4 text-slate-400"></i>Görünürlük sınırları</h2><p class="form-hint">Menülerin taşmasını önlemek için ekleme ve public görünüm sınırları.</p></div>
+    {% for name, label, value, min_value, max_value in [('navbar_limit','Navbar',site_settings.navbar_limit,3,12),('footer_limit','Footer',site_settings.footer_limit,3,12),('sidebar_category_limit','Sidebar kategori',site_settings.sidebar_category_limit,3,20),('sidebar_tag_limit','Sidebar etiket',site_settings.sidebar_tag_limit,5,25)] %}
+    <label class="w-32"><span class="form-label">{{ label }}</span><input type="number" name="{{ name }}" min="{{ min_value }}" max="{{ max_value }}" value="{{ value }}" class="form-input"></label>
+    {% endfor %}
+    <button class="btn-primary py-2 px-3"><i data-lucide="save" class="w-4 h-4"></i>Kaydet</button>
+  </div>
+</form>
+
+<div class="mb-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
+  <h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="list-plus" class="w-4 h-4 text-slate-400"></i>Hazır bağlantı ekle</h2>
+  <p class="form-hint mb-4">Bir kategori veya etiketi seçerek tek seferde navbar ya da footer bağlantısına dönüştürün.</p>
+  <div class="grid lg:grid-cols-2 gap-4">
+    <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="category">
+      <label><span class="form-label">Kategori</span><select name="source_id" class="form-input" required><option value="">Kategori seçin</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></label>
+      <div class="flex gap-2"><select name="location" class="form-input w-28" aria-label="Menü konumu"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="folder-plus" class="w-4 h-4"></i>Kategori çek</button></div>
+    </form>
+    <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="tag">
+      <label><span class="form-label">Etiket</span><select name="source_id" class="form-input" required><option value="">Etiket seçin</option>{% for tag in tags %}<option value="{{ tag.id }}">#{{ tag.name }}</option>{% endfor %}</select></label>
+      <div class="flex gap-2"><select name="location" class="form-input w-28" aria-label="Menü konumu"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>Etiket çek</button></div>
+    </form>
+  </div>
+</div>
+
 {# ================================================================
      ÜST MENÜ (NAVBAR)
      ================================================================ #}
@@ -24,7 +52,7 @@
   <div class="flex items-center justify-between mb-1">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
       <i data-lucide="menu" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Üst Menü (Navbar)
+      Üst Menü (Navbar) <span class="font-normal text-xs text-slate-400">{{ navbar_items|length }}/{{ navbar_limit }}</span>
     </h2>
     <button type="button" data-add-menu-btn data-location="navbar" class="btn-primary py-1.5 px-3 text-xs">
       <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
@@ -38,16 +66,15 @@
   <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
     <div class="bg-white dark:bg-slate-900 px-4 sm:px-6 h-14 flex items-center gap-5">
       <div class="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100 shrink-0">
-        <i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color"
-          style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
-        <span>{{ site_settings.site_name }}</span>
+        {% if site_settings.logo_mode in ['image','image_text'] and site_settings.logo_light_path %}<img src="{{ site_settings.logo_light_path }}" alt="" class="max-h-8 max-w-36 object-contain dark:hidden"><img src="{{ site_settings.logo_dark_path or site_settings.logo_light_path }}" alt="" class="max-h-8 max-w-36 object-contain hidden dark:block">{% else %}<i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color" style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>{% endif %}
+        {% if site_settings.logo_mode != 'image' %}<span>{{ site_settings.site_name }}</span>{% endif %}
       </div>
       <div id="navbar-preview" data-menu-preview data-location="navbar" data-reorder-endpoint="/admin/settings/menu/reorder" data-drag-axis="horizontal"
         class="flex items-center gap-0.5 flex-1 overflow-x-auto min-h-[2rem]">
         {% for item in navbar_items %}
         <span class="menu-preview-pill cursor-pointer inline-flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap
                      text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors {% if not item.is_active %}opacity-40{% endif %}"
-          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-url="{{ item.url }}"
+          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-label-en="{{ item.label_en or '' }}" data-url="{{ item.url }}"
           data-icon="{{ item.icon or '' }}" data-active="{{ '1' if item.is_active else '0' }}" data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
           {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
           {{ item.label }}
@@ -161,7 +188,7 @@
                 Tümü
               </span>
             </li>
-            {% for cat in categories %}
+            {% for cat in categories[:site_settings.sidebar_category_limit] %}
             <li>
               <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-sm text-slate-600 dark:text-slate-400">
                 <i data-lucide="folder" class="w-3.5 h-3.5 shrink-0"></i>
@@ -182,7 +209,7 @@
           <div id="sidebar-tags-preview" data-menu-preview data-drag-axis="horizontal"
             data-reorder-endpoint="/admin/settings/tags/reorder"
             class="flex flex-wrap gap-1.5 min-h-[1.5rem]">
-            {% for tag in tags %}
+            {% for tag in tags[:site_settings.sidebar_tag_limit] %}
             <span class="cursor-grab active:cursor-grabbing inline-flex items-center px-2 py-0.5 text-xs rounded-sm border
                         bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
               draggable="true" data-item-id="{{ tag.id }}">
@@ -208,7 +235,7 @@
   <div class="flex items-center justify-between mb-1">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
       <i data-lucide="panel-bottom" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Footer
+      Footer <span class="font-normal text-xs text-slate-400">{{ footer_items|length }}/{{ footer_limit }}</span>
     </h2>
     <button type="button" data-add-menu-btn data-location="footer" class="btn-primary py-1.5 px-3 text-xs">
       <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
@@ -222,15 +249,14 @@
   <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
     <div class="bg-white dark:bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-1.5 text-xs">
-        <i data-lucide="{{ site_settings.site_icon }}" class="w-3.5 h-3.5 site-icon-color"
-          style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>
-        <span class="font-medium text-slate-500 dark:text-slate-400">{{ site_settings.site_name }}</span>
+        {% if site_settings.logo_mode in ['image','image_text'] and site_settings.logo_light_path %}<img src="{{ site_settings.logo_light_path }}" alt="" class="max-h-5 max-w-28 object-contain dark:hidden"><img src="{{ site_settings.logo_dark_path or site_settings.logo_light_path }}" alt="" class="max-h-5 max-w-28 object-contain hidden dark:block">{% else %}<i data-lucide="{{ site_settings.site_icon }}" class="w-3.5 h-3.5 site-icon-color" style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>{% endif %}
+        {% if site_settings.logo_mode != 'image' %}<span class="font-medium text-slate-500 dark:text-slate-400">{{ site_settings.site_name }}</span>{% endif %}
       </div>
       <div id="footer-preview" data-menu-preview data-location="footer" data-reorder-endpoint="/admin/settings/menu/reorder" data-drag-axis="horizontal"
         class="flex items-center gap-4 flex-wrap min-h-[1.5rem]">
         {% for item in footer_items %}
         <span class="menu-preview-pill cursor-pointer flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors {% if not item.is_active %}opacity-40{% endif %}"
-          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-url="{{ item.url }}"
+          draggable="true" data-item-id="{{ item.id }}" data-label="{{ item.label }}" data-label-en="{{ item.label_en or '' }}" data-url="{{ item.url }}"
           data-icon="{{ item.icon or '' }}" data-active="{{ '1' if item.is_active else '0' }}" data-new-tab="{{ '1' if item.open_in_new_tab else '0' }}">
           {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3 h-3"></i>{% endif %}
           {{ item.label }}
@@ -255,8 +281,13 @@
 
     <div class="space-y-3">
       <div>
-        <label class="form-label">Etiket <span class="text-red-500">*</span></label>
+        <label class="form-label">Etiket — Türkçe <span class="text-red-500">*</span></label>
         <input id="menu-item-label" type="text" required class="form-input" placeholder="Örn: Blog">
+      </div>
+      <div>
+        <label class="form-label">Etiket — English</label>
+        <input id="menu-item-label-en" type="text" class="form-input" placeholder="Example: Blog">
+        <p class="form-hint">Boş bırakılırsa Türkçe etiket gösterilir.</p>
       </div>
       <div>
         <label class="form-label">Bağlantı <span class="text-red-500">*</span></label>
@@ -397,6 +428,7 @@
     const modal       = document.getElementById('menu-item-modal');
     const titleEl     = document.getElementById('menu-item-modal-title');
     const labelField   = document.getElementById('menu-item-label');
+    const labelEnField = document.getElementById('menu-item-label-en');
     const urlField     = document.getElementById('menu-item-url');
     const iconField    = document.getElementById('menu-item-icon');
     const iconClearBtn = document.getElementById('menu-item-icon-clear');
@@ -422,6 +454,7 @@
         ? '<i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Menü Öğesini Düzenle'
         : '<i data-lucide="plus-circle" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i> Yeni Menü Öğesi');
       labelField.value = data ? data.label : '';
+      labelEnField.value = data ? data.labelEn : '';
       urlField.value = data ? data.url : '';
       iconField.value = data ? data.icon : '';
       setIconPreview(data ? data.icon : '');
@@ -448,6 +481,7 @@
         openModal(location, {
           id: pill.dataset.itemId,
           label: pill.dataset.label,
+          labelEn: pill.dataset.labelEn,
           url: pill.dataset.url,
           icon: pill.dataset.icon,
           active: pill.dataset.active,
@@ -479,6 +513,7 @@
       }
       const fd = new FormData();
       fd.append('label', labelField.value.trim());
+      fd.append('label_en', labelEnField.value.trim());
       fd.append('url', urlField.value.trim());
       fd.append('icon', iconField.value.trim());
       fd.append('is_active', activeField.checked ? 'true' : 'false');

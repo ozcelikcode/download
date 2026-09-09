@@ -12,9 +12,10 @@ from app.models import AuditLog, Category, Download, DownloadVersionHistory, Med
 
 TRACKED = (Download, Category, Tag, MenuItem, SiteSettings, MediaAsset, DownloadVersionHistory)
 IGNORED = {"id", "created_at", "updated_at", "download_count", "sha256", "checksum_size", "checksum_mtime_ns"}
-ENTITY_LABELS = {"downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
+ENTITY_LABELS = {"login": "Giriş güvenliği","downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
 ACTION_LABELS = {"create": "Eklendi", "update": "Düzenlendi", "delete": "Silindi", "replace": "Dosya değiştirildi", "crop": "Görsel kırpıldı", "reorder": "Sıralandı", "bulk": "Toplu işlem", "transfer": "Aktarıldı", "error": "Hata", "login": "Oturum açıldı"}
 FIELD_LABELS = {
+    "ip_address": "IP adresi",
     "name": "Ad", "title": "Başlık", "slug": "Adres adı", "description": "Açıklama",
     "short_description": "Kısa açıklama", "position": "Sıra", "version": "Sürüm",
     "file_type": "Kaynak türü", "file_path": "Dosya yolu", "external_url": "İndirme adresi",
@@ -22,10 +23,16 @@ FIELD_LABELS = {
     "icon_image_path": "İkon dosyası", "icon_image_url": "İkon adresi", "icon_extension": "Dosya uzantısı",
     "os_compatibility": "İşletim sistemleri", "category_id": "Kategori", "parent_id": "Bağlı sürüm",
     "is_active": "Yayında", "is_featured": "Öne çıkan", "is_official_source": "Resmî kaynak",
+    "is_latest_version": "Güncel sürüm bağlantısı",
     "label": "Başlık", "url": "Adres", "icon": "İkon", "open_in_new_tab": "Yeni sekmede aç",
     "location": "Menü konumu", "site_name": "Site adı", "site_icon": "Site ikonu",
     "site_icon_color": "İkon rengi", "sidebar_block_order": "Yan menü sırası",
     "theme_color": "Renk teması",
+    "logo_mode": "Logo düzeni", "logo_light_path": "Aydınlık logo", "logo_dark_path": "Karanlık logo",
+    "hero_enabled": "Hero görünürlüğü", "hero_background": "Hero arka planı",
+    "hero_image_path": "Hero resmi", "hero_components": "Hero bileşenleri",
+    "navbar_limit": "Navbar sınırı", "footer_limit": "Footer sınırı",
+    "sidebar_category_limit": "Sidebar kategori sınırı", "sidebar_tag_limit": "Sidebar etiket sınırı",
     "admin_username": "Yönetici adı", "admin_password_hash": "Yönetici parolası",
     "admin_icon": "Yönetici ikonu", "admin_icon_color": "Yönetici ikon rengi",
     "session_max_age_minutes": "Oturum süresi (dakika)", "path": "Medya yolu",

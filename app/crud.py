@@ -303,6 +303,7 @@ async def create_menu_item(session: AsyncSession, data: MenuItemCreate) -> MenuI
     )
     item = MenuItem(
         label=data.label,
+        label_en=data.label_en or None,
         url=data.url,
         icon=data.icon or None,
         is_active=data.is_active,
@@ -376,10 +377,59 @@ async def update_site_settings(
     return settings_row
 
 
+async def update_appearance_settings(
+    session: AsyncSession,
+    *,
+    logo_mode: str,
+    logo_light_path: Optional[str],
+    logo_dark_path: Optional[str],
+    hero_enabled: bool,
+    hero_background: str,
+    hero_image_path: Optional[str],
+    hero_components: str,
+    navbar_limit: int,
+    footer_limit: int,
+    sidebar_category_limit: int,
+    sidebar_tag_limit: int,
+) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.logo_mode = logo_mode
+    settings_row.logo_light_path = logo_light_path
+    settings_row.logo_dark_path = logo_dark_path
+    settings_row.hero_enabled = hero_enabled
+    settings_row.hero_background = hero_background
+    settings_row.hero_image_path = hero_image_path
+    settings_row.hero_components = hero_components
+    settings_row.navbar_limit = navbar_limit
+    settings_row.footer_limit = footer_limit
+    settings_row.sidebar_category_limit = sidebar_category_limit
+    settings_row.sidebar_tag_limit = sidebar_tag_limit
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
 async def update_sidebar_block_order(session: AsyncSession, order: List[str]) -> SiteSettings:
     """Sidebar blok sırasını ('search', 'categories', 'tags') günceller."""
     settings_row = await get_site_settings(session)
     settings_row.sidebar_block_order = ",".join(order)
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
+async def update_menu_limits(
+    session: AsyncSession,
+    navbar_limit: int,
+    footer_limit: int,
+    sidebar_category_limit: int,
+    sidebar_tag_limit: int,
+) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.navbar_limit = max(3, min(navbar_limit, 12))
+    settings_row.footer_limit = max(3, min(footer_limit, 12))
+    settings_row.sidebar_category_limit = max(3, min(sidebar_category_limit, 20))
+    settings_row.sidebar_tag_limit = max(5, min(sidebar_tag_limit, 25))
     await session.commit()
     await session.refresh(settings_row)
     return settings_row
@@ -725,6 +775,7 @@ async def create_download(
         description=data.description,
         short_description=data.short_description,
         version=data.version,
+        is_latest_version=data.is_latest_version,
         file_type=data.file_type,
         file_path=data.file_path,
         external_url=str(data.external_url) if data.external_url else None,

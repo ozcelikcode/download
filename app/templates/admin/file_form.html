@@ -135,7 +135,12 @@
         <input id="f-version" name="version" type="text"
           value="{{ download.version if download else '' }}"
           placeholder="Örn: v2.1.0"
-          class="form-input">
+          class="form-input" {% if download and download.is_latest_version %}disabled{% endif %}>
+        <label id="latest-version-option" class="choice-card flex items-center gap-2 mt-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
+          <input id="f-latest-version" type="checkbox" name="is_latest_version" value="true" class="choice-input" {% if download and download.is_latest_version %}checked{% endif %}>
+          <span class="text-xs text-slate-600 dark:text-slate-400">Güncel sürüm bağlantısı</span>
+        </label>
+        <p id="latest-version-hint" class="form-hint {% if not (download and download.is_latest_version) %}hidden{% endif %}">Sürüm numarası yerine dış kaynağın her zaman güncel bağlantısı gösterilir.</p>
       </div>
 
       {# İkon türü #}
@@ -626,6 +631,15 @@
   const radios   = document.querySelectorAll('input[name="file_type"]');
   const secExt   = document.getElementById('section-external');
   const secLocal = document.getElementById('section-local');
+  const versionInput = document.getElementById('f-version');
+  const latestVersionInput = document.getElementById('f-latest-version');
+  const latestVersionOption = document.getElementById('latest-version-option');
+  const latestVersionHint = document.getElementById('latest-version-hint');
+
+  function updateLatestVersion() {
+    versionInput.disabled = latestVersionInput.checked;
+    latestVersionHint.classList.toggle('hidden', !latestVersionInput.checked);
+  }
 
   function updateFileType() {
     const checked = document.querySelector('input[name="file_type"]:checked');
@@ -633,9 +647,13 @@
 
     secExt.classList.toggle('hidden', !isExt);
     secLocal.classList.toggle('hidden', isExt);
-
+    latestVersionOption.classList.toggle('hidden', !isExt);
+    if (!isExt) latestVersionInput.checked = false;
+    updateLatestVersion();
   }
   radios.forEach(function(r) { r.addEventListener('change', updateFileType); });
+  latestVersionInput.addEventListener('change', updateLatestVersion);
+  updateFileType();
 
   // ── Uzantı → ikon otomatik algılama ─────────────────
   var EXT_ICON = {

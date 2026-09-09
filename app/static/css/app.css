@@ -481,7 +481,7 @@ body[class~="bg-slate-50"], body[class~="dark:bg-slate-950"] { background-color:
 .site-icon-color, .tag-pill:hover, a:hover .tag-pill,
 .breadcrumb a:hover, .prose-description :where(a) { color: var(--theme-accent) !important; }
 .btn-primary, .btn-download, .page-btn.active {
-  background: var(--theme-accent) !important;
+  background: var(--theme-button-bg, var(--theme-accent)) !important;
   color: var(--theme-button-text) !important;
 }
 .btn-primary:hover, .btn-download:hover { filter: brightness(.9); }
@@ -571,5 +571,10 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
   --theme-panel: #080808;
   --theme-panel-muted: #111111;
   --theme-neutral-border: #27272a;
+  --theme-button-bg: #3f3f46;
   --theme-button-text: #ffffff;
 }
+
+.hero-bg-mesh { background-image: radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--theme-accent) 16%, transparent), transparent 38%), linear-gradient(135deg, var(--theme-panel), var(--theme-panel-muted)) !important; }
+.hero-bg-lines { background-image: repeating-linear-gradient(135deg, transparent 0 16px, color-mix(in srgb, var(--theme-accent) 7%, transparent) 16px 17px), linear-gradient(var(--theme-panel), var(--theme-panel-muted)) !important; }
+.hero-bg-image { position: relative; background-image: linear-gradient(color-mix(in srgb, var(--theme-panel) 82%, transparent), color-mix(in srgb, var(--theme-panel) 82%, transparent)), var(--hero-image), linear-gradient(135deg, var(--theme-panel), var(--theme-panel-muted)) !important; background-size: cover !important; background-position: center !important; }

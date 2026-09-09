@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}429 — Çok Fazla İstek — {{ site_name }}{% endblock %}
-{% block meta_description %}İndirme limitinize ulaştınız.{% endblock %}
+{% block title %}429 — {{ t(request, 'too_many') }} — {{ site_name }}{% endblock %}
+{% block meta_description %}{{ t(request, 'limit_reached') }}{% endblock %}
 
 {% block content %}
 <div class="flex flex-col items-center justify-center py-20 text-center">
@@ -14,23 +14,22 @@
     </div>
   </div>
 
-  <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Çok Fazla İstek</h1>
+  <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{{ t(request, 'too_many') }}</h1>
   <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-2">
-    Saatlik indirme limitinize ulaştınız.
+    {{ t(request, 'limit_reached') }}
   </p>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-8">
-    Spam'i önlemek amacıyla her IP adresi için saatlik indirme sınırı uygulanmaktadır.
-    Lütfen bir süre bekleyip tekrar deneyin.
+    {{ t(request, 'limit_text') }}
   </p>
 
   <div class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-sm text-sm text-amber-700 dark:text-amber-400 mb-8">
     <i data-lucide="info" class="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0"></i>
-    Limit 1 saat içinde sıfırlanacaktır.
+    {{ t(request, 'limit_reset') }}
   </div>
 
   <a href="/" class="btn-download">
     <i data-lucide="home" class="w-3.5 h-3.5"></i>
-    Ana Sayfaya Dön
+    {{ t(request, 'home_return') }}
   </a>
 
 </div>

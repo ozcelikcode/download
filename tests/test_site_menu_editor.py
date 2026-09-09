@@ -126,7 +126,51 @@ async def test_settings_account_page_renders(admin_client: AsyncClient):
     assert "Admin Hesabı" in response.text
 
 
+async def test_settings_appearance_page_renders(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/settings/appearance")
+    assert response.status_code == 200
+    assert "Hero alanı" in response.text
+    assert "Karanlık tema logosu" in response.text
+
+
 async def test_settings_root_redirects_to_general(admin_client: AsyncClient):
     response = await admin_client.get("/admin/settings", follow_redirects=False)
     assert response.status_code in (302, 303, 307)
     assert response.headers["location"].endswith("/admin/settings/general")
+
+
+async def test_appearance_settings_drive_public_hero_and_limits(
+    admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
+):
+    for index in range(7):
+        await admin_client.post(
+            "/admin/settings/menu",
+            data={"label": f"Link {index}", "url": f"/link-{index}", "location": "navbar", "is_active": "true"},
+        )
+    response = await admin_client.post(
+        "/admin/settings/appearance",
+        data={
+            "logo_mode": "icon_text", "hero_enabled": "true", "hero_background": "lines",
+            "component_type": ["title", "search"],
+            "component_text": ["Özel Hero Başlığı", "Program ara"],
+        },
+    )
+    assert response.status_code == 302
+    assert (await admin_client.post("/admin/settings/menu-limits", data={"navbar_limit": 3, "footer_limit": 4, "sidebar_category_limit": 5, "sidebar_tag_limit": 25})).status_code == 302
+    home = await client.get("/")
+    assert "Özel Hero Başlığı" in home.text
+    assert 'placeholder="Program ara"' in home.text
+    assert 'hero-bg-lines' in home.text
+    assert sum(f"Link {index}" in home.text for index in range(7)) == 3
+
+
+async def test_menu_can_pull_one_category_and_reject_duplicate(
+    admin_client: AsyncClient, db_session: AsyncSession
+):
+    category = await crud.create_category(db_session, CategoryCreate(name="Grafik"))
+    data = {"source_type": "category", "source_id": category.id, "location": "navbar"}
+    assert (await admin_client.post("/admin/settings/menu/from-source", data=data)).status_code == 302
+    assert (await admin_client.post("/admin/settings/menu/from-source", data=data)).status_code == 302
+    items = await crud.get_menu_items(db_session, location="navbar")
+    assert len(items) == 1
+    assert items[0].url == f"/category/{category.slug}"

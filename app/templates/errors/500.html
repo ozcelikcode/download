@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}500 — Sunucu Hatası — {{ site_name }}{% endblock %}
-{% block meta_description %}Beklenmedik bir sunucu hatası oluştu.{% endblock %}
+{% block title %}500 — {{ t(request, 'server_error') }} — {{ site_name }}{% endblock %}
+{% block meta_description %}{{ t(request, 'server_error_text') }}{% endblock %}
 
 {% block content %}
 <div class="flex flex-col items-center justify-center py-20 text-center">
@@ -14,25 +14,25 @@
     </div>
   </div>
 
-  <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Sunucu Hatası</h1>
+  <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{{ t(request, 'server_error') }}</h1>
   <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-8">
-    Beklenmedik bir hata oluştu. Sunucumuz bu hatayı kayıt altına aldı.
-    Lütfen birkaç saniye bekleyip tekrar deneyin.
+    {{ t(request, 'server_error_text') }}
   </p>
 
   <div class="flex items-center gap-3">
-    <a href="javascript:window.location.reload()"
+    <button type="button" id="retry-current-page"
       class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium
              border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400
              hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-      Yenile
-    </a>
+      {{ t(request, 'refresh') }}
+    </button>
     <a href="/" class="btn-download">
       <i data-lucide="home" class="w-3.5 h-3.5"></i>
-      Ana Sayfaya Dön
+      {{ t(request, 'home_return') }}
     </a>
   </div>
 
 </div>
 {% endblock %}
+{% block scripts %}<script>document.getElementById('retry-current-page').addEventListener('click', function () { window.location.reload(); });</script>{% endblock %}
