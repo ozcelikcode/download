@@ -160,6 +160,7 @@ class SiteSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Download Sitesi")
+    site_language: Mapped[str] = mapped_column(String(2), nullable=False, default="tr")
     site_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="download-cloud")
     site_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
     # Sitenin tüm vurgu bileşenlerinde kullanılan merkezi renk teması.
@@ -311,6 +312,8 @@ class Download(Base):
 
     # Durum bayrakları
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_draft: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    draft_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Kaynak güvenilirliği: True → resmî site, False → üçüncü parti site
     is_official_source: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

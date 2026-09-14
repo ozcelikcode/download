@@ -18,12 +18,13 @@ from app.config import settings
 from app.models import FileType, IconType, SiteSettings
 
 from app.security import csrf_token
-from app.i18n import translate, ui_language
+from app.i18n import set_ui_language, translate, translate_format, ui_language
 
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["t"] = translate
+templates.env.globals["tf"] = translate_format
 templates.env.globals["ui_language"] = ui_language
 templates.env.globals.update({
     "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",
@@ -164,6 +165,16 @@ def _qs_override(params: dict, **overrides) -> str:
 
 templates.env.globals["qs_override"] = _qs_override
 
+
+def _canonical_url(request) -> str:
+    base_url = settings.app_base_url.rstrip("/")
+    path = request.url.path
+    query = request.url.query
+    return f"{base_url}{path}{'?' + query if query else ''}"
+
+
+templates.env.globals["canonical_url"] = _canonical_url
+
 # Global: statik CSS dosyalarının cache-busting sürüm numarası. Tarayıcının
 # `make css` sonrası eski tailwind.css/app.css'i önbellekten göstermeye devam
 # etmesini önler — dosya değiştikçe link'in sonuna eklenen ?v= değeri de değişir.
@@ -177,6 +188,7 @@ templates.env.globals["css_asset_v"] = _css_asset_version()
 
 # Global: site başlığı (.env APP_NAME'den gelir) — SiteSettings yüklenene kadarki varsayılan.
 templates.env.globals["site_name"] = settings.app_name
+templates.env.globals["site_language"] = "tr"
 templates.env.globals["site_icon"] = "download-cloud"
 templates.env.globals["logo_mode"] = "icon_text"
 templates.env.globals["logo_light_path"] = None
@@ -201,6 +213,8 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     edebilir (bu proje ölçeğinde kabul edilebilir bir sınırlama).
     """
     templates.env.globals["site_name"] = site_settings.site_name
+    templates.env.globals["site_language"] = site_settings.site_language
+    set_ui_language(site_settings.site_language)
     templates.env.globals["site_icon"] = site_settings.site_icon
     templates.env.globals["logo_mode"] = site_settings.logo_mode
     templates.env.globals["logo_light_path"] = site_settings.logo_light_path

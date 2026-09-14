@@ -1,8 +1,8 @@
 {% set _tabs = [
-  ('general', '/admin/settings/general', 'palette', 'Genel'),
-  ('appearance', '/admin/settings/appearance', 'layout-template', 'Görünüm'),
-  ('account', '/admin/settings/account', 'user-cog', 'Hesap'),
-  ('menu', '/admin/settings/menu', 'menu', 'Menüler'),
+  ('general', '/admin/settings/general', 'palette', t(request, 'general')),
+  ('appearance', '/admin/settings/appearance', 'layout-template', t(request, 'appearance')),
+  ('account', '/admin/settings/account', 'user-cog', t(request, 'account')),
+  ('menu', '/admin/settings/menu', 'menu', t(request, 'menus')),
 ] %}
 <div class="flex items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-800">
   {% for key, url, icon, label in _tabs %}

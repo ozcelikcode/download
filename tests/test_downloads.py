@@ -49,7 +49,10 @@ async def test_latest_version_external_link_is_localized(
     turkish = await client.get(f"/download/{download.slug}")
     assert "Güncel sürüm" in turkish.text
     assert "Güncel sürüm" in (await client.get("/")).text
-    client.cookies.set("ui_language", "en")
+    language_response = await admin_client.post(
+        "/admin/settings/language", data={"language": "en"}
+    )
+    assert language_response.status_code == 302
     english = await client.get(f"/download/{download.slug}")
     assert "Latest version" in english.text
     assert "Latest version" in (await client.get("/")).text

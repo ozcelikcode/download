@@ -5,8 +5,18 @@ from app import crud
 from app.schemas import DownloadCreate
 
 
-async def test_language_cookie_translates_chrome_and_keeps_content(
-    client: AsyncClient, db_session: AsyncSession
+async def _set_language(admin_client: AsyncClient, language: str) -> None:
+    response = await admin_client.post(
+        "/admin/settings/language",
+        data={"language": language},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/admin/settings/general"
+
+
+async def test_admin_language_controls_site_and_admin_without_translating_content(
+    admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ):
     download = await crud.create_download(
         db_session,
@@ -17,77 +27,90 @@ async def test_language_cookie_translates_chrome_and_keeps_content(
             external_url="https://example.com/app",
         ),
     )
+    await _set_language(admin_client, "en")
 
-    selected = await client.get(
-        f"/language/en?return_to=/download/{download.slug}", follow_redirects=False
-    )
-    assert selected.status_code == 302
-    assert selected.headers["location"] == f"/download/{download.slug}"
+    public_page = await client.get(f"/download/{download.slug}")
+    assert '<html lang="en">' in public_page.text
+    assert "Open Link" in public_page.text
+    assert "File Information" in public_page.text
+    assert "Türkçe Uygulama Adı" in public_page.text
+    assert "İçerik açıklaması çevrilmemeli." in public_page.text
+    assert 'property="og:locale" content="en_US"' in public_page.text
+    assert 'rel="canonical"' in public_page.text
 
-    page = await client.get(selected.headers["location"])
-    assert '<html lang="en">' in page.text
-    assert "Download Now" not in page.text
-    assert "Open Link" in page.text
-    assert "File Information" in page.text
-    assert "Compatibility" in page.text
-    assert "Not specified" in page.text
-    assert "Türkçe Uygulama Adı" in page.text
-    assert "İçerik açıklaması çevrilmemeli." in page.text
-
-
-async def test_language_return_rejects_external_redirect(client: AsyncClient):
-    response = await client.get(
-        "/language/en?return_to=https://example.com", follow_redirects=False
-    )
-    assert response.headers["location"] == "/"
+    admin_page = await admin_client.get("/admin/settings/general")
+    assert '<html lang="en">' in admin_page.text
+    assert "Site Language" in admin_page.text
+    assert "Save Language" in admin_page.text
+    assert "Activity Log" in admin_page.text
 
 
-async def test_custom_menu_label_follows_public_language(
+async def test_public_cookie_and_removed_language_route_cannot_override_setting(
+    admin_client: AsyncClient, client: AsyncClient
+):
+    await _set_language(admin_client, "en")
+    client.cookies.set("ui_language", "tr")
+    home = await client.get("/")
+    assert '<html lang="en">' in home.text
+    assert 'placeholder="Search downloads..."' in home.text
+    assert (await client.get("/language/tr", follow_redirects=False)).status_code == 404
+
+
+async def test_custom_menu_and_hero_follow_global_site_language(
     admin_client: AsyncClient, client: AsyncClient
 ):
     response = await admin_client.post(
         "/admin/settings/menu",
-        data={
-            "label": "Hakkımızda",
-            "label_en": "About",
-            "url": "/about",
-            "location": "navbar",
-            "is_active": "true",
-        },
+        data={"label": "Hakkımızda", "label_en": "About", "url": "/about", "location": "navbar", "is_active": "true"},
     )
     assert response.status_code == 302
-
-    turkish = await client.get("/")
-    assert "Hakkımızda" in turkish.text
-    client.cookies.set("ui_language", "en")
-    english = await client.get("/")
-    assert "About" in english.text
-    assert "Hakkımızda" not in english.text
-
-
-async def test_hero_has_live_preview_and_separate_english_text(
-    admin_client: AsyncClient, client: AsyncClient
-):
-    appearance = await admin_client.get("/admin/settings/appearance")
-    assert 'id="hero-live-preview"' in appearance.text
-    assert 'name="component_text_en"' in appearance.text
-    assert "hero-preview-language" not in appearance.text
-
     response = await admin_client.post(
         "/admin/settings/appearance",
         data={
-            "logo_mode": "icon_text",
-            "hero_enabled": "true",
-            "hero_background": "mesh",
-            "component_type": ["title", "search"],
-            "component_text": ["Türkçe Hero", "Uygulama ara"],
+            "logo_mode": "icon_text", "hero_enabled": "true", "hero_background": "mesh",
+            "component_type": ["title", "search"], "component_text": ["Türkçe Hero", "Uygulama ara"],
             "component_text_en": ["English Hero", "Search applications"],
         },
     )
     assert response.status_code == 302
 
-    client.cookies.set("ui_language", "en")
+    await _set_language(admin_client, "en")
     home = await client.get("/")
+    assert "About" in home.text
+    assert "Hakkımızda" not in home.text
     assert "English Hero" in home.text
     assert 'placeholder="Search applications"' in home.text
     assert "Türkçe Hero" not in home.text
+
+
+async def test_invalid_language_is_rejected_and_current_language_remains(admin_client: AsyncClient):
+    await _set_language(admin_client, "en")
+    response = await admin_client.post(
+        "/admin/settings/language", data={"language": "de"}, follow_redirects=False
+    )
+    assert response.status_code == 302
+    page = await admin_client.get("/admin/settings/general")
+    assert '<html lang="en">' in page.text
+    assert 'value="en" class="peer sr-only" checked' in page.text
+
+
+async def test_english_admin_pages_render_from_the_shared_setting(admin_client: AsyncClient):
+    await _set_language(admin_client, "en")
+    pages = {
+        "/admin": "Overview and site statistics",
+        "/admin/downloads": "Search by title",
+        "/admin/downloads/new": "Add New Download",
+        "/admin/categories": "New Category",
+        "/admin/tags": "New Tag",
+        "/admin/media": "All images and files uploaded",
+        "/admin/links": "Latest check results",
+        "/admin/audit": "Admin changes and errors",
+        "/admin/settings/account": "Admin Account",
+        "/admin/settings/appearance": "Live Preview",
+        "/admin/settings/menu": "Visibility Limits",
+    }
+    for path, expected in pages.items():
+        response = await admin_client.get(path)
+        assert response.status_code == 200, path
+        assert '<html lang="en">' in response.text, path
+        assert expected in response.text, path

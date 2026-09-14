@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 
+import httpx
 from httpx import AsyncClient
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,102 @@ def _upload_path_to_disk(url_path: str):
     """'/static/uploads/xxx' web yolunu gerçek (izole) disk yoluna çevirir."""
     rel = url_path.removeprefix("/static/uploads/")
     return settings.upload_path / rel
+
+
+async def test_icon_url_upload_blocks_private_network(monkeypatch):
+    from app.routers import admin
+
+    async def blocked(_url):
+        raise ValueError("Yerel veya özel ağ adreslerine erişim engellendi.")
+
+    monkeypatch.setattr(admin, "resolve_public_url", blocked)
+    token = "private-network-test"
+    admin._icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None}
+    await admin._fetch_icon_from_url("http://127.0.0.1/internal.png", token, "admin")
+
+    result = admin._icon_fetch_progress.pop(token)
+    assert result["done"] is True
+    assert "özel ağ" in result["error"]
+
+
+async def test_icon_url_upload_revalidates_redirect_target(monkeypatch):
+    from app.routers import admin
+
+    async def resolve(url):
+        if url.host == "localhost":
+            raise ValueError("Yerel veya özel ağ adreslerine erişim engellendi.")
+        return "93.184.216.34"
+
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(302, headers={"location": "http://localhost/internal.png"})
+
+    client_class = httpx.AsyncClient
+    monkeypatch.setattr(admin, "resolve_public_url", resolve)
+    monkeypatch.setattr(
+        admin.httpx,
+        "AsyncClient",
+        lambda **kwargs: client_class(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    token = "redirect-test"
+    admin._icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None}
+    await admin._fetch_icon_from_url("https://example.com/icon.png", token, "admin")
+
+    result = admin._icon_fetch_progress.pop(token)
+    assert result["done"] is True
+    assert "özel ağ" in result["error"]
+    assert len(requests) == 1
+
+
+async def test_icon_url_upload_streams_valid_public_image(monkeypatch):
+    from app.routers import admin
+
+    image_bytes = _make_png_bytes(32, 32)
+
+    async def resolve(_url):
+        return "93.184.216.34"
+
+    def handle(request):
+        assert request.url.host == "93.184.216.34"
+        assert request.headers["host"] == "example.com"
+        return httpx.Response(
+            200,
+            headers={"content-type": "image/png", "content-length": str(len(image_bytes))},
+            content=image_bytes,
+        )
+
+    class FakeSession:
+        def __init__(self):
+            self.info = {}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+    async def record_media_upload(_session, _path, _actor):
+        return None
+
+    client_class = httpx.AsyncClient
+    monkeypatch.setattr(admin, "resolve_public_url", resolve)
+    monkeypatch.setattr(admin, "AsyncSessionLocal", FakeSession)
+    monkeypatch.setattr(admin.crud, "record_media_upload", record_media_upload)
+    monkeypatch.setattr(
+        admin.httpx,
+        "AsyncClient",
+        lambda **kwargs: client_class(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    token = "public-image-test"
+    admin._icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None}
+    await admin._fetch_icon_from_url("https://example.com/icon.png", token, "admin")
+
+    result = admin._icon_fetch_progress.pop(token)
+    assert result["done"] is True
+    assert result["error"] is None
+    assert _upload_path_to_disk(result["path"]).is_file()
 
 
 async def test_icon_upload_compresses_large_image(admin_client: AsyncClient):

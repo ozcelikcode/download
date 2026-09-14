@@ -39,7 +39,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import quote, unquote, urljoin, urlsplit
 
 import httpx
 from fastapi import (
@@ -52,7 +52,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,6 +61,8 @@ from app.branding import SITE_ICON_COLORS
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.imaging import compress_image_file, make_square_icon
+from app.i18n import translate
+from app.link_checks import resolve_public_url
 from app.dependencies import (
     create_admin_session_token,
     get_db,
@@ -128,6 +130,21 @@ def _int_or_none(value: Optional[str]) -> Optional[int]:
         return int(s)
     except (ValueError, TypeError):
         return None
+
+
+def _form_bool(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _wants_json(request: Request) -> bool:
+    return "application/json" in request.headers.get("accept", "")
+
+
+def _stored_upload_path(value: object) -> Optional[str]:
+    path = media_path(str(value or ""))
+    return str(path) if path is not None and path.is_file() else None
 
 
 def _parse_file_size_to_bytes(value_str: Optional[str], unit: str) -> Optional[int]:
@@ -233,32 +250,54 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
     """Dış URL'deki görseli akış halinde indirip icons/ dizinine kaydeder, ilerlemeyi günceller."""
     dest: Optional[Path] = None
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
-            async with client.stream("GET", url) as resp:
-                resp.raise_for_status()
-                content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
-                if not content_type.startswith("image/"):
-                    raise ValueError("Bağlantı bir görsel dosyası döndürmüyor.")
+        current = httpx.URL(url)
+        visited: set[str] = set()
+        for _ in range(6):
+            if str(current) in visited:
+                raise ValueError("Yönlendirme döngüsü tespit edildi.")
+            visited.add(str(current))
+            ip = await resolve_public_url(current)
+            pinned = current.copy_with(host=ip)
+            headers = {"Host": current.netloc.decode("ascii"), "User-Agent": "DownloadSite-ImageFetch/1.0"}
+            async with httpx.AsyncClient(follow_redirects=False, timeout=30.0, trust_env=False) as client:
+                async with client.stream(
+                    "GET",
+                    pinned,
+                    headers=headers,
+                    extensions={"sni_hostname": current.host},
+                ) as resp:
+                    if resp.status_code in {301, 302, 303, 307, 308}:
+                        location = resp.headers.get("location")
+                        if not location:
+                            raise ValueError("Yönlendirme adresi eksik.")
+                        current = httpx.URL(urljoin(str(current), location))
+                        continue
+                    resp.raise_for_status()
+                    content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
+                    if not content_type.startswith("image/"):
+                        raise ValueError("Bağlantı bir görsel dosyası döndürmüyor.")
 
-                total = int(resp.headers.get("content-length") or 0)
-                if total > settings.max_upload_size_bytes:
-                    raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
-                ext = mimetypes.guess_extension(content_type) or ".jpg"
-                icons_dir = settings.upload_path / "icons"
-                icons_dir.mkdir(parents=True, exist_ok=True)
-                filename = f"{uuid.uuid4().hex[:12]}{ext}"
-                dest = icons_dir / filename
+                    total = int(resp.headers.get("content-length") or 0)
+                    if total > settings.max_upload_size_bytes:
+                        raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
+                    ext = mimetypes.guess_extension(content_type) or ".jpg"
+                    icons_dir = settings.upload_path / "icons"
+                    icons_dir.mkdir(parents=True, exist_ok=True)
+                    filename = f"{uuid.uuid4().hex[:12]}{ext}"
+                    dest = icons_dir / filename
 
-                received = 0
-                with dest.open("wb") as out:
-                    async for chunk in resp.aiter_bytes(chunk_size=65536):
-                        received += len(chunk)
-                        if received > settings.max_upload_size_bytes:
-                            raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
-                        out.write(chunk)
-                        # İndirme %0-90 aralığını kapsar; kalanı sıkıştırma aşamasına ayrılır.
-                        percent = min(90, int(received * 90 / total)) if total else 90
-                        _icon_fetch_progress[token]["percent"] = percent
+                    received = 0
+                    with dest.open("wb") as out:
+                        async for chunk in resp.aiter_bytes(chunk_size=65536):
+                            received += len(chunk)
+                            if received > settings.max_upload_size_bytes:
+                                raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
+                            out.write(chunk)
+                            percent = min(90, int(received * 90 / total)) if total else 90
+                            _icon_fetch_progress[token]["percent"] = percent
+                break
+        else:
+            raise ValueError("Çok fazla yönlendirme.")
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
         compress_image_file(dest)
@@ -533,7 +572,7 @@ async def media_upload_file(
     web_path = f"/static/uploads/{quote(filename)}"
     await crud.record_media_upload(session, web_path, _admin)
     logger.info("Dosya arşivine yüklendi: %s", dest)
-    return {"path": web_path, "name": filename}
+    return {"path": web_path, "storage_path": str(dest), "name": filename}
 
 
 @router.post("/media/replace-file", name="admin_media_replace_file")
@@ -728,7 +767,7 @@ async def login_post(
         await session.commit()
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
-            context={"request": request, "error": "Kullanıcı adı veya şifre hatalı."},
+            context={"request": request, "error": translate(request, "invalid_credentials")},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
@@ -886,6 +925,7 @@ async def download_new_get(
             "all_downloads": all_downloads,
             "edit_mode": False,
             "download": None,
+            "draft_token": secrets.token_urlsafe(24),
             "admin_user": _admin,
             "flash_message": flash_message,
         },
@@ -904,6 +944,7 @@ async def download_new_post(
     is_latest_version: bool = Form(False),
     file_type: str = Form(...),
     external_url: Optional[str] = Form(None),
+    file_final_path: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
     file_size_unit: str = Form("MB"),
     icon_type: str = Form("auto"),
@@ -921,7 +962,7 @@ async def download_new_post(
     icon_image_file: Optional[UploadFile] = File(None),
 ):
     # ── Dosya yükleme ────────────────────────────────────────────────────
-    file_path: Optional[str] = None
+    file_path: Optional[str] = _stored_upload_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
@@ -973,6 +1014,8 @@ async def download_new_post(
         all_dl, _ = await crud.get_downloads_paginated(
             session, page=1, page_size=200, include_inactive=True
         )
+        if _wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
         return templates.TemplateResponse(
             request=request, name="admin/file_form.html",
             context={
@@ -982,6 +1025,7 @@ async def download_new_post(
                 "all_downloads": all_dl,
                 "edit_mode": False,
                 "download": None,
+                "draft_token": secrets.token_urlsafe(24),
                 "file_size_val": file_size_value,
                 "file_size_unit": file_size_unit,
                 "error": str(exc),
@@ -991,7 +1035,109 @@ async def download_new_post(
         )
 
     request.session["flash_message"] = f'“{download.title}” uygulaması eklendi.'
+    if _wants_json(request):
+        return JSONResponse(
+            {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
+        )
     return _redirect("/admin/downloads")
+
+
+@router.post("/downloads/drafts/autosave", name="admin_download_draft_autosave")
+async def download_draft_autosave(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    form = await request.form()
+    draft_token = str(form.get("draft_token") or "").strip()
+    if not draft_token or len(draft_token) > 64:
+        return JSONResponse(
+            {"ok": False, "message": "Taslak anahtarı geçersiz."}, status_code=422
+        )
+
+    draft = None
+    draft_id = _int_or_none(str(form.get("draft_id") or ""))
+    if draft_id is not None:
+        draft = await crud.get_download_by_id(session, draft_id)
+        if draft is not None and not draft.is_draft:
+            return JSONResponse(
+                {"ok": False, "message": "Yayınlanmış içerik taslak olarak değiştirilemez."},
+                status_code=409,
+            )
+    if draft is None:
+        draft = await crud.get_download_draft_by_token(session, draft_token)
+
+    session.info["audit_suppressed"] = True
+    try:
+        if draft is None:
+            draft = await crud.create_download_draft(
+                session, draft_token, str(form.get("title") or "")
+            )
+
+        file_type = FileType(str(form.get("file_type") or "external"))
+        is_latest = (
+            _form_bool(form.get("is_latest_version"))
+            and file_type == FileType.external
+        )
+        icon_path = str(form.get("icon_image_final_path") or "").strip() or None
+        icon_url = str(form.get("icon_image_url") or "").strip() or None
+        if _form_bool(form.get("icon_image_cleared")):
+            icon_path = None
+            icon_url = None
+        elif icon_path:
+            icon_url = None
+
+        data = DownloadUpdate(
+            title=str(form.get("title") or "").strip()[:200] or "İsimsiz taslak",
+            description=str(form.get("description") or "").strip() or None,
+            short_description=str(form.get("short_description") or "").strip() or None,
+            version=None if is_latest else str(form.get("version") or "").strip() or None,
+            is_latest_version=is_latest,
+            file_type=file_type,
+            file_path=_stored_upload_path(form.get("file_final_path")) or draft.file_path,
+            external_url=str(form.get("external_url") or "").strip() or None,
+            file_size_bytes=_parse_file_size_to_bytes(
+                str(form.get("file_size_value") or ""),
+                str(form.get("file_size_unit") or "MB"),
+            ),
+            icon_type=IconType(str(form.get("icon_type") or "auto")),
+            icon_extension=str(form.get("icon_extension") or "").strip().lstrip(".").lower() or None,
+            icon_image_path=icon_path,
+            icon_image_url=icon_url,
+            os_compatibility=[str(value) for value in form.getlist("os_tags")],
+            category_id=_int_or_none(str(form.get("category_id") or "")),
+            parent_id=_int_or_none(str(form.get("parent_id") or "")),
+            is_active=False,
+            is_draft=True,
+            is_featured=_form_bool(form.get("is_featured")),
+            is_official_source=_form_bool(form.get("is_official_source"), True),
+            tag_ids=[
+                int(value)
+                for value in form.getlist("tag_ids")
+                if str(value).isdigit()
+            ],
+        )
+        draft = await crud.update_download(session, draft, data)
+    except (TypeError, ValueError) as exc:
+        await session.rollback()
+        return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
+    except Exception:
+        await session.rollback()
+        logger.exception("Taslak otomatik kaydedilemedi")
+        return JSONResponse(
+            {"ok": False, "message": "Taslak kaydedilemedi."}, status_code=500
+        )
+    finally:
+        session.info.pop("audit_suppressed", None)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "draft_id": draft.id,
+            "edit_url": f"/admin/downloads/{draft.id}/edit",
+            "saved_at": datetime.now().astimezone().isoformat(),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1008,7 +1154,6 @@ async def download_edit_get(
     download = await crud.get_download_by_id(session, download_id)
     if not download:
         raise HTTPException(status_code=404, detail="Download bulunamadı.")
-
     categories = await crud.get_categories(session)
     tags = await crud.get_tags(session)
     all_downloads, _ = await crud.get_downloads_paginated(
@@ -1026,6 +1171,7 @@ async def download_edit_get(
             "all_downloads": all_downloads,
             "edit_mode": True,
             "download": download,
+            "draft_token": download.draft_token or secrets.token_urlsafe(24),
             "admin_user": _admin,
             "flash_message": flash_message,
             "file_size_val": file_size_val,
@@ -1047,6 +1193,7 @@ async def download_edit_post(
     is_latest_version: bool = Form(False),
     file_type: Optional[str] = Form(None),
     external_url: Optional[str] = Form(None),
+    file_final_path: Optional[str] = Form(None),
     file_size_value: Optional[str] = Form(None),
     file_size_unit: str = Form("MB"),
     icon_type: Optional[str] = Form(None),
@@ -1067,9 +1214,10 @@ async def download_edit_post(
     download = await crud.get_download_by_id(session, download_id)
     if not download:
         raise HTTPException(status_code=404, detail="Download bulunamadı.")
+    was_draft = download.is_draft
 
     # ── Dosya yükleme ────────────────────────────────────────────────────
-    file_path: Optional[str] = None
+    file_path: Optional[str] = _stored_upload_path(file_final_path) or download.file_path
     if upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
@@ -1094,6 +1242,14 @@ async def download_edit_post(
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
     try:
+        if was_draft:
+            effective_type = FileType(file_type) if file_type else download.file_type
+            if not (title or "").strip():
+                raise ValueError("Başlık zorunludur.")
+            if effective_type == FileType.external and not (external_url or "").strip():
+                raise ValueError("Dış bağlantı zorunludur.")
+            if effective_type == FileType.local and not (file_path or download.file_path):
+                raise ValueError("Lokal dosya zorunludur.")
         data = DownloadUpdate(
             title=title,
             description=description or None,
@@ -1112,6 +1268,7 @@ async def download_edit_post(
             category_id=cat_id,
             parent_id=par_id,
             is_active=is_active,
+            is_draft=False,
             is_featured=is_featured,
             is_official_source=is_official_source,
             tag_ids=tag_id_list,
@@ -1125,6 +1282,8 @@ async def download_edit_post(
         all_dl, _ = await crud.get_downloads_paginated(
             session, page=1, page_size=200, include_inactive=True
         )
+        if _wants_json(request):
+            return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
         return templates.TemplateResponse(
             request=request, name="admin/file_form.html",
             context={
@@ -1134,6 +1293,7 @@ async def download_edit_post(
                 "all_downloads": all_dl,
                 "edit_mode": True,
                 "download": download,
+                "draft_token": download.draft_token or secrets.token_urlsafe(24),
                 "file_size_val": file_size_value,
                 "file_size_unit": file_size_unit,
                 "error": str(exc),
@@ -1142,7 +1302,22 @@ async def download_edit_post(
             status_code=422,
         )
 
+    if was_draft:
+        request.session["flash_message"] = f'“{download.title}” uygulaması eklendi.'
+        if _wants_json(request):
+            return JSONResponse(
+                {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
+            )
+        return _redirect("/admin/downloads")
     request.session["flash_message"] = "Değişiklikler başarıyla kaydedildi."
+    if _wants_json(request):
+        return JSONResponse(
+            {
+                "ok": True,
+                "message": "Kaydedildi",
+                "redirect_url": f"/admin/downloads/{download_id}/edit",
+            }
+        )
     return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
@@ -1604,6 +1779,23 @@ async def settings_branding_update(
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = "Site kimliği güncellendi."
+    return _redirect("/admin/settings/general")
+
+
+@router.post("/settings/language", name="admin_settings_language")
+async def settings_language_update(
+    request: Request,
+    language: str = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        updated = await crud.update_site_language(session, language)
+    except ValueError:
+        request.session["flash_message"] = translate(request, "unsupported_language")
+    else:
+        refresh_site_branding_globals(updated)
+        request.session["flash_message"] = translate(request, "language_updated")
     return _redirect("/admin/settings/general")
 
 

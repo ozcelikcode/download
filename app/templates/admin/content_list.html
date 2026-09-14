@@ -1,5 +1,5 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}İçerikler{% endblock %}
+{% block title %}{{ t(request, 'contents') }}{% endblock %}
 
 {% block content %}
 
@@ -8,13 +8,13 @@
     <div class="breadcrumb mb-1">
       <a href="/admin">Admin</a>
       <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">İçerikler</span>
+      <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'contents') }}</span>
     </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">İçerikler</h1>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'contents') }}</h1>
   </div>
   <a href="/admin/downloads/new" class="btn-primary">
     <i data-lucide="plus" class="w-4 h-4"></i>
-    Yeni Dosya
+    {{ t(request, 'new_file') }}
   </a>
 </div>
 
@@ -24,35 +24,36 @@
   <div class="flex flex-wrap items-center gap-2">
     <div class="relative flex-1 min-w-[160px]">
       <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
-      <input type="text" name="q" value="{{ q }}" placeholder="Başlığa göre ara…"
+      <input type="text" name="q" value="{{ q }}" placeholder="{{ t(request, 'search_by_title') }}"
         class="form-input form-input-icon py-1.5 text-sm">
     </div>
 
     <select name="category_id" class="form-input py-1.5 text-sm flex-[0_0_150px] min-w-0">
-      <option value="">— Kategori —</option>
+      <option value="">— {{ t(request, 'category') }} —</option>
       {% for c in categories %}
       <option value="{{ c.id }}" {% if category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
       {% endfor %}
     </select>
 
     <select name="status_filter" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
-      <option value="" {% if not status_filter %}selected{% endif %}>— Durum —</option>
-      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Aktif</option>
-      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Pasif</option>
+      <option value="" {% if not status_filter %}selected{% endif %}>— {{ t(request, 'status') }} —</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>{{ t(request, 'active') }}</option>
+      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>{{ t(request, 'inactive') }}</option>
+      <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>{{ t(request, 'draft') }}</option>
     </select>
 
     <select name="file_type_filter" class="form-input py-1.5 text-sm flex-[0_0_130px] min-w-0">
-      <option value="" {% if not file_type_filter %}selected{% endif %}>— Tür —</option>
-      <option value="external" {% if file_type_filter == 'external' %}selected{% endif %}>Dış Bağlantı</option>
-      <option value="local" {% if file_type_filter == 'local' %}selected{% endif %}>Lokal Dosya</option>
+      <option value="" {% if not file_type_filter %}selected{% endif %}>— {{ t(request, 'type') }} —</option>
+      <option value="external" {% if file_type_filter == 'external' %}selected{% endif %}>{{ t(request, 'external_link') }}</option>
+      <option value="local" {% if file_type_filter == 'local' %}selected{% endif %}>{{ t(request, 'local_file') }}</option>
     </select>
 
     <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
       <i data-lucide="filter" class="w-3.5 h-3.5"></i>
-      Filtrele
+      {{ t(request, 'filter') }}
     </button>
     {% if q or category_id or status_filter or file_type_filter %}
-    <a href="/admin/downloads" title="Filtreleri temizle"
+    <a href="/admin/downloads" title="{{ t(request, 'filter_clear') }}"
       class="shrink-0 inline-flex items-center gap-1 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
       <i data-lucide="x" class="w-4 h-4"></i>
     </a>
@@ -63,8 +64,8 @@
 {# İndirme tablosu #}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Sonuçlar</h2>
-    <span class="text-xs text-slate-400 dark:text-slate-500">{{ total }} kayıt · Sayfa {{ page }}/{{ total_pages }}</span>
+    <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'results') }}</h2>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ total }} {{ t(request, 'records') }} · {{ t(request, 'page') }} {{ page }}/{{ total_pages }}</span>
   </div>
 
   {% if downloads %}
@@ -73,25 +74,25 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   </form>
     <div id="download-bulk-bar" class="hidden px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-wrap items-center gap-2">
-      <span id="download-selected-count" class="text-xs text-slate-500">0 seçili</span>
-      <button type="submit" form="download-bulk-form" name="action" value="publish" class="btn-primary py-1 px-2 text-xs">Yayınla</button>
-      <button type="submit" form="download-bulk-form" name="action" value="unpublish" class="btn-secondary py-1 px-2 text-xs">Pasife al</button>
-      <button type="submit" form="download-bulk-form" name="action" value="feature" class="btn-secondary py-1 px-2 text-xs">Öne çıkar</button>
-      <button type="submit" form="download-bulk-form" name="action" value="unfeature" class="btn-secondary py-1 px-2 text-xs">Öne çıkarmayı kaldır</button>
-      <button type="submit" form="download-bulk-form" name="action" value="delete" data-confirm-message="Seçilen içerikler kalıcı olarak silinecek. Devam edilsin mi?" class="btn-danger py-1 px-2 text-xs">Sil</button>
+      <span id="download-selected-count" class="text-xs text-slate-500">0 {{ t(request, 'selected_count') }}</span>
+      <button type="submit" form="download-bulk-form" name="action" value="publish" class="btn-primary py-1 px-2 text-xs">{{ t(request, 'publish') }}</button>
+      <button type="submit" form="download-bulk-form" name="action" value="unpublish" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unpublish') }}</button>
+      <button type="submit" form="download-bulk-form" name="action" value="feature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'feature') }}</button>
+      <button type="submit" form="download-bulk-form" name="action" value="unfeature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unfeature') }}</button>
+      <button type="submit" form="download-bulk-form" name="action" value="delete" data-confirm-message="{{ t(request, 'delete_warning') }}" class="btn-danger py-1 px-2 text-xs">{{ t(request, 'delete') }}</button>
     </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
         <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-          <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-8"><input id="download-select-all" class="admin-checkbox" type="checkbox" aria-label="Tümünü seç"></th>
+          <th class="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-8"><input id="download-select-all" class="admin-checkbox" type="checkbox" aria-label="{{ t(request, 'select_all') }}"></th>
           <th class="text-left px-2 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Başlık</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden md:table-cell">Kategori</th>
-          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">Tür</th>
-          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden lg:table-cell">İndirme</th>
-          <th class="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Durum</th>
-          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">İşlem</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{{ t(request, 'title') }}</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden md:table-cell">{{ t(request, 'category') }}</th>
+          <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">{{ t(request, 'type') }}</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden lg:table-cell">{{ t(request, 'download') }}</th>
+          <th class="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{{ t(request, 'status') }}</th>
+          <th class="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{{ t(request, 'action') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
@@ -114,13 +115,13 @@
                   {{ d.title }}
                 </span>
                 {% if d.is_latest_version or d.version %}
-                <span class="text-xs text-slate-400 dark:text-slate-500">{{ 'Güncel sürüm' if d.is_latest_version else d.version }}</span>
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'current_version') if d.is_latest_version else d.version }}</span>
                 {% endif %}
               </div>
               {% if d.is_featured %}
               <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 shrink-0"
                 title="Sitede sabitlenmiş (Öne Çıkanlar) — bu liste sırası site sıralamasını etkilemez">
-                <i data-lucide="star" class="w-3 h-3"></i> Sabitlenmiş
+                <i data-lucide="star" class="w-3 h-3"></i> {{ t(request, 'pinned') }}
               </span>
               {% endif %}
             </div>
@@ -139,11 +140,11 @@
           <td class="px-4 py-3 hidden sm:table-cell">
             {% if d.file_type.value == 'external' %}
             <span class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-              <i data-lucide="external-link" class="w-3 h-3"></i> Dış Link
+              <i data-lucide="external-link" class="w-3 h-3"></i> {{ t(request, 'external_short') }}
             </span>
             {% else %}
             <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-              <i data-lucide="server" class="w-3 h-3"></i> Lokal
+              <i data-lucide="server" class="w-3 h-3"></i> {{ t(request, 'local_short') }}
             </span>
             {% endif %}
           </td>
@@ -155,13 +156,17 @@
 
           {# Durum badge #}
           <td class="px-4 py-3 text-center">
-            {% if d.is_active %}
+            {% if d.is_draft %}
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">
+              <i data-lucide="file-pen-line" class="w-3 h-3"></i> {{ t(request, 'draft') }}
+            </span>
+            {% elif d.is_active %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20">
-              <i data-lucide="check" class="w-3 h-3"></i> Aktif
+              <i data-lucide="check" class="w-3 h-3"></i> {{ t(request, 'active') }}
             </span>
             {% else %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-              Pasif
+              {{ t(request, 'inactive') }}
             </span>
             {% endif %}
           </td>
@@ -169,17 +174,17 @@
           {# İşlemler #}
           <td class="px-4 py-3">
             <div class="flex items-center justify-end gap-1">
-              <a href="/download/{{ d.slug }}" target="_blank" rel="noopener noreferrer"
+              {% if not d.is_draft %}<a href="/download/{{ d.slug }}" target="_blank" rel="noopener noreferrer"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="external-link" class="w-3 h-3"></i>
-                Görüntüle
-              </a>
+                {{ t(request, 'view') }}
+              </a>{% endif %}
               <a href="/admin/downloads/{{ d.id }}/edit"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
-                Düzenle
+                {{ t(request, 'edit') }}
               </a>
               <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -201,7 +206,7 @@
   {% set qs = { 'q': q, 'category_id': category_id, 'status_filter': status_filter, 'file_type_filter': file_type_filter } %}
   {% macro page_href(p) %}?page={{ p }}{% for k, v in qs.items() %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}{% endmacro %}
   <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ page }} / {{ total_pages }}</span>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'page') }} {{ page }} / {{ total_pages }}</span>
     <div class="pagination">
       {% if page > 1 %}
       <a href="{{ page_href(page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
@@ -223,12 +228,12 @@
   {% else %}
   <div class="py-12 text-center text-slate-400 dark:text-slate-500">
     <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
-    <p class="text-sm">Kayıt bulunamadı.</p>
+    <p class="text-sm">{{ t(request, 'no_records') }}</p>
     {% if q or category_id or status_filter or file_type_filter %}
-    <a href="/admin/downloads" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">Filtreleri temizle</a>
+    <a href="/admin/downloads" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">{{ t(request, 'filter_clear') }}</a>
     {% else %}
     <a href="/admin/downloads/new" class="btn-primary mt-3 inline-flex">
-      <i data-lucide="plus" class="w-3.5 h-3.5"></i> İlk dosyayı ekle
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ t(request, 'add_first_file') }}
     </a>
     {% endif %}
   </div>
@@ -244,7 +249,7 @@
   var boxes = document.querySelectorAll('.download-select');
   var bar = document.getElementById('download-bulk-bar');
   var count = document.getElementById('download-selected-count');
-  function update() { var selected = Array.prototype.filter.call(boxes, function (box) { return box.checked; }).length; bar.classList.toggle('hidden', !selected); count.textContent = selected + ' seçili'; all.checked = selected === boxes.length; all.indeterminate = selected > 0 && selected < boxes.length; }
+  function update() { var selected = Array.prototype.filter.call(boxes, function (box) { return box.checked; }).length; bar.classList.toggle('hidden', !selected); count.textContent = selected + ' ' + {{ t(request, 'selected_count')|tojson }}; all.checked = selected === boxes.length; all.indeterminate = selected > 0 && selected < boxes.length; }
   all.addEventListener('change', function () { boxes.forEach(function (box) { box.checked = all.checked; }); update(); });
   boxes.forEach(function (box) { box.addEventListener('change', update); });
 })();

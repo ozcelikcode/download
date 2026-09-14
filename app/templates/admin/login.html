@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="{{ ui_language(request) }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Girişi — {{ site_name }}</title>
+  <title>{{ t(request, 'admin_login') }} — {{ site_name }}</title>
 
   {# Tema — FOUC önleyici (Tailwind'den önce çalışmalı) #}
   <script>
@@ -16,7 +16,7 @@
 
   <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
-  <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
+  <script src="/static/vendor/lucide/1.24.0/lucide.min.js"></script>
   <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   <script src="/static/js/csrf.js"></script>
@@ -27,7 +27,7 @@
 <div class="fixed top-4 right-4 z-40" id="theme-menu-wrap">
   <button type="button" id="theme-toggle-btn"
     class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
-    aria-label="Tema seç">
+    aria-label="{{ t(request, 'theme') }}">
     <span data-theme-icon="light"><i data-lucide="sun" class="w-4.5 h-4.5"></i></span>
     <span data-theme-icon="dark" class="hidden"><i data-lucide="moon" class="w-4.5 h-4.5"></i></span>
     <span data-theme-icon="system" class="hidden"><i data-lucide="sun-moon" class="w-4.5 h-4.5"></i></span>
@@ -35,15 +35,15 @@
   <div id="theme-menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
     <button type="button" data-theme-option="light"
       class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-      <i data-lucide="sun" class="w-3.5 h-3.5"></i> Aydınlık
+      <i data-lucide="sun" class="w-3.5 h-3.5"></i> {{ t(request, 'light') }}
     </button>
     <button type="button" data-theme-option="dark"
       class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-      <i data-lucide="moon" class="w-3.5 h-3.5"></i> Karanlık
+      <i data-lucide="moon" class="w-3.5 h-3.5"></i> {{ t(request, 'dark') }}
     </button>
     <button type="button" data-theme-option="system"
       class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-      <i data-lucide="monitor" class="w-3.5 h-3.5"></i> Sistem
+      <i data-lucide="sun-moon" class="w-3.5 h-3.5"></i> {{ t(request, 'system') }}
     </button>
   </div>
 </div>
@@ -58,7 +58,7 @@
       <div class="min-h-12 min-w-12 max-w-48 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-sm flex items-center justify-center mb-3 p-2">
         {% if logo_mode in ['image','image_text'] and logo_light_path %}<img src="{{ logo_light_path }}" alt="{{ site_name }}" class="max-h-10 max-w-40 object-contain dark:hidden"><img src="{{ logo_dark_path or logo_light_path }}" alt="{{ site_name }}" class="max-h-10 max-w-40 object-contain hidden dark:block">{% else %}<i data-lucide="{{ site_icon }}" class="w-6 h-6 site-icon-color" style="--site-icon-light: {{ site_icon_color_light }}; --site-icon-dark: {{ site_icon_color_dark }};"></i>{% endif %}
       </div>
-      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Admin Girişi</h1>
+      <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'admin_login') }}</h1>
       {% if logo_mode != 'image' %}<p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ site_name }}</p>{% endif %}
     </div>
 
@@ -75,7 +75,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
 
       <div>
-        <label for="login-username" class="form-label">Kullanıcı Adı</label>
+        <label for="login-username" class="form-label">{{ t(request, 'username') }}</label>
         <div class="relative">
           <i data-lucide="user" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
           <input
@@ -91,7 +91,7 @@
       </div>
 
       <div>
-        <label for="login-password" class="form-label">Şifre</label>
+        <label for="login-password" class="form-label">{{ t(request, 'password') }}</label>
         <div class="relative">
           <i data-lucide="lock" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
           <input
@@ -107,7 +107,7 @@
 
       <button id="login-submit" type="submit" class="btn-primary w-full justify-center py-2.5 mt-2">
         <i data-lucide="log-in" class="w-4 h-4"></i>
-        Giriş Yap
+        {{ t(request, 'login') }}
       </button>
     </form>
 
@@ -115,7 +115,7 @@
 
   {# Alt link #}
   <p class="text-center text-xs text-slate-400 dark:text-slate-500 mt-4">
-    <a href="/" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">← Ana Siteye Dön</a>
+    <a href="/" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">← {{ t(request, 'back_to_site') }}</a>
   </p>
 
 </div>

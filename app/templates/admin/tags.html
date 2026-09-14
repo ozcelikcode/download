@@ -1,11 +1,11 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Etiketler{% endblock %}
+{% block title %}{{ t(request, 'tags') }}{% endblock %}
 
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Etiketler</h1>
-  <span class="text-xs text-slate-400 dark:text-slate-500">{{ tags | length }} etiket</span>
+  <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'tags') }}</h1>
+  <span class="text-xs text-slate-400 dark:text-slate-500">{{ tags | length }} {{ t(request, 'items_count') }}</span>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -15,7 +15,7 @@
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 sticky top-20 transition-colors">
       <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
         <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-        Yeni Etiket
+        {{ t(request, 'new_tag') }}
       </h2>
 
       {% if error %}
@@ -28,15 +28,15 @@
       <form method="post" action="/admin/tags" class="space-y-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
         <div>
-          <label for="tag-name" class="form-label">Ad <span class="text-red-500">*</span></label>
+          <label for="tag-name" class="form-label">{{ t(request, 'name') }} <span class="text-red-500">*</span></label>
           <input id="tag-name" name="name" type="text" required
             placeholder="Örn: açık-kaynak"
             class="form-input">
-          <p class="form-hint">Slug otomatik oluşturulur.</p>
+          <p class="form-hint">{{ t(request, 'slug_auto') }}</p>
         </div>
         <button type="submit" class="btn-primary w-full justify-center">
           <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-          Ekle
+          {{ t(request, 'add') }}
         </button>
       </form>
     </div>
@@ -47,7 +47,7 @@
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
       <form id="tag-bulk-form" method="post" action="/admin/tags/bulk-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>
       <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">Mevcut Etiketler</h2><button id="tag-bulk-delete" type="submit" form="tag-bulk-form" data-confirm-message="Seçilen etiketler kalıcı olarak silinecek. Devam edilsin mi?" class="hidden btn-danger py-1 px-2 text-xs">Seçilenleri sil</button>
+        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'existing_tags') }}</h2><button id="tag-bulk-delete" type="submit" form="tag-bulk-form" data-confirm-message="{{ t(request, 'delete_warning') }}" class="hidden btn-danger py-1 px-2 text-xs">{{ t(request, 'bulk_delete') }}</button>
       </div>
 
       {% if tags %}
@@ -73,13 +73,13 @@
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
-                Düzenle
+                {{ t(request, 'edit') }}
               </button>
               <form method="post" action="/admin/tags/{{ t.id }}/delete" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit" data-confirm-message="#{{ t.name }} etiketi kalıcı olarak silinecek. Devam edilsin mi?"
                   class="btn-danger py-1.5 px-2.5">
-                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                  <i data-lucide="trash-2" class="w-3 h-3"></i><span class="sr-only">{{ t(request, 'delete') }}</span>
                 </button>
               </form>
             </div>
@@ -94,7 +94,7 @@
               <input name="name" type="text" required value="{{ t.name }}"
                 class="form-input text-sm flex-1">
               <button type="submit" class="btn-primary py-1.5 px-3 text-xs shrink-0">
-                <i data-lucide="save" class="w-3 h-3"></i> Kaydet
+                <i data-lucide="save" class="w-3 h-3"></i> {{ t(request, 'save') }}
               </button>
               <button type="button" onclick="toggleTagEdit({{ t.id }})"
                 class="inline-flex items-center px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
@@ -102,7 +102,7 @@
                 <i data-lucide="x" class="w-3 h-3"></i>
               </button>
             </div>
-            <p class="form-hint mt-1">Slug otomatik yeniden oluşturulacak.</p>
+            <p class="form-hint mt-1">{{ t(request, 'slug_regenerated') }}</p>
           </form>
 
         </li>
@@ -111,7 +111,7 @@
       {% else %}
       <div class="py-10 text-center">
         <i data-lucide="tag" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
-        <p class="text-sm text-slate-400 dark:text-slate-500">Henüz etiket yok.</p>
+        <p class="text-sm text-slate-400 dark:text-slate-500">{{ t(request, 'no_tags') }}</p>
       </div>
       {% endif %}
     </div>

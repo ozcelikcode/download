@@ -16,7 +16,6 @@ import json
 import math
 import mimetypes
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
@@ -35,23 +34,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["public"])
 
 PAGE_SIZE = 12
-
-
-@router.get("/language/{language}", name="set_language")
-async def set_language(language: str, return_to: str = Query("/")) -> RedirectResponse:
-    if language not in {"tr", "en"}:
-        raise HTTPException(status_code=404, detail="Dil bulunamadı.")
-    parsed = urlsplit(return_to)
-    target = return_to if not parsed.scheme and not parsed.netloc and return_to.startswith("/") and "\\" not in return_to else "/"
-    response = RedirectResponse(target, status_code=status.HTTP_302_FOUND)
-    response.set_cookie(
-        "ui_language",
-        language,
-        max_age=365 * 24 * 60 * 60,
-        samesite="lax",
-        secure=settings.app_base_url.startswith("https://"),
-    )
-    return response
 
 
 # ---------------------------------------------------------------------------

@@ -1,11 +1,11 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}{% if edit_mode %}Düzenle: {{ download.title }}{% else %}Yeni Dosya{% endif %}{% endblock %}
+{% block title %}{% if edit_mode %}{{ t(request, 'edit') }}: {{ download.title }}{% else %}{{ t(request, 'new_file') }}{% endif %}{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
-<script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js" defer></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js" defer></script>
+<link rel="stylesheet" href="/static/vendor/cropperjs/1.6.2/cropper.min.css">
+<script src="/static/vendor/cropperjs/1.6.2/cropper.min.js" defer></script>
+<link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
+<script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -84,12 +84,12 @@
       <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}Düzenle{% else %}Yeni Dosya{% endif %}</span>
     </div>
     <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">
-      {% if edit_mode %}{{ download.title }}{% else %}Yeni İndirme Ekle{% endif %}
+      {% if edit_mode %}{{ download.title }}{% else %}{{ t(request, 'add_download') }}{% endif %}
     </h1>
   </div>
   <a href="/admin" class="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
     <i data-lucide="arrow-left" class="w-4 h-4"></i>
-    Geri
+    {{ t(request, 'back') }}
   </a>
 </div>
 
@@ -101,10 +101,13 @@
 </div>
 {% endif %}
 
-<form method="post"
+<form id="application-form" method="post"
   action="{% if edit_mode %}/admin/downloads/{{ download.id }}/edit{% else %}/admin/downloads/new{% endif %}"
-  enctype="multipart/form-data">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+  enctype="multipart/form-data"
+  data-autosave="{{ 'true' if not edit_mode or download.is_draft else 'false' }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+  <input type="hidden" id="draft-id" name="draft_id" value="{{ download.id if download and download.is_draft else '' }}">
+  <input type="hidden" id="draft-token" name="draft_token" value="{{ draft_token }}">
 
   <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
@@ -115,14 +118,14 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Temel Bilgiler
+      {{ t(request, 'basic_information') }}
     </h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
       {# Başlık #}
       <div class="sm:col-span-2">
-        <label for="f-title" class="form-label">Başlık <span class="text-red-500">*</span></label>
+        <label for="f-title" class="form-label">{{ t(request, 'title') }} <span class="text-red-500">*</span></label>
         <input id="f-title" name="title" type="text" required
           value="{{ download.title if download else '' }}"
           placeholder="Örn: Visual Studio Code"
@@ -131,34 +134,34 @@
 
       {# Sürüm #}
       <div>
-        <label for="f-version" class="form-label">Sürüm</label>
+        <label for="f-version" class="form-label">{{ t(request, 'version') }}</label>
         <input id="f-version" name="version" type="text"
           value="{{ download.version if download else '' }}"
           placeholder="Örn: v2.1.0"
           class="form-input" {% if download and download.is_latest_version %}disabled{% endif %}>
         <label id="latest-version-option" class="choice-card flex items-center gap-2 mt-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
           <input id="f-latest-version" type="checkbox" name="is_latest_version" value="true" class="choice-input" {% if download and download.is_latest_version %}checked{% endif %}>
-          <span class="text-xs text-slate-600 dark:text-slate-400">Güncel sürüm bağlantısı</span>
+          <span class="text-xs text-slate-600 dark:text-slate-400">{{ t(request, 'latest_link') }}</span>
         </label>
-        <p id="latest-version-hint" class="form-hint {% if not (download and download.is_latest_version) %}hidden{% endif %}">Sürüm numarası yerine dış kaynağın her zaman güncel bağlantısı gösterilir.</p>
+        <p id="latest-version-hint" class="form-hint {% if not (download and download.is_latest_version) %}hidden{% endif %}">{{ t(request, 'latest_link_help') }}</p>
       </div>
 
       {# İkon türü #}
       <div>
-        <label for="f-icon-type" class="form-label">İkon Türü</label>
+        <label for="f-icon-type" class="form-label">{{ t(request, 'icon_type') }}</label>
         <select id="f-icon-type" name="icon_type" class="form-input">
-          <option value="auto" {% if (download and download.icon_type.value == 'auto') or not download %}selected{% endif %}>Otomatik (Tahmin Et)</option>
-          <option value="image" {% if download and download.icon_type.value == 'image' %}selected{% endif %}>Görsel / Resim</option>
+          <option value="auto" {% if (download and download.icon_type.value == 'auto') or not download %}selected{% endif %}>{{ t(request, 'automatic') }}</option>
+          <option value="image" {% if download and download.icon_type.value == 'image' %}selected{% endif %}>{{ t(request, 'image') }}</option>
           <option value="zip" {% if download and download.icon_type.value == 'zip' %}selected{% endif %}>ZIP/Arşiv</option>
           <option value="pdf" {% if download and download.icon_type.value == 'pdf' %}selected{% endif %}>PDF</option>
           <option value="exe" {% if download and download.icon_type.value == 'exe' %}selected{% endif %}>Windows (EXE)</option>
           <option value="apk" {% if download and download.icon_type.value == 'apk' %}selected{% endif %}>Android (APK)</option>
           <option value="dmg" {% if download and download.icon_type.value == 'dmg' %}selected{% endif %}>macOS (DMG)</option>
           <option value="deb" {% if download and download.icon_type.value == 'deb' %}selected{% endif %}>Linux (DEB)</option>
-          <option value="link" {% if download and download.icon_type.value == 'link' %}selected{% endif %}>Web Bağlantısı</option>
-          <option value="extension" {% if download and download.icon_type.value == 'extension' %}selected{% endif %}>Uzantı İkonu (ör. RAR, ISO)</option>
+          <option value="link" {% if download and download.icon_type.value == 'link' %}selected{% endif %}>{{ t(request, 'web_link') }}</option>
+          <option value="extension" {% if download and download.icon_type.value == 'extension' %}selected{% endif %}>{{ t(request, 'extension_icon') }}</option>
         </select>
-        <p class="form-hint">İndirme listesinde gösterilecek ikonu seçin.</p>
+        <p class="form-hint">{{ t(request, 'choose_icon_help') }}</p>
       </div>
 
       {# Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) #}
@@ -258,7 +261,7 @@
 
       {# Açıklama (WYSIWYG) #}
       <div class="sm:col-span-2">
-        <label class="form-label">Açıklama</label>
+        <label class="form-label">{{ t(request, 'description') }}</label>
         <div id="f-description-wrap" class="quill-editor-wrap rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div id="f-description-editor"></div>
         </div>
@@ -272,16 +275,16 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="folder" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Sınıflandırma
+      {{ t(request, 'classification') }}
     </h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
       {# Kategori #}
       <div>
-        <label for="f-category" class="form-label">Kategori</label>
+        <label for="f-category" class="form-label">{{ t(request, 'category') }}</label>
         <select id="f-category" name="category_id" class="form-input">
-          <option value="">— Seçiniz —</option>
+          <option value="">— {{ t(request, 'choose') }} —</option>
           {% for c in categories %}
           <option value="{{ c.id }}" {% if download and download.category_id == c.id %}selected{% endif %}>
             {{ c.name }}
@@ -308,7 +311,7 @@
 
       {# Etiketler #}
       <div class="sm:col-span-2">
-        <label class="form-label">Etiketler</label>
+        <label class="form-label">{{ t(request, 'tags') }}</label>
         {% if tags %}
         <div class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
           {% for t in tags %}
@@ -336,11 +339,33 @@
   {# ══════════════════════════ SAĞ SÜTUN ══════════════════════════ #}
   <div class="lg:col-span-2 space-y-5">
 
+  <div class="lg:sticky lg:top-20 z-20 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm">
+    <div class="flex items-start gap-2 min-w-0" aria-live="polite" aria-atomic="true">
+      <span id="save-status-dot" class="w-2 h-2 mt-1 rounded-sm bg-slate-300 dark:bg-slate-600 shrink-0"></span>
+      <div class="min-w-0">
+        <p id="save-status" class="text-xs font-medium text-slate-600 dark:text-slate-300">
+          {% if edit_mode and download.is_draft %}{{ t(request, 'draft_protected') }}{% elif not edit_mode %}{{ t(request, 'autosave_starts') }}{% else %}{{ t(request, 'manual_save_help') }}{% endif %}
+        </p>
+        <p id="save-status-detail" class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+          {% if edit_mode and download.is_draft %}{{ t(request, 'saved') }}: {{ download.updated_at | format_date }}{% else %}{{ t(request, 'no_pending_changes') }}{% endif %}
+        </p>
+      </div>
+    </div>
+    <button id="application-save-button" type="submit" class="btn-primary py-2 px-5 w-full justify-center mt-4">
+      <i data-lucide="save" class="w-4 h-4"></i>
+      <span id="application-save-label">{% if edit_mode and not download.is_draft %}{{ t(request, 'save_changes') }}{% else %}{{ t(request, 'save_application') }}{% endif %}</span>
+    </button>
+    <a href="/admin/downloads" class="inline-flex items-center gap-1.5 justify-center w-full px-4 py-2 mt-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      {{ t(request, 'cancel') }}
+    </a>
+  </div>
+
   {# ── Dosya Kaynağı ───────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Dosya Kaynağı
+      {{ t(request, 'file_source') }}
     </h2>
 
     {# Tür seçici #}
@@ -352,7 +377,7 @@
           {% if not download or download.file_type.value == 'external' %}checked{% endif %}
           class="choice-input">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Dış Bağlantı</p>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'external_link') }}</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">GitHub, resmi site vb.</p>
         </div>
       </label>
@@ -363,7 +388,7 @@
           {% if download and download.file_type.value == 'local' %}checked{% endif %}
           class="choice-input">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Lokal Dosya</p>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'local_file') }}</p>
           <p class="text-xs text-slate-400 dark:text-slate-500">Sunucuya yükle</p>
         </div>
       </label>
@@ -388,7 +413,7 @@
 
       {# Kaynak türü: resmî site / üçüncü parti #}
       <div>
-        <label class="form-label">Kaynak Türü</label>
+        <label class="form-label">{{ t(request, 'source_type') }}</label>
         <div class="flex gap-3">
           <label class="choice-card flex-1 flex items-center gap-2.5 p-2.5
                  {% if not download or download.is_official_source %}border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-500/10{% else %}border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700{% endif %}"
@@ -399,7 +424,7 @@
             <div>
               <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <i data-lucide="badge-check" class="w-3.5 h-3.5 text-green-600 dark:text-green-400"></i>
-                Resmî Site
+                {{ t(request, 'official_site') }}
               </p>
               <p class="text-xs text-slate-400 dark:text-slate-500">Yazılımın kendi resmî kaynağı</p>
             </div>
@@ -432,6 +457,7 @@
         </p>
         {% endif %}
         <input id="f-upload" name="upload_file" type="file" class="form-input py-1.5 cursor-pointer">
+        <input id="f-file-final-path" name="file_final_path" type="hidden" value="{{ download.file_path if download and download.file_path else '' }}">
         <p id="file-ext-hint" class="text-xs text-blue-600 dark:text-blue-400 mt-1 hidden">
           <span id="file-ext-text"></span>
         </p>
@@ -564,31 +590,25 @@
   </div>
   {# ══════════════════════════ /GRID ══════════════════════════ #}
 
-  {# ── Kaydet / İptal ──────────────────────────────── #}
-  <div class="flex items-center gap-3 justify-end mt-5">
-    <a href="/admin" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-slate-600 dark:text-slate-400
-       border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-      <i data-lucide="x" class="w-3.5 h-3.5"></i>
-      İptal
-    </a>
-    {% if edit_mode %}
-    <button type="submit" class="btn-primary py-2 px-5">
-      <i data-lucide="save" class="w-4 h-4"></i>
-      Değişiklikleri Kaydet
-    </button>
-    {% else %}
-    <button type="submit" class="btn-primary py-2 px-5">
-      <i data-lucide="plus-circle" class="w-4 h-4"></i>
-      Dosyayı Ekle
-    </button>
-    {% endif %}
-  </div>
-
 </form>
 
 {% endblock %}
 
 {% block scripts %}
+<script>
+(function () {
+  window.formMessages = {
+    autosaving: {{ t(request, 'autosaving')|tojson }}, safeToLeave: {{ t(request, 'safe_to_leave')|tojson }},
+    draftSaveFailed: {{ t(request, 'draft_save_failed')|tojson }}, draftSaved: {{ t(request, 'draft_saved')|tojson }},
+    autosavedAt: {{ t(request, 'autosaved_at')|tojson }}, unsavedChanges: {{ t(request, 'unsaved_changes')|tojson }},
+    autosavePreparing: {{ t(request, 'autosave_preparing')|tojson }}, fileUploading: {{ t(request, 'file_uploading')|tojson }},
+    fileUploadFailed: {{ t(request, 'file_upload_failed')|tojson }}, tryAgain: {{ t(request, 'try_again')|tojson }},
+    saving: {{ t(request, 'saving')|tojson }}, processingFields: {{ t(request, 'processing_fields')|tojson }},
+    contentSaveFailed: {{ t(request, 'content_save_failed')|tojson }}, saved: {{ t(request, 'saved_done')|tojson }},
+    successComplete: {{ t(request, 'success_complete')|tojson }}, saveFailed: {{ t(request, 'save_failed')|tojson }}
+  };
+})();
+</script>
 <script>
   // ── Açıklama WYSIWYG editörü (Quill) ─────────────────
   document.addEventListener('DOMContentLoaded', function () {
@@ -598,7 +618,7 @@
 
     var quill = new Quill(editorEl, {
       theme: 'snow',
-      placeholder: 'Kısa bir açıklama yazın…',
+      placeholder: {{ t(request, 'description_placeholder')|tojson }},
       modules: {
         toolbar: [
           [{ header: [1, 2, 3, false] }],
@@ -618,13 +638,185 @@
       quill.clipboard.dangerouslyPasteHTML(hiddenTextarea.value);
     }
 
+    function syncDescription() {
+      var isEmpty = quill.getText().trim().length === 0;
+      var value = isEmpty ? '' : quill.root.innerHTML;
+      if (hiddenTextarea.value !== value) {
+        hiddenTextarea.value = value;
+        hiddenTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+    quill.on('text-change', syncDescription);
+
     var form = editorEl.closest('form');
     if (form) {
-      form.addEventListener('submit', function () {
-        var isEmpty = quill.getText().trim().length === 0;
-        hiddenTextarea.value = isEmpty ? '' : quill.root.innerHTML;
+      form.addEventListener('submit', syncDescription);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('application-form');
+    const saveButton = document.getElementById('application-save-button');
+    const saveLabel = document.getElementById('application-save-label');
+    const statusText = document.getElementById('save-status');
+    const statusDetail = document.getElementById('save-status-detail');
+    const statusDot = document.getElementById('save-status-dot');
+    const draftId = document.getElementById('draft-id');
+    const draftToken = document.getElementById('draft-token');
+    const autosaveEnabled = form && form.dataset.autosave === 'true';
+    let dirty = false;
+    let revision = 0;
+    let timer = null;
+    let requestInFlight = null;
+    let fileUploadInFlight = null;
+    let manualSaving = false;
+
+    if (!form || !saveButton) return;
+
+    function setStatus(state, title, detail) {
+      statusText.textContent = title;
+      statusDetail.textContent = detail || '';
+      statusDot.className = 'w-2 h-2 rounded-sm shrink-0 ' + ({
+        idle: 'bg-slate-300 dark:bg-slate-600',
+        dirty: 'bg-amber-400',
+        saving: 'bg-blue-500 animate-pulse',
+        saved: 'bg-emerald-500',
+        error: 'bg-red-500',
+      }[state] || 'bg-slate-300 dark:bg-slate-600');
+    }
+
+    function timeLabel(value) {
+      return new Intl.DateTimeFormat({{ ('en-US' if ui_language(request) == 'en' else 'tr-TR')|tojson }}, {
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }).format(new Date(value));
+    }
+
+    function draftFormData() {
+      const data = new FormData(form);
+      data.delete('upload_file');
+      data.delete('icon_image_file');
+      data.set('draft_token', draftToken.value);
+      if (draftId.value) data.set('draft_id', draftId.value);
+      return data;
+    }
+
+    async function saveDraft(keepalive) {
+      if (!autosaveEnabled || (!dirty && !keepalive)) return;
+      if (requestInFlight) {
+        await requestInFlight;
+        if (!dirty) return;
+      }
+      const startedAtRevision = revision;
+      setStatus('saving', window.formMessages.autosaving, window.formMessages.safeToLeave);
+      requestInFlight = csrfFetch('/admin/downloads/drafts/autosave', {
+        method: 'POST',
+        body: draftFormData(),
+        keepalive: Boolean(keepalive),
+        headers: { Accept: 'application/json' },
+      }).then(async function (response) {
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.message || window.formMessages.draftSaveFailed);
+        draftId.value = String(data.draft_id);
+        form.action = data.edit_url;
+        history.replaceState({}, '', data.edit_url);
+        if (revision === startedAtRevision) dirty = false;
+        setStatus('saved', window.formMessages.draftSaved, timeLabel(data.saved_at) + ' ' + window.formMessages.autosavedAt);
+      }).catch(function (error) {
+        setStatus('error', 'Otomatik kayıt başarısız', error.message || 'Tekrar denenecek.');
+        throw error;
+      }).finally(function () {
+        requestInFlight = null;
+        if (dirty && !manualSaving) {
+          clearTimeout(timer);
+          timer = setTimeout(function () { saveDraft(false).catch(function () {}); }, 1200);
+        }
+      });
+      return requestInFlight;
+    }
+
+    function markDirty(event) {
+      if (manualSaving || !autosaveEnabled) return;
+      dirty = true;
+      revision += 1;
+      const isFile = event.target instanceof HTMLInputElement && event.target.type === 'file';
+      setStatus(
+        'dirty',
+        window.formMessages.unsavedChanges,
+        isFile ? window.formMessages.fileUploading : window.formMessages.autosavePreparing
+      );
+      clearTimeout(timer);
+      timer = setTimeout(function () { saveDraft(false).catch(function () {}); }, 1200);
+    }
+
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+
+    const uploadInput = document.getElementById('f-upload');
+    const finalFilePath = document.getElementById('f-file-final-path');
+    if (uploadInput && finalFilePath && autosaveEnabled) {
+      uploadInput.addEventListener('change', function (event) {
+        const file = uploadInput.files[0];
+        if (!file) return;
+        event.stopPropagation();
+        dirty = true;
+        revision += 1;
+        clearTimeout(timer);
+        setStatus('saving', window.formMessages.fileUploading, file.name);
+        const data = new FormData();
+        data.append('file', file);
+        fileUploadInFlight = csrfFetch('/admin/media/upload-file', {
+          method: 'POST', body: data, headers: { Accept: 'application/json' },
+        }).then(async function (response) {
+          const result = await response.json();
+          if (!response.ok || !result.storage_path) throw new Error(window.formMessages.fileUploadFailed);
+          finalFilePath.value = result.storage_path;
+          uploadInput.value = '';
+          revision += 1;
+          await saveDraft(false);
+        }).catch(function (error) {
+          setStatus('error', window.formMessages.fileUploadFailed, error.message || window.formMessages.tryAgain);
+          timer = setTimeout(function () { saveDraft(false).catch(function () {}); }, 1200);
+        }).finally(function () {
+          fileUploadInFlight = null;
+        });
       });
     }
+
+    window.addEventListener('pagehide', function () {
+      if (dirty && autosaveEnabled && !manualSaving) saveDraft(true).catch(function () {});
+    });
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (manualSaving || !form.reportValidity()) return;
+      manualSaving = true;
+      clearTimeout(timer);
+      saveButton.disabled = true;
+      saveLabel.textContent = window.formMessages.saving;
+      setStatus('saving', window.formMessages.saving, window.formMessages.processingFields);
+
+      try {
+        if (fileUploadInFlight) await fileUploadInFlight;
+        if (autosaveEnabled && dirty) await saveDraft(false);
+        const response = await csrfFetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.message || window.formMessages.contentSaveFailed);
+        dirty = false;
+        saveLabel.textContent = window.formMessages.saved;
+        setStatus('saved', window.formMessages.saved, window.formMessages.successComplete);
+        setTimeout(function () { window.location.assign(data.redirect_url); }, 650);
+      } catch (error) {
+        manualSaving = false;
+        saveButton.disabled = false;
+        saveLabel.textContent = 'Tekrar Kaydet';
+        setStatus('error', window.formMessages.saveFailed, error.message || window.formMessages.tryAgain);
+        window.showAdminNotice(error.message || window.formMessages.contentSaveFailed);
+      }
+    });
   });
 
   // ── Dosya türü radio toggle ──────────────────────────

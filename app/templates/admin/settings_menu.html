@@ -1,5 +1,5 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Ayarlar — Menüler{% endblock %}
+{% block title %}{{ t(request, 'settings') }} — {{ t(request, 'menus') }}{% endblock %}
 
 {% block content %}
 
@@ -8,9 +8,9 @@
     <div class="breadcrumb mb-1">
       <a href="/admin">Admin</a>
       <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">Ayarlar</span>
+      <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'settings') }}</span>
     </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ayarlar</h1>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'settings') }}</h1>
   </div>
 </div>
 
@@ -20,27 +20,27 @@
 <form method="post" action="/admin/settings/menu-limits" class="mb-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   <div class="flex flex-wrap items-end gap-3">
-    <div class="flex-1 min-w-48"><h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="ruler" class="w-4 h-4 text-slate-400"></i>Görünürlük sınırları</h2><p class="form-hint">Menülerin taşmasını önlemek için ekleme ve public görünüm sınırları.</p></div>
+    <div class="flex-1 min-w-48"><h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="ruler" class="w-4 h-4 text-slate-400"></i>{{ t(request, 'visibility_limits') }}</h2><p class="form-hint">{{ t(request, 'visibility_help') }}</p></div>
     {% for name, label, value, min_value, max_value in [('navbar_limit','Navbar',site_settings.navbar_limit,3,12),('footer_limit','Footer',site_settings.footer_limit,3,12),('sidebar_category_limit','Sidebar kategori',site_settings.sidebar_category_limit,3,20),('sidebar_tag_limit','Sidebar etiket',site_settings.sidebar_tag_limit,5,25)] %}
     <label class="w-32"><span class="form-label">{{ label }}</span><input type="number" name="{{ name }}" min="{{ min_value }}" max="{{ max_value }}" value="{{ value }}" class="form-input"></label>
     {% endfor %}
-    <button class="btn-primary py-2 px-3"><i data-lucide="save" class="w-4 h-4"></i>Kaydet</button>
+    <button class="btn-primary py-2 px-3"><i data-lucide="save" class="w-4 h-4"></i>{{ t(request, 'save') }}</button>
   </div>
 </form>
 
 <div class="mb-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
-  <h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="list-plus" class="w-4 h-4 text-slate-400"></i>Hazır bağlantı ekle</h2>
-  <p class="form-hint mb-4">Bir kategori veya etiketi seçerek tek seferde navbar ya da footer bağlantısına dönüştürün.</p>
+  <h2 class="text-sm font-semibold flex items-center gap-1.5"><i data-lucide="list-plus" class="w-4 h-4 text-slate-400"></i>{{ t(request, 'add_preset_link') }}</h2>
+  <p class="form-hint mb-4">{{ t(request, 'preset_link_help') }}</p>
   <div class="grid lg:grid-cols-2 gap-4">
     <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="category">
-      <label><span class="form-label">Kategori</span><select name="source_id" class="form-input" required><option value="">Kategori seçin</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></label>
-      <div class="flex gap-2"><select name="location" class="form-input w-28" aria-label="Menü konumu"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="folder-plus" class="w-4 h-4"></i>Kategori çek</button></div>
+      <label><span class="form-label">{{ t(request, 'category') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'select_category') }}</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></label>
+      <div class="flex gap-2"><select name="location" class="form-input w-28"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="folder-plus" class="w-4 h-4"></i>{{ t(request, 'import_category') }}</button></div>
     </form>
     <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="tag">
-      <label><span class="form-label">Etiket</span><select name="source_id" class="form-input" required><option value="">Etiket seçin</option>{% for tag in tags %}<option value="{{ tag.id }}">#{{ tag.name }}</option>{% endfor %}</select></label>
-      <div class="flex gap-2"><select name="location" class="form-input w-28" aria-label="Menü konumu"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>Etiket çek</button></div>
+      <label><span class="form-label">{{ t(request, 'tags') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'tags') }}</option>{% for tag in tags %}<option value="{{ tag.id }}">#{{ tag.name }}</option>{% endfor %}</select></label>
+      <div class="flex gap-2"><select name="location" class="form-input w-28"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>{{ t(request, 'import_tag') }}</button></div>
     </form>
   </div>
 </div>
@@ -52,15 +52,15 @@
   <div class="flex items-center justify-between mb-1">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
       <i data-lucide="menu" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Üst Menü (Navbar) <span class="font-normal text-xs text-slate-400">{{ navbar_items|length }}/{{ navbar_limit }}</span>
+      {{ t(request, 'top_menu') }} <span class="font-normal text-xs text-slate-400">{{ navbar_items|length }}/{{ navbar_limit }}</span>
     </h2>
     <button type="button" data-add-menu-btn data-location="navbar" class="btn-primary py-1.5 px-3 text-xs">
-      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ t(request, 'add_new') }}
     </button>
   </div>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
     <i data-lucide="move" class="w-3 h-3"></i>
-    Sıralamak için önizlemedeki öğeleri sürükleyin, düzenlemek için tıklayın.
+    {{ t(request, 'menu_sort_help') }}
   </p>
 
   <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -80,7 +80,7 @@
           {{ item.label }}
         </span>
         {% else %}
-        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Menü boş — "Yeni Ekle" ile başlayın.</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic">{{ t(request, 'empty_menu') }}</span>
         {% endfor %}
       </div>
     </div>
@@ -94,10 +94,10 @@
   <div class="flex items-center justify-between mb-1">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
       <i data-lucide="layout-list" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Kategori Menüsü (Sidebar)
+      {{ t(request, 'category_menu') }}
     </h2>
     <a href="/admin/categories" class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-      Kategorileri Yönet <i data-lucide="arrow-right" class="w-3 h-3"></i>
+      {{ t(request, 'manage_categories') }} <i data-lucide="arrow-right" class="w-3 h-3"></i>
     </a>
   </div>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
@@ -130,7 +130,7 @@
           {% if cnt %}<span class="text-xs text-slate-400 dark:text-slate-500 tabular-nums shrink-0">{{ cnt }}</span>{% endif %}
         </li>
         {% else %}
-        <li class="text-xs text-slate-400 dark:text-slate-500 italic px-2.5 py-1.5">Henüz kategori yok.</li>
+        <li class="text-xs text-slate-400 dark:text-slate-500 italic px-2.5 py-1.5">{{ t(request, 'no_categories') }}</li>
         {% endfor %}
       </ul>
     </div>
@@ -144,7 +144,7 @@
   <div class="flex items-center justify-between mb-1">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
       <i data-lucide="panel-right" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Kenar Çubuğu (Sidebar)
+      {{ t(request, 'sidebar') }}
     </h2>
   </div>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
@@ -179,13 +179,13 @@
           draggable="true" data-item-id="categories">
           <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
             <i data-lucide="grip-vertical" class="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0"></i>
-            Kategoriler
+      {{ t(request, 'categories') }}
           </p>
           <ul class="space-y-0.5">
             <li>
               <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-sm bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
                 <i data-lucide="layers" class="w-3.5 h-3.5 shrink-0"></i>
-                Tümü
+            {{ t(request, 'all') }}
               </span>
             </li>
             {% for cat in categories[:site_settings.sidebar_category_limit] %}
@@ -216,7 +216,7 @@
               #{{ tag.name }}
             </span>
             {% else %}
-            <span class="text-xs text-slate-400 dark:text-slate-500 italic">Henüz etiket yok.</span>
+            <span class="text-xs text-slate-400 dark:text-slate-500 italic">{{ t(request, 'no_tags') }}</span>
             {% endfor %}
           </div>
         </div>
@@ -238,12 +238,12 @@
       Footer <span class="font-normal text-xs text-slate-400">{{ footer_items|length }}/{{ footer_limit }}</span>
     </h2>
     <button type="button" data-add-menu-btn data-location="footer" class="btn-primary py-1.5 px-3 text-xs">
-      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Yeni Ekle
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ t(request, 'add_new') }}
     </button>
   </div>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
     <i data-lucide="move" class="w-3 h-3"></i>
-    Sıralamak için önizlemedeki öğeleri sürükleyin, düzenlemek için tıklayın.
+    {{ t(request, 'menu_sort_help') }}
   </p>
 
   <div class="rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -262,7 +262,7 @@
           {{ item.label }}
         </span>
         {% else %}
-        <span class="text-xs text-slate-400 dark:text-slate-500 italic">Footer boş — "Yeni Ekle" ile başlayın.</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500 italic">{{ t(request, 'empty_menu') }}</span>
         {% endfor %}
       </div>
     </div>
@@ -276,12 +276,12 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-md p-5">
     <h3 id="menu-item-modal-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Menü Öğesi
+      {{ t(request, 'menu_item') }}
     </h3>
 
     <div class="space-y-3">
       <div>
-        <label class="form-label">Etiket — Türkçe <span class="text-red-500">*</span></label>
+        <label class="form-label">{{ t(request, 'label_tr') }} <span class="text-red-500">*</span></label>
         <input id="menu-item-label" type="text" required class="form-input" placeholder="Örn: Blog">
       </div>
       <div>
@@ -290,11 +290,11 @@
         <p class="form-hint">Boş bırakılırsa Türkçe etiket gösterilir.</p>
       </div>
       <div>
-        <label class="form-label">Bağlantı <span class="text-red-500">*</span></label>
+        <label class="form-label">{{ t(request, 'link') }} <span class="text-red-500">*</span></label>
         <input id="menu-item-url" type="text" required class="form-input" placeholder="/category/oyunlar veya https://…">
       </div>
       <div>
-        <label class="form-label">İkon</label>
+        <label class="form-label">{{ t(request, 'icon') }}</label>
         <div class="flex items-center gap-2">
           <div id="menu-item-icon-preview-wrap" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
             <i data-lucide="link" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
@@ -321,11 +321,11 @@
       <div class="flex items-center gap-4 pt-1">
         <label class="inline-flex items-center gap-2 cursor-pointer select-none">
           <input id="menu-item-active" type="checkbox" class="accent-blue-600 rounded-sm" checked>
-          <span class="text-sm text-slate-700 dark:text-slate-300">Aktif</span>
+          <span class="text-sm text-slate-700 dark:text-slate-300">{{ t(request, 'active') }}</span>
         </label>
         <label class="inline-flex items-center gap-2 cursor-pointer select-none">
           <input id="menu-item-new-tab" type="checkbox" class="accent-blue-600 rounded-sm">
-          <span class="text-sm text-slate-700 dark:text-slate-300">Yeni sekmede aç</span>
+          <span class="text-sm text-slate-700 dark:text-slate-300">{{ t(request, 'new_tab') }}</span>
         </label>
       </div>
     </div>
@@ -338,11 +338,11 @@
       <button type="button" id="menu-item-cancel"
         class="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-        İptal
+        {{ t(request, 'cancel') }}
       </button>
       <button type="button" id="menu-item-save" class="btn-primary py-2 px-4 text-sm">
         <i data-lucide="save" class="w-3.5 h-3.5"></i>
-        Kaydet
+        {{ t(request, 'save') }}
       </button>
     </div>
   </div>

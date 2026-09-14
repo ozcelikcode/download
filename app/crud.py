@@ -15,6 +15,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from slugify import slugify
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -377,6 +378,18 @@ async def update_site_settings(
     return settings_row
 
 
+async def update_site_language(
+    session: AsyncSession, language: str
+) -> SiteSettings:
+    if language not in {"tr", "en"}:
+        raise ValueError("Desteklenmeyen dil.")
+    settings_row = await get_site_settings(session)
+    settings_row.site_language = language
+    await session.commit()
+    await session.refresh(settings_row)
+    return settings_row
+
+
 async def update_appearance_settings(
     session: AsyncSession,
     *,
@@ -657,9 +670,11 @@ async def get_downloads_paginated(
         stmt = stmt.where(Download.title.ilike(term))
 
     if status == "active":
-        stmt = stmt.where(Download.is_active == True)  # noqa: E712
+        stmt = stmt.where(Download.is_active == True, Download.is_draft == False)  # noqa: E712
     elif status == "inactive":
-        stmt = stmt.where(Download.is_active == False)  # noqa: E712
+        stmt = stmt.where(Download.is_active == False, Download.is_draft == False)  # noqa: E712
+    elif status == "draft":
+        stmt = stmt.where(Download.is_draft == True)  # noqa: E712
 
     if file_type_filter:
         stmt = stmt.where(Download.file_type == FileType(file_type_filter))
@@ -689,10 +704,19 @@ async def get_dashboard_stats(session: AsyncSession) -> dict:
     )
     active_downloads = await session.scalar(
         select(func.count()).select_from(Download).where(
-            Download.parent_id == None, Download.is_active == True  # noqa: E711, E712
+            Download.parent_id == None,  # noqa: E711
+            Download.is_active == True,  # noqa: E712
+            Download.is_draft == False,  # noqa: E712
         )
     )
-    inactive_downloads = (total_downloads or 0) - (active_downloads or 0)
+    draft_downloads = await session.scalar(
+        select(func.count()).select_from(Download).where(
+            Download.parent_id == None, Download.is_draft == True  # noqa: E711, E712
+        )
+    )
+    inactive_downloads = (
+        (total_downloads or 0) - (active_downloads or 0) - (draft_downloads or 0)
+    )
     total_download_count = await session.scalar(
         select(func.coalesce(func.sum(Download.download_count), 0))
     )
@@ -706,6 +730,7 @@ async def get_dashboard_stats(session: AsyncSession) -> dict:
         "total_downloads": total_downloads or 0,
         "active_downloads": active_downloads or 0,
         "inactive_downloads": inactive_downloads,
+        "draft_downloads": draft_downloads or 0,
         "total_download_count": total_download_count or 0,
         "featured_count": featured_count or 0,
         "category_count": category_count or 0,
@@ -789,6 +814,7 @@ async def create_download(
         category_id=data.category_id,
         parent_id=data.parent_id,
         is_active=data.is_active,
+        is_draft=data.is_draft,
         is_featured=data.is_featured,
         is_official_source=data.is_official_source,
     )
@@ -805,10 +831,53 @@ async def create_download(
     return download
 
 
+async def get_download_draft_by_token(
+    session: AsyncSession, draft_token: str
+) -> Optional[Download]:
+    result = await session.execute(
+        select(Download)
+        .options(selectinload(Download.tags), selectinload(Download.version_history))
+        .where(Download.draft_token == draft_token, Download.is_draft.is_(True))
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_download_draft(
+    session: AsyncSession, draft_token: str, title: str
+) -> Download:
+    clean_title = title.strip()[:200] or "İsimsiz taslak"
+    base_slug = _make_slug(clean_title) or "isimsiz-taslak"
+    statement = sqlite_insert(Download).values(
+        title=clean_title,
+        slug=await _unique_slug(session, Download, base_slug),
+        file_type=FileType.external,
+        icon_type=IconType.auto,
+        is_active=False,
+        is_draft=True,
+        draft_token=draft_token,
+    )
+    await session.execute(
+        statement.on_conflict_do_nothing(index_elements=["draft_token"])
+    )
+    await session.commit()
+    download = await get_download_draft_by_token(session, draft_token)
+    if download is None:
+        raise RuntimeError("Taslak oluşturulamadı.")
+    return download
+
+
 async def update_download(
     session: AsyncSession, download: Download, data: DownloadUpdate
 ) -> Download:
     update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
+
+    if update_data.get("is_draft") is False and download.is_draft:
+        title = str(update_data.get("title") or download.title)
+        base_slug = _make_slug(title) or "isimsiz-icerik"
+        update_data["slug"] = await _unique_slug(
+            session, Download, base_slug, exclude_id=download.id
+        )
+        update_data["draft_token"] = None
 
     if "slug" in update_data and update_data["slug"]:
         update_data["slug"] = await _unique_slug(
@@ -833,7 +902,12 @@ async def update_download(
     # ── Otomatik sürüm geçmişi ───────────────────────────────────────────
     # Sürüm değişiyorsa (ve eskiden bir sürüm bilgisi varsa) eski hâl,
     # üzerine yazılmadan önce anlık görüntü olarak kaydedilir.
-    if "version" in update_data and update_data["version"] != download.version and download.version:
+    if (
+        not download.is_draft
+        and "version" in update_data
+        and update_data["version"] != download.version
+        and download.version
+    ):
         session.add(
             DownloadVersionHistory(
                 download_id=download.id,
@@ -869,12 +943,34 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
     if not ids:
         raise ValueError("En az bir içerik seçin.")
     downloads = list((await session.scalars(select(Download).where(Download.id.in_(ids)))).all())
+    if action == "publish":
+        incomplete = [
+            item
+            for item in downloads
+            if item.is_draft
+            and (
+                item.title == "İsimsiz taslak"
+                or (item.file_type == FileType.external and not item.external_url)
+                or (item.file_type == FileType.local and not item.file_path)
+            )
+        ]
+        if incomplete:
+            raise ValueError("Eksik taslaklar düzenlenmeden yayınlanamaz.")
     if action == "delete":
         for download in downloads:
             await session.delete(download)
+    elif action == "publish":
+        for download in downloads:
+            if download.is_draft:
+                base_slug = _make_slug(download.title) or "isimsiz-icerik"
+                download.slug = await _unique_slug(
+                    session, Download, base_slug, exclude_id=download.id
+                )
+                download.draft_token = None
+                download.is_draft = False
+            download.is_active = True
     else:
         values = {
-            "publish": {"is_active": True},
             "unpublish": {"is_active": False},
             "feature": {"is_featured": True},
             "unfeature": {"is_featured": False},

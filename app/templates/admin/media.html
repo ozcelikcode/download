@@ -1,17 +1,17 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Medya Arşivi{% endblock %}
+{% block title %}{{ t(request, 'media_archive') }}{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
-<script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js" defer></script>
+<link rel="stylesheet" href="/static/vendor/cropperjs/1.6.2/cropper.min.css">
+<script src="/static/vendor/cropperjs/1.6.2/cropper.min.js" defer></script>
 {% endblock %}
 
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Medya Arşivi</h1>
-    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Sisteme yüklenen tüm resim ve dosyalar</p>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'media_archive') }}</h1>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ t(request, 'media_help') }}</p>
   </div>
 </div>
 
@@ -19,7 +19,7 @@
 <div id="media-copy-toast" class="fixed top-4 left-4 z-50 hidden">
   <div class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-2.5">
     <i data-lucide="check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"></i>
-    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Bağlantı kopyalandı</span>
+    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'link_copied') }}</span>
   </div>
 </div>
 
@@ -27,7 +27,7 @@
 <div id="media-upload-toast" class="fixed top-4 right-4 z-50 hidden">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 w-72">
     <div class="flex items-center justify-between mb-2 gap-2">
-      <span id="media-upload-label" class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">Yükleniyor…</span>
+      <span id="media-upload-label" class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{{ t(request, 'uploading') }}</span>
       <span id="media-upload-percent" class="text-xs text-slate-400 dark:text-slate-500 shrink-0">0%</span>
     </div>
     <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -39,7 +39,7 @@
 {# Tam boyutlu görsel önizleme (lightbox) #}
 <div id="media-lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 p-6">
   <button type="button" id="media-lightbox-close"
-    class="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors" title="Kapat">
+    class="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors" title="{{ t(request, 'close') }}">
     <i data-lucide="x" class="w-6 h-6"></i>
   </button>
   <img id="media-lightbox-img" src="" alt="" class="max-w-full max-h-full object-contain">
@@ -50,21 +50,21 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-lg p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
       <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Görseli Düzenle
+      {{ t(request, 'edit_image') }}
     </h3>
 
     {# Görsel adı — bağımsız olarak kaydedilir, link asla değişmez #}
     <div class="mb-4">
-      <label class="form-label text-xs">Görsel Adı</label>
+      <label class="form-label text-xs">{{ t(request, 'image_name') }}</label>
       <div class="flex items-center gap-1.5">
         <input id="media-crop-name" type="text" class="form-input text-sm flex-1" placeholder="Görsel adı">
         <button type="button" id="media-crop-name-save"
           class="shrink-0 p-2 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
-          title="Adı kaydet">
+          title="{{ t(request, 'save_name') }}">
           <i data-lucide="check" class="w-3.5 h-3.5"></i>
         </button>
       </div>
-      <p class="form-hint">Bağlantı (link) bu işlemden etkilenmez.</p>
+      <p class="form-hint">{{ t(request, 'link_unchanged') }}</p>
     </div>
 
     <div class="bg-slate-100 dark:bg-slate-950 rounded-sm overflow-hidden mb-4" style="max-height:360px; overflow:hidden;">
@@ -73,11 +73,11 @@
 
     <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
-        <label class="form-label text-xs">Genişlik (px)</label>
+        <label class="form-label text-xs">{{ t(request, 'width_px') }}</label>
         <input id="media-crop-width" type="number" min="16" class="form-input text-sm">
       </div>
       <div>
-        <label class="form-label text-xs">Yükseklik (px)</label>
+        <label class="form-label text-xs">{{ t(request, 'height_px') }}</label>
         <input id="media-crop-height" type="number" min="16" class="form-input text-sm">
       </div>
     </div>

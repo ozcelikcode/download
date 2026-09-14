@@ -1,5 +1,5 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Ayarlar — Genel{% endblock %}
+{% block title %}{{ t(request, 'settings') }} — {{ t(request, 'general') }}{% endblock %}
 
 {% block content %}
 
@@ -8,9 +8,9 @@
     <div class="breadcrumb mb-1">
       <a href="/admin">Admin</a>
       <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">Ayarlar</span>
+      <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'settings') }}</span>
     </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ayarlar</h1>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'settings') }}</h1>
   </div>
 </div>
 
@@ -19,20 +19,45 @@
 
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-    Site Kimliği
+    <i data-lucide="languages" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    {{ t(request, 'site_language') }}
   </h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Site adı, ikonu ve ikon rengi — sitenin her yerinde anında yansır.</p>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_language_help') }}</p>
+  <form method="post" action="/admin/settings/language" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="grid grid-cols-2 gap-2 max-w-sm">
+      {% for language_code, language_label in [('tr', t(request, 'turkish')), ('en', t(request, 'english'))] %}
+      <label class="theme-color-choice cursor-pointer">
+        <input type="radio" name="language" value="{{ language_code }}" class="peer sr-only" {% if site_settings.site_language == language_code %}checked{% endif %}>
+        <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">
+          <span class="inline-flex h-5 w-7 items-center justify-center rounded-sm bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase">{{ language_code }}</span>
+          {{ language_label }}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm">
+      <i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save_language') }}
+    </button>
+  </form>
+</div>
+
+<div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    {{ t(request, 'site_identity') }}
+  </h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_identity_help') }}</p>
 
   <form method="post" action="/admin/settings/branding" class="space-y-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div>
-      <label class="form-label">Site Adı</label>
+      <label class="form-label">{{ t(request, 'site_name') }}</label>
       <input name="site_name" type="text" required maxlength="100" value="{{ site_settings.site_name }}" class="form-input max-w-sm">
     </div>
 
     <div>
-      <label class="form-label">Site İkonu</label>
+      <label class="form-label">{{ t(request, 'site_icon') }}</label>
       <div class="flex items-center gap-2">
         <div id="branding-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
           <i data-lucide="{{ site_settings.site_icon }}" class="w-5 h-5 site-icon-color" id="branding-icon-preview-glyph"
@@ -52,15 +77,15 @@
       </div>
       <p class="form-hint">
         <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">lucide.dev/icons</a>
-        üzerinden başka bir ikon adı da yazabilirsiniz.
+        {{ t(request, 'icon_help') }}
       </p>
     </div>
 
     <div>
-      <label class="form-label">Renk Teması</label>
-      <p class="form-hint mb-2">Bu seçim bağlantılar, butonlar ve vurgular dahil tüm arayüzün ana rengini değiştirir.</p>
+      <label class="form-label">{{ t(request, 'color_theme') }}</label>
+      <p class="form-hint mb-2">{{ t(request, 'color_theme_help') }}</p>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
-        {% for color, label, hex in [('blue', 'Mavi', '#356fd4'), ('green', 'Yeşil', '#247a4d'), ('red', 'Kırmızı', '#bf4f58'), ('yellow', 'Sarı', '#9a6a0c'), ('cream', 'Krem', '#8a6735'), ('amoled', 'AMOLED', '#a1a1aa')] %}
+        {% for color, label, hex in [('blue', t(request, 'blue'), '#356fd4'), ('green', t(request, 'green'), '#247a4d'), ('red', t(request, 'red'), '#bf4f58'), ('yellow', t(request, 'yellow'), '#9a6a0c'), ('cream', t(request, 'cream'), '#8a6735'), ('amoled', t(request, 'amoled'), '#a1a1aa')] %}
         <label class="theme-color-choice cursor-pointer">
           <input type="radio" name="theme_color" value="{{ color }}" class="peer sr-only"
             {% if site_settings.theme_color == color %}checked{% endif %}>
@@ -74,19 +99,19 @@
 
     <button type="submit" class="btn-primary py-2 px-4 text-sm">
       <i data-lucide="save" class="w-3.5 h-3.5"></i>
-      Site Kimliğini Kaydet
+      {{ t(request, 'save_identity') }}
     </button>
   </form>
 </div>
 
 <div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
-  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i> İşlem Geçmişi</h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Başarılı işlemler, değişiklikler ve hatalar bu sınıra kadar saklanır.</p>
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i> {{ t(request, 'audit_history') }}</h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'audit_help') }}</p>
   <form method="post" action="/admin/settings/audit-log-limit" class="grid grid-cols-1 sm:grid-cols-[minmax(10rem,14rem)_auto] gap-3 items-end max-w-md">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <label class="block"><span class="form-label">Maksimum kayıt</span><select name="max_records" class="form-input">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-    <button type="submit" class="btn-primary py-2 px-4 text-sm justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> Kaydet</button>
-    <a href="/admin/audit" class="sm:col-span-2 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"><i data-lucide="history" class="w-3.5 h-3.5"></i>Kayıtları görüntüle</a>
+    <label class="block"><span class="form-label">{{ t(request, 'maximum_records') }}</span><select name="max_records" class="form-input">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> {{ t(request, 'save') }}</button>
+    <a href="/admin/audit" class="sm:col-span-2 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"><i data-lucide="history" class="w-3.5 h-3.5"></i>{{ t(request, 'view_records') }}</a>
   </form>
 </div>
 

@@ -16,6 +16,7 @@ from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.dependencies import refresh_session_max_age
+from app.i18n import translate
 from app.routers import admin, public, reports
 from app.templating import refresh_site_branding_globals, templates
 
@@ -108,7 +109,8 @@ async def not_found_handler(request: Request, exc):
         request=request, name="errors/404.html",
         context={
             "request": request,
-            "page_title": "Sayfa Bulunamadı",
+            "page_title": translate(request, "not_found"),
+            "meta_description": translate(request, "not_found_text"),
             "sidebar_categories": [],
             "sidebar_tags": [],
             "category_counts": {},
@@ -136,7 +138,8 @@ async def server_error_handler(request: Request, exc):
         request=request, name="errors/500.html",
         context={
             "request": request,
-            "page_title": "Sunucu Hatası",
+            "page_title": translate(request, "server_error"),
+            "meta_description": translate(request, "server_error_text"),
             "sidebar_categories": [],
             "sidebar_tags": [],
             "category_counts": {},
@@ -152,14 +155,15 @@ async def rate_limit_handler(request: Request, exc):
     if request.url.path == "/admin/login":
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
-            context={"request": request, "error": "Çok fazla giriş denemesi. 15 dakikalık sınır dolunca tekrar deneyin."},
+            context={"request": request, "error": translate(request, "login_rate_limited")},
             status_code=429, headers=getattr(exc, "headers", None),
         )
     return templates.TemplateResponse(
         request=request, name="errors/429.html",
         context={
             "request": request,
-            "page_title": "Çok Fazla İstek",
+            "page_title": translate(request, "too_many"),
+            "meta_description": translate(request, "limit_reached"),
             "sidebar_categories": [],
             "sidebar_tags": [],
             "category_counts": {},

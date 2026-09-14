@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="{% block meta_description %}{{ t(request, 'meta_default') }}{% endblock %}">
+  {% set resolved_title = ((page_title ~ ' — ') if page_title else '') ~ site_name %}
+  {% set resolved_description = meta_description if meta_description is defined and meta_description else t(request, 'meta_default') %}
+  <meta name="description" content="{{ resolved_description }}">
+  <link rel="canonical" href="{{ canonical_url(request) }}">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="{{ 'en_US' if ui_language(request) == 'en' else 'tr_TR' }}">
+  <meta property="og:site_name" content="{{ site_name }}">
+  <meta property="og:title" content="{{ resolved_title }}">
+  <meta property="og:description" content="{{ resolved_description }}">
+  <meta property="og:url" content="{{ canonical_url(request) }}">
+  <meta name="twitter:card" content="summary">
   <title>{% block title %}{% if page_title %}{{ page_title }} — {% endif %}{{ site_name }}{% endblock %}</title>
 
   {# Tema — FOUC önleyici (Tailwind'den önce çalışmalı) #}
@@ -20,7 +30,7 @@
 
   {# Custom CSS + Lucide #}
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
-  <script src="https://unpkg.com/lucide@1.24.0/dist/umd/lucide.min.js"></script>
+  <script src="/static/vendor/lucide/1.24.0/lucide.min.js"></script>
   <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
 
   {% block head %}{% endblock %}
@@ -117,15 +127,6 @@
         </button>
       </div>
     </div>
-
-    <details class="relative shrink-0" id="language-menu-wrap">
-      <summary class="list-none cursor-pointer px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors" aria-label="{{ t(request, 'language') }}">{{ ui_language(request)|upper }}</summary>
-      <div class="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
-        {% set language_return = request.url.path ~ (('?' ~ request.url.query) if request.url.query else '') %}
-        <a href="/language/tr?return_to={{ language_return|urlencode }}" class="flex items-center justify-between px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 {% if ui_language(request) == 'tr' %}text-blue-600 dark:text-blue-400 font-medium{% else %}text-slate-600 dark:text-slate-400{% endif %}"><span>Türkçe</span>{% if ui_language(request) == 'tr' %}<i data-lucide="check" class="w-3.5 h-3.5"></i>{% endif %}</a>
-        <a href="/language/en?return_to={{ language_return|urlencode }}" class="flex items-center justify-between px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 {% if ui_language(request) == 'en' %}text-blue-600 dark:text-blue-400 font-medium{% else %}text-slate-600 dark:text-slate-400{% endif %}"><span>English</span>{% if ui_language(request) == 'en' %}<i data-lucide="check" class="w-3.5 h-3.5"></i>{% endif %}</a>
-      </div>
-    </details>
 
     {# Mobile menu toggle #}
     <button id="mobile-menu-btn"

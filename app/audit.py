@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import AuditLog, Category, Download, DownloadVersionHistory, MediaAsset, MenuItem, SiteSettings, Tag
 
 TRACKED = (Download, Category, Tag, MenuItem, SiteSettings, MediaAsset, DownloadVersionHistory)
-IGNORED = {"id", "created_at", "updated_at", "download_count", "sha256", "checksum_size", "checksum_mtime_ns"}
+IGNORED = {"id", "created_at", "updated_at", "download_count", "draft_token", "sha256", "checksum_size", "checksum_mtime_ns"}
 ENTITY_LABELS = {"login": "Giriş güvenliği","downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
 ACTION_LABELS = {"create": "Eklendi", "update": "Düzenlendi", "delete": "Silindi", "replace": "Dosya değiştirildi", "crop": "Görsel kırpıldı", "reorder": "Sıralandı", "bulk": "Toplu işlem", "transfer": "Aktarıldı", "error": "Hata", "login": "Oturum açıldı"}
 FIELD_LABELS = {
@@ -22,10 +22,10 @@ FIELD_LABELS = {
     "file_size_bytes": "Dosya boyutu (bayt)", "icon_type": "İkon türü", "thumbnail_path": "Küçük görsel",
     "icon_image_path": "İkon dosyası", "icon_image_url": "İkon adresi", "icon_extension": "Dosya uzantısı",
     "os_compatibility": "İşletim sistemleri", "category_id": "Kategori", "parent_id": "Bağlı sürüm",
-    "is_active": "Yayında", "is_featured": "Öne çıkan", "is_official_source": "Resmî kaynak",
+    "is_active": "Yayında", "is_draft": "Taslak", "is_featured": "Öne çıkan", "is_official_source": "Resmî kaynak",
     "is_latest_version": "Güncel sürüm bağlantısı",
     "label": "Başlık", "url": "Adres", "icon": "İkon", "open_in_new_tab": "Yeni sekmede aç",
-    "location": "Menü konumu", "site_name": "Site adı", "site_icon": "Site ikonu",
+    "location": "Menü konumu", "site_name": "Site adı", "site_language": "Site dili", "site_icon": "Site ikonu",
     "site_icon_color": "İkon rengi", "sidebar_block_order": "Yan menü sırası",
     "theme_color": "Renk teması",
     "logo_mode": "Logo düzeni", "logo_light_path": "Aydınlık logo", "logo_dark_path": "Karanlık logo",
@@ -57,6 +57,8 @@ def _safe_value(key: str, value: object) -> object:
 
 @event.listens_for(Session, "after_flush")
 def capture_changes(session: Session, flush_context: object) -> None:
+    if session.info.get("audit_suppressed"):
+        return
     actor = session.info.get("audit_actor")
     if not actor:
         return
