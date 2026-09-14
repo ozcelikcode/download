@@ -40,7 +40,7 @@ async def test_admin_language_controls_site_and_admin_without_translating_conten
 
     admin_page = await admin_client.get("/admin/settings/general")
     assert '<html lang="en">' in admin_page.text
-    assert "Site Language" in admin_page.text
+    assert "Site and Admin Language" in admin_page.text
     assert "Save Language" in admin_page.text
     assert "Activity Log" in admin_page.text
 

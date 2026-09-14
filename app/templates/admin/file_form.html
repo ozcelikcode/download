@@ -25,8 +25,8 @@
       <span id="upload-progress-percent" class="absolute inset-0 flex items-center justify-center text-[9px] font-semibold text-slate-700 dark:text-slate-300">0%</span>
     </div>
     <div class="min-w-0">
-      <p id="upload-progress-label" class="text-xs font-medium text-slate-700 dark:text-slate-300">Yükleniyor…</p>
-      <p class="text-[10px] text-slate-400 dark:text-slate-500">Lütfen bekleyin</p>
+      <p id="upload-progress-label" class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'uploading') }}</p>
+      <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ t(request, 'safe_to_leave') }}</p>
     </div>
   </div>
 </div>
@@ -38,7 +38,7 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-lg p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
       <i data-lucide="crop" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Görseli Düzenle
+      {{ t(request, 'edit_image') }}
     </h3>
 
     <div class="bg-slate-100 dark:bg-slate-950 rounded-sm overflow-hidden mb-4" style="max-height:360px; overflow:hidden;">
@@ -47,29 +47,29 @@
 
     <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
-        <label class="form-label text-xs">Genişlik (px)</label>
+        <label class="form-label text-xs">{{ t(request, 'width_px') }}</label>
         <input id="icon-crop-width" type="number" min="16" class="form-input text-sm">
       </div>
       <div>
-        <label class="form-label text-xs">Yükseklik (px)</label>
+        <label class="form-label text-xs">{{ t(request, 'height_px') }}</label>
         <input id="icon-crop-height" type="number" min="16" class="form-input text-sm">
       </div>
     </div>
 
     <label class="inline-flex items-center gap-2 mb-4 cursor-pointer select-none">
       <input type="checkbox" id="icon-crop-lock-ratio" class="accent-blue-600 rounded-sm" checked>
-      <span class="text-xs text-slate-600 dark:text-slate-400">En-boy oranını kilitle</span>
+      <span class="text-xs text-slate-600 dark:text-slate-400">{{ t(request, 'lock_aspect') }}</span>
     </label>
 
     <div class="flex items-center justify-end gap-2">
       <button type="button" id="icon-crop-cancel"
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-        İptal
+        {{ t(request, 'cancel') }}
       </button>
       <button type="button" id="icon-crop-save" class="btn-primary py-1.5 px-3 text-xs">
         <i data-lucide="check" class="w-3.5 h-3.5"></i>
-        Kaydet
+        {{ t(request, 'save') }}
       </button>
     </div>
   </div>
@@ -81,7 +81,7 @@
     <div class="breadcrumb mb-1">
       <a href="/admin">Admin</a>
       <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}Düzenle{% else %}Yeni Dosya{% endif %}</span>
+      <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}{{ t(request, 'edit') }}{% else %}{{ t(request, 'new_file') }}{% endif %}</span>
     </div>
     <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">
       {% if edit_mode %}{{ download.title }}{% else %}{{ t(request, 'add_download') }}{% endif %}
@@ -128,7 +128,7 @@
         <label for="f-title" class="form-label">{{ t(request, 'title') }} <span class="text-red-500">*</span></label>
         <input id="f-title" name="title" type="text" required
           value="{{ download.title if download else '' }}"
-          placeholder="Örn: Visual Studio Code"
+          placeholder="{{ t(request, 'example') }}: Visual Studio Code"
           class="form-input">
       </div>
 
@@ -137,7 +137,7 @@
         <label for="f-version" class="form-label">{{ t(request, 'version') }}</label>
         <input id="f-version" name="version" type="text"
           value="{{ download.version if download else '' }}"
-          placeholder="Örn: v2.1.0"
+          placeholder="{{ t(request, 'example') }}: v2.1.0"
           class="form-input" {% if download and download.is_latest_version %}disabled{% endif %}>
         <label id="latest-version-option" class="choice-card flex items-center gap-2 mt-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
           <input id="f-latest-version" type="checkbox" name="is_latest_version" value="true" class="choice-input" {% if download and download.is_latest_version %}checked{% endif %}>
@@ -152,7 +152,7 @@
         <select id="f-icon-type" name="icon_type" class="form-input">
           <option value="auto" {% if (download and download.icon_type.value == 'auto') or not download %}selected{% endif %}>{{ t(request, 'automatic') }}</option>
           <option value="image" {% if download and download.icon_type.value == 'image' %}selected{% endif %}>{{ t(request, 'image') }}</option>
-          <option value="zip" {% if download and download.icon_type.value == 'zip' %}selected{% endif %}>ZIP/Arşiv</option>
+          <option value="zip" {% if download and download.icon_type.value == 'zip' %}selected{% endif %}>ZIP/{{ t(request, 'archive') }}</option>
           <option value="pdf" {% if download and download.icon_type.value == 'pdf' %}selected{% endif %}>PDF</option>
           <option value="exe" {% if download and download.icon_type.value == 'exe' %}selected{% endif %}>Windows (EXE)</option>
           <option value="apk" {% if download and download.icon_type.value == 'apk' %}selected{% endif %}>Android (APK)</option>
@@ -166,24 +166,24 @@
 
       {# Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) #}
       <div id="section-icon-extension" class="sm:col-span-2 space-y-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
-        <label for="f-icon-extension" class="form-label text-xs">Dosya Uzantısı</label>
+        <label for="f-icon-extension" class="form-label text-xs">{{ t(request, 'file_extension') }}</label>
         <div class="flex items-center gap-2">
           <div id="icon-extension-preview" class="w-9 h-9 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center">
             <i data-lucide="file" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>
           </div>
           <input id="f-icon-extension" name="icon_extension" type="text" maxlength="20" autocomplete="off"
             value="{{ download.icon_extension if download and download.icon_extension else '' }}"
-            placeholder="Örn: rar, iso, msi, mp4"
+            placeholder="{{ t(request, 'example') }}: rar, iso, msi, mp4"
             class="form-input flex-1">
         </div>
-        <p class="form-hint">Uzantıya göre otomatik en uygun ikon eşlenir (bilinmeyen uzantılarda genel dosya ikonu kullanılır).</p>
+        <p class="form-hint">{{ t(request, 'extension_help') }}</p>
       </div>
 
       {# İkon detayları (Sadece 'Resim' seçildiğinde açılır) #}
       <div id="section-icon-image" class="sm:col-span-2 space-y-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
         <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
           <i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-          Uygulama Görseli / Resmi
+          {{ t(request, 'application_image') }}
         </p>
 
         {# Görsel önizleme + Sil / Düzenle #}
@@ -191,25 +191,25 @@
           class="flex items-center gap-3 {% if not (download and (download.icon_image_path or download.icon_image_url)) %}hidden{% endif %}">
           <img id="icon-preview-img"
             src="{{ (download.icon_image_path or download.icon_image_url) if download else '' }}"
-            alt="İkon önizleme" class="w-16 h-16 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1">
+            alt="{{ t(request, 'image_preview') }}" class="w-16 h-16 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1">
           <div class="min-w-0">
-            <p class="text-xs text-slate-500 dark:text-slate-400">Görsel yüklendi.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'image_uploaded') }}</p>
             <div class="flex items-center gap-2 mt-1.5">
               <button type="button" id="icon-autocrop-btn"
                 class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400
                        border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
-                title="Otomatik olarak ortadan kare kırpar ve ikon boyutuna getirir">
-                <i data-lucide="wand-2" class="w-3 h-3"></i> İkon Olarak Ayarla
+                title="{{ t(request, 'autocrop_icon_help') }}">
+                <i data-lucide="wand-2" class="w-3 h-3"></i> {{ t(request, 'set_as_icon') }}
               </button>
               <button type="button" id="icon-edit-btn"
                 class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <i data-lucide="crop" class="w-3 h-3"></i> Manuel Düzenle
+                <i data-lucide="crop" class="w-3 h-3"></i> {{ t(request, 'manual_edit') }}
               </button>
               <button type="button" id="icon-delete-btn"
                 class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-600 dark:text-red-400
                        border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                <i data-lucide="trash-2" class="w-3 h-3"></i> Sil
+                <i data-lucide="trash-2" class="w-3 h-3"></i> {{ t(request, 'delete') }}
               </button>
             </div>
           </div>
@@ -221,22 +221,22 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {# Görsel Dosyası Yükleme #}
             <div>
-              <label for="f-icon-image-file" class="form-label text-xs">Görsel Dosyası</label>
+              <label for="f-icon-image-file" class="form-label text-xs">{{ t(request, 'image_file') }}</label>
               <input id="f-icon-image-file" type="file" accept="image/*"
                 class="form-input py-1 bg-white dark:bg-slate-900 cursor-pointer text-xs">
-              <p class="form-hint text-[10px]">PNG, JPG, SVG, WebP. Seçilince otomatik yüklenir.</p>
+              <p class="form-hint text-[10px]">{{ t(request, 'image_upload_help') }}</p>
             </div>
 
             {# Görsel URL'si #}
             <div>
-              <label for="f-icon-image-url" class="form-label text-xs">veya Görsel URL</label>
+              <label for="f-icon-image-url" class="form-label text-xs">{{ t(request, 'or_image_url') }}</label>
               <div class="flex gap-1.5">
                 <input id="f-icon-image-url" type="url"
                   placeholder="https://example.com/logo.png"
                   class="form-input py-1 bg-white dark:bg-slate-900 text-xs flex-1">
-                <button type="button" id="icon-url-upload-btn" class="btn-primary py-1 px-3 text-xs shrink-0">YÜKLE</button>
+                <button type="button" id="icon-url-upload-btn" class="btn-primary py-1 px-3 text-xs shrink-0">{{ t(request, 'upload') }}</button>
               </div>
-              <p class="form-hint text-[10px]">Bağlantıdaki görsel sisteme indirilip kaydedilir.</p>
+              <p class="form-hint text-[10px]">{{ t(request, 'image_url_help') }}</p>
             </div>
           </div>
         </div>
@@ -251,12 +251,12 @@
 
       {# Ön Açıklama — ana sayfa kartlarında gösterilen kısa özet #}
       <div class="sm:col-span-2">
-        <label for="f-short-description" class="form-label">Ön Açıklama</label>
+        <label for="f-short-description" class="form-label">{{ t(request, 'short_description') }}</label>
         <input id="f-short-description" name="short_description" type="text" maxlength="300"
           value="{{ download.short_description if download and download.short_description else '' }}"
-          placeholder="Ana sayfa kartında görünecek kısa özet…"
+          placeholder="{{ t(request, 'short_description_placeholder') }}"
           class="form-input">
-        <p class="form-hint">Boş bırakılırsa ana sayfada aşağıdaki açıklamanın kısaltılmış hâli gösterilir.</p>
+        <p class="form-hint">{{ t(request, 'short_description_help') }}</p>
       </div>
 
       {# Açıklama (WYSIWYG) #}
@@ -295,9 +295,9 @@
 
       {# Üst kayıt (sürüm ilişkisi) #}
       <div>
-        <label for="f-parent" class="form-label">Üst Kayıt (Eski Sürüm İçin)</label>
+        <label for="f-parent" class="form-label">{{ t(request, 'parent_record') }}</label>
         <select id="f-parent" name="parent_id" class="form-input">
-          <option value="">— Bağımsız Kayıt —</option>
+          <option value="">— {{ t(request, 'independent_record') }} —</option>
           {% for d in all_downloads %}
           {% if not download or d.id != download.id %}
           <option value="{{ d.id }}" {% if download and download.parent_id == d.id %}selected{% endif %}>
@@ -306,7 +306,7 @@
           {% endif %}
           {% endfor %}
         </select>
-        <p class="form-hint">Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.</p>
+        <p class="form-hint">{{ t(request, 'parent_help') }}</p>
       </div>
 
       {# Etiketler #}
@@ -325,7 +325,7 @@
         </div>
         {% else %}
         <p class="text-sm text-slate-400 dark:text-slate-500 p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
-          Henüz etiket yok. <a href="/admin/tags" class="text-blue-600 dark:text-blue-400 hover:underline">Etiket ekle →</a>
+          {{ t(request, 'no_tags_add') }} <a href="/admin/tags" class="text-blue-600 dark:text-blue-400 hover:underline">{{ t(request, 'add') }} →</a>
         </p>
         {% endif %}
       </div>
@@ -389,7 +389,7 @@
           class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'local_file') }}</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500">Sunucuya yükle</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'upload_to_server') }}</p>
         </div>
       </label>
     </div>
@@ -397,15 +397,12 @@
     {# Dış URL bölümü #}
     <div id="section-external" class="space-y-3 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
       <div>
-        <label for="f-external-url" class="form-label">Dış URL</label>
+        <label for="f-external-url" class="form-label">{{ t(request, 'external_url') }}</label>
         <input id="f-external-url" name="external_url" type="url"
           value="{{ download.external_url if download else '' }}"
           placeholder="https://example.com/download.exe"
           class="form-input">
-        <p class="form-hint">
-          Kaynak alan adı kullanıcıya gösterilecek.
-          URL sonu <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">.exe</code>, <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">.dmg</code> vb. içeriyorsa ikon otomatik belirlenir.
-        </p>
+        <p class="form-hint">{{ t(request, 'source_url_help') }}</p>
         <p id="url-ext-hint" class="text-xs text-blue-600 dark:text-blue-400 mt-1 hidden">
           <span id="url-ext-text"></span>
         </p>
@@ -426,7 +423,7 @@
                 <i data-lucide="badge-check" class="w-3.5 h-3.5 text-green-600 dark:text-green-400"></i>
                 {{ t(request, 'official_site') }}
               </p>
-              <p class="text-xs text-slate-400 dark:text-slate-500">Yazılımın kendi resmî kaynağı</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'official_source_help') }}</p>
             </div>
           </label>
           <label class="choice-card flex-1 flex items-center gap-2.5 p-2.5
@@ -438,9 +435,9 @@
             <div>
               <p class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
                 <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"></i>
-                Üçüncü Parti Site
+                {{ t(request, 'third_party') }}
               </p>
-              <p class="text-xs text-slate-400 dark:text-slate-500">Doğrulanmamış / aracı kaynak</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'third_party_help') }}</p>
             </div>
           </label>
         </div>
@@ -450,10 +447,10 @@
     {# Lokal dosya bölümü #}
     <div id="section-local" class="space-y-3 {% if not download or download.file_type.value == 'external' %}hidden{% endif %}">
       <div>
-        <label for="f-upload" class="form-label">Dosya Yükle</label>
+        <label for="f-upload" class="form-label">{{ t(request, 'upload_file') }}</label>
         {% if download and download.file_path %}
         <p class="text-xs text-slate-500 dark:text-slate-400 mb-1.5">
-          Mevcut: <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">{{ download.file_path }}</code>
+          {{ t(request, 'current') }}: <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded-sm">{{ download.file_path }}</code>
         </p>
         {% endif %}
         <input id="f-upload" name="upload_file" type="file" class="form-input py-1.5 cursor-pointer">
@@ -461,17 +458,17 @@
         <p id="file-ext-hint" class="text-xs text-blue-600 dark:text-blue-400 mt-1 hidden">
           <span id="file-ext-text"></span>
         </p>
-        <p class="form-hint">Yeni dosya seçilirse üzerine yazılır.</p>
+        <p class="form-hint">{{ t(request, 'replace_file_help') }}</p>
       </div>
     </div>
 
     {# Dosya boyutu #}
     <div class="mt-4">
-      <label for="f-size" class="form-label">Dosya Boyutu</label>
+      <label for="f-size" class="form-label">{{ t(request, 'file_size') }}</label>
       <div class="flex gap-2 w-full">
         <input id="f-size" name="file_size_value" type="number" min="0" step="any"
           value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
-          placeholder="Örn: 50"
+          placeholder="{{ t(request, 'example') }}: 50"
           class="form-input min-w-0 flex-[0_0_90%]">
         <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 flex-[0_0_10%]" title="Birim">
           <option value="MB" title="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>M</option>
@@ -480,7 +477,7 @@
           <option value="B" title="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
         </select>
       </div>
-      <p class="form-hint">Boş bırakılabilir.</p>
+      <p class="form-hint">{{ t(request, 'optional') }}</p>
     </div>
   </div>
 
@@ -488,9 +485,9 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      İşletim Sistemi Uyumu
+      {{ t(request, 'os_compatibility') }}
     </h2>
-    <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">Birden fazla seçilebilir.</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">{{ t(request, 'multiple_allowed') }}</p>
 
     {% set current_os = [] %}
     {% if download and download.os_compatibility %}
@@ -504,7 +501,7 @@
         ('linux', 'Linux', 'terminal'),
         ('android', 'Android', 'smartphone'),
         ('ios', 'iOS', 'tablet'),
-        ('web', 'Web / Tarayıcı', 'globe')
+        ('web', t(request, 'browser'), 'globe')
       ] %}
       <label class="choice-card flex items-center gap-2 px-3 py-2 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50
                     {% if os_val in current_os %}border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-500/10{% endif %}">
@@ -522,7 +519,7 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="settings" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Ayarlar
+      {{ t(request, 'settings') }}
     </h2>
 
     <div class="space-y-3">
@@ -531,8 +528,8 @@
           {% if not download or download.is_active %}checked{% endif %}
           class="choice-input">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Aktif</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500">Pasif dosyalar sitede görünmez.</p>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'active') }}</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'active_help') }}</p>
         </div>
       </label>
 
@@ -541,8 +538,8 @@
           {% if download and download.is_featured %}checked{% endif %}
           class="choice-input">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Öne Çıkar</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500">Ana sayfanın "Öne Çıkanlar" bölümünde gösterilir.</p>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'feature') }}</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'feature_help') }}</p>
         </div>
       </label>
     </div>
@@ -553,10 +550,10 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
     <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
       <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Sürüm Geçmişi
+      {{ t(request, 'version_history') }}
     </h2>
     <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
-      "Sürüm" alanı değiştirildiğinde otomatik kaydedilir. Buradan yalnızca sorunlu bir kaydı düzeltebilir veya silebilirsiniz.
+      {{ t(request, 'version_history_help') }}
     </p>
 
     <ul class="space-y-1" id="version-history-list">
@@ -566,16 +563,16 @@
         <span class="version-history-display text-sm text-slate-700 dark:text-slate-300 flex-1 min-w-0 truncate">{{ h.version }}</span>
         <input type="text" class="version-history-input form-input py-1 text-sm flex-1 hidden" value="{{ h.version }}" maxlength="50">
         <span class="text-xs text-slate-400 dark:text-slate-500 shrink-0">{{ h.changed_at | format_date }}</span>
-        <button type="button" data-vh-action="edit" class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0" title="Düzelt">
+        <button type="button" data-vh-action="edit" class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0" title="{{ t(request, 'correct') }}">
           <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
         </button>
-        <button type="button" data-vh-action="save" class="p-1.5 text-blue-600 dark:text-blue-400 hidden shrink-0" title="Kaydet">
+        <button type="button" data-vh-action="save" class="p-1.5 text-blue-600 dark:text-blue-400 hidden shrink-0" title="{{ t(request, 'save') }}">
           <i data-lucide="check" class="w-3.5 h-3.5"></i>
         </button>
-        <button type="button" data-vh-action="cancel" class="p-1.5 text-slate-400 dark:text-slate-500 hidden shrink-0" title="Vazgeç">
+        <button type="button" data-vh-action="cancel" class="p-1.5 text-slate-400 dark:text-slate-500 hidden shrink-0" title="{{ t(request, 'cancel') }}">
           <i data-lucide="x" class="w-3.5 h-3.5"></i>
         </button>
-        <button type="button" data-vh-action="delete" class="p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0" title="Sil">
+        <button type="button" data-vh-action="delete" class="p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors shrink-0" title="{{ t(request, 'delete') }}">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </li>
@@ -605,7 +602,16 @@
     fileUploadFailed: {{ t(request, 'file_upload_failed')|tojson }}, tryAgain: {{ t(request, 'try_again')|tojson }},
     saving: {{ t(request, 'saving')|tojson }}, processingFields: {{ t(request, 'processing_fields')|tojson }},
     contentSaveFailed: {{ t(request, 'content_save_failed')|tojson }}, saved: {{ t(request, 'saved_done')|tojson }},
-    successComplete: {{ t(request, 'success_complete')|tojson }}, saveFailed: {{ t(request, 'save_failed')|tojson }}
+    successComplete: {{ t(request, 'success_complete')|tojson }}, saveFailed: {{ t(request, 'save_failed')|tojson }},
+    imageFileRequired: {{ t(request, 'image_file_required')|tojson }}, imageUploading: {{ t(request, 'image_uploading')|tojson }},
+    imageCompressing: {{ t(request, 'image_compressing')|tojson }}, uploadFailedStatus: {{ t(request, 'upload_failed_status')|tojson }},
+    networkUploadFailed: {{ t(request, 'network_upload_failed')|tojson }}, imageDownloading: {{ t(request, 'image_downloading')|tojson }},
+    downloadStartFailed: {{ t(request, 'download_start_failed')|tojson }}, imageUploadFailed: {{ t(request, 'image_upload_failed')|tojson }},
+    imageUrlRequired: {{ t(request, 'image_url_required')|tojson }}, imageDownloadFailed: {{ t(request, 'image_download_failed')|tojson }},
+    iconCreating: {{ t(request, 'icon_creating')|tojson }}, actionFailed: {{ t(request, 'action_failed')|tojson }},
+    iconCreateFailed: {{ t(request, 'icon_create_failed')|tojson }}, imageProcessFailed: {{ t(request, 'image_process_failed')|tojson }},
+    croppedImageSaving: {{ t(request, 'cropped_image_saving')|tojson }}, versionRequired: {{ t(request, 'version_required')|tojson }},
+    versionDeleteConfirm: {{ t(request, 'version_delete_confirm')|tojson }}
   };
 })();
 </script>
@@ -722,7 +728,7 @@
         if (revision === startedAtRevision) dirty = false;
         setStatus('saved', window.formMessages.draftSaved, timeLabel(data.saved_at) + ' ' + window.formMessages.autosavedAt);
       }).catch(function (error) {
-        setStatus('error', 'Otomatik kayıt başarısız', error.message || 'Tekrar denenecek.');
+        setStatus('error', {{ t(request, 'autosave_failed')|tojson }}, error.message || {{ t(request, 'retry_scheduled')|tojson }});
         throw error;
       }).finally(function () {
         requestInFlight = null;
@@ -812,7 +818,7 @@
       } catch (error) {
         manualSaving = false;
         saveButton.disabled = false;
-        saveLabel.textContent = 'Tekrar Kaydet';
+        saveLabel.textContent = {{ t(request, 'save_again')|tojson }};
         setStatus('error', window.formMessages.saveFailed, error.message || window.formMessages.tryAgain);
         window.showAdminNotice(error.message || window.formMessages.contentSaveFailed);
       }
@@ -855,8 +861,8 @@
     png:'image', jpg:'image', jpeg:'image', svg:'image', gif:'image'
   };
   var ICON_LABELS = {
-    zip:'ZIP/Arşiv', pdf:'PDF', exe:'Uygulama (EXE)',
-    apk:'Android (APK)', dmg:'macOS (DMG)', deb:'Linux (DEB)', image:'Görsel'
+    zip:'ZIP/' + {{ t(request, 'archive')|tojson }}, pdf:'PDF', exe:{{ t(request, 'application')|tojson }} + ' (EXE)',
+    apk:'Android (APK)', dmg:'macOS (DMG)', deb:'Linux (DEB)', image:{{ t(request, 'image')|tojson }}
   };
 
   // Lokal dosya seçildiğinde
@@ -894,7 +900,7 @@
         var ext   = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
         var detected = ext.length < 6 ? EXT_ICON[ext] : null;
         if (detected) {
-          urlText.textContent = '.' + ext + ' uzantısı algılandı → ' + (ICON_LABELS[detected] || detected) + ' ikonu uygulanacak';
+          urlText.textContent = {{ t(request, 'extension_detected')|tojson }}.replace('{extension}', ext).replace('{icon}', ICON_LABELS[detected] || detected);
           urlHint.classList.remove('hidden');
         } else {
           urlHint.classList.add('hidden');
@@ -1002,10 +1008,10 @@
     function uploadFile(file, label) {
       return new Promise(function (resolve, reject) {
         if (!file.type || !file.type.startsWith('image/')) {
-          reject(new Error('Lütfen bir görsel dosyası seçin.'));
+          reject(new Error(window.formMessages.imageFileRequired));
           return;
         }
-        showProgress(label || 'Görsel yükleniyor…');
+        showProgress(label || window.formMessages.imageUploading);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/admin/upload/icon-image');
         xhr.setRequestHeader("X-CSRF-Token", document.querySelector('meta[name="csrf-token"]').content);
@@ -1016,7 +1022,7 @@
         let compressTimer = null;
         function startCompressPhase() {
           if (compressTimer) return;
-          labelEl.textContent = 'Görsel sıkıştırılıyor…';
+          labelEl.textContent = window.formMessages.imageCompressing;
           let fakePct = 85;
           compressTimer = setInterval(function () {
             fakePct = Math.min(fakePct + 2, 97);
@@ -1043,13 +1049,13 @@
               reject(e);
             }
           } else {
-            reject(new Error('Yükleme başarısız oldu (' + xhr.status + ').'));
+            reject(new Error(window.formMessages.uploadFailedStatus.replace('{status}', xhr.status)));
           }
         };
         xhr.onerror = function () {
           stopCompressPhase();
           hideProgress();
-          reject(new Error('Ağ hatası — yükleme başarısız oldu.'));
+          reject(new Error(window.formMessages.networkUploadFailed));
         };
         const fd = new FormData();
         fd.append('file', file);
@@ -1059,21 +1065,21 @@
 
     function uploadFromUrl(url) {
       return new Promise(function (resolve, reject) {
-        showProgress('Görsel indiriliyor…');
+        showProgress(window.formMessages.imageDownloading);
         const token = 'tok_' + Date.now() + '_' + Math.random().toString(36).slice(2);
         const fd = new FormData();
         fd.append('url', url);
         fd.append('token', token);
 
         csrfFetch('/admin/upload/icon-image-url', { method: 'POST', body: fd })
-          .then(function (r) { if (!r.ok) throw new Error('İndirme başlatılamadı.'); return r.json(); })
+          .then(function (r) { if (!r.ok) throw new Error(window.formMessages.downloadStartFailed); return r.json(); })
           .then(function () {
             const poll = setInterval(function () {
               csrfFetch('/admin/upload/progress/' + token)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                   setProgress(data.percent || 0);
-                  labelEl.textContent = data.phase === 'compressing' ? 'Görsel sıkıştırılıyor…' : 'Görsel indiriliyor…';
+                  labelEl.textContent = data.phase === 'compressing' ? window.formMessages.imageCompressing : window.formMessages.imageDownloading;
                   if (data.done) {
                     clearInterval(poll);
                     hideProgress();
@@ -1092,19 +1098,19 @@
       fileInput.addEventListener('change', function () {
         const file = fileInput.files[0];
         if (!file) return;
-        uploadFile(file, 'Görsel yükleniyor…')
+        uploadFile(file, window.formMessages.imageUploading)
           .then(showPreview)
-          .catch(function (e) { window.showAdminNotice(e.message || 'Görsel yüklenemedi.'); });
+          .catch(function (e) { window.showAdminNotice(e.message || window.formMessages.imageUploadFailed); });
       });
     }
 
     if (urlUploadBtn) {
       urlUploadBtn.addEventListener('click', function () {
         const url = (urlInput.value || '').trim();
-        if (!url) { window.showAdminNotice('Lütfen bir görsel URL girin.'); return; }
+        if (!url) { window.showAdminNotice(window.formMessages.imageUrlRequired); return; }
         uploadFromUrl(url)
           .then(showPreview)
-          .catch(function (e) { window.showAdminNotice(e.message || 'Görsel indirilemedi.'); });
+          .catch(function (e) { window.showAdminNotice(e.message || window.formMessages.imageDownloadFailed); });
       });
     }
 
@@ -1124,12 +1130,12 @@
       autocropBtn.addEventListener('click', function () {
         const current = finalPathInput.value;
         if (!current) return;
-        showProgress('Otomatik ikon oluşturuluyor…');
+        showProgress(window.formMessages.iconCreating);
         const fd = new FormData();
         fd.append('path', current);
         fd.append('size', '256');
         csrfFetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
-          .then(function (r) { if (!r.ok) throw new Error('İşlem başarısız oldu.'); return r.json(); })
+          .then(function (r) { if (!r.ok) throw new Error(window.formMessages.actionFailed); return r.json(); })
           .then(function (data) {
             hideProgress();
             showPreview(data.path);
@@ -1141,7 +1147,7 @@
           })
           .catch(function (e) {
             hideProgress();
-            window.showAdminNotice(e.message || 'Otomatik ikon oluşturulamadı.');
+            window.showAdminNotice(e.message || window.formMessages.iconCreateFailed);
           });
       });
     }
@@ -1237,12 +1243,12 @@
       cropSaveBtn.addEventListener('click', function () {
         if (!cropper) return;
         const canvas = cropper.getCroppedCanvas();
-        if (!canvas) { window.showAdminNotice('Görsel işlenemedi.'); return; }
+        if (!canvas) { window.showAdminNotice(window.formMessages.imageProcessFailed); return; }
         canvas.toBlob(function (blob) {
           if (!blob) return;
           const oldPath = finalPathInput.value;
           const file = new File([blob], 'cropped.png', { type: 'image/png' });
-          uploadFile(file, 'Kırpılan görsel kaydediliyor…')
+          uploadFile(file, window.formMessages.croppedImageSaving)
             .then(function (newPath) {
               showPreview(newPath);
               closeCropModal();
@@ -1252,7 +1258,7 @@
                 csrfFetch('/admin/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
               }
             })
-            .catch(function (e) { window.showAdminNotice(e.message || 'Kaydedilemedi.'); });
+            .catch(function (e) { window.showAdminNotice(e.message || window.formMessages.contentSaveFailed); });
         }, 'image/png');
       });
     }
@@ -1289,17 +1295,17 @@
         setEditing(row, false);
       } else if (action === 'save') {
         const newVersion = row.querySelector('.version-history-input').value.trim();
-        if (!newVersion) { window.showAdminNotice('Sürüm boş olamaz.'); return; }
+        if (!newVersion) { window.showAdminNotice(window.formMessages.versionRequired); return; }
         const fd = new FormData();
         fd.append('version', newVersion);
         csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/edit', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
-          .catch(function () { window.showAdminNotice('Kaydedilemedi.'); });
+          .catch(function () { window.showAdminNotice(window.formMessages.contentSaveFailed); });
       } else if (action === 'delete') {
-        window.showAdminConfirm('Bu sürüm geçmişi kaydı kalıcı olarak silinecek. Devam edilsin mi?', function () {
+        window.showAdminConfirm(window.formMessages.versionDeleteConfirm, function () {
           csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
             .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
-            .catch(function () { window.showAdminNotice('Silinemedi.'); });
+            .catch(function () { window.showAdminNotice({{ t(request, 'delete_failed')|tojson }}); });
         });
       }
     });

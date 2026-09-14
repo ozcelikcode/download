@@ -57,7 +57,7 @@
     <div class="mb-4">
       <label class="form-label text-xs">{{ t(request, 'image_name') }}</label>
       <div class="flex items-center gap-1.5">
-        <input id="media-crop-name" type="text" class="form-input text-sm flex-1" placeholder="Görsel adı">
+        <input id="media-crop-name" type="text" class="form-input text-sm flex-1" placeholder="{{ t(request, 'image_name') }}">
         <button type="button" id="media-crop-name-save"
           class="shrink-0 p-2 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
           title="{{ t(request, 'save_name') }}">
@@ -84,18 +84,18 @@
 
     <label class="inline-flex items-center gap-2 mb-4 cursor-pointer select-none">
       <input type="checkbox" id="media-crop-lock-ratio" class="accent-blue-600 rounded-sm" checked>
-      <span class="text-xs text-slate-600 dark:text-slate-400">En-boy oranını kilitle</span>
+      <span class="text-xs text-slate-600 dark:text-slate-400">{{ t(request, 'lock_aspect') }}</span>
     </label>
 
     <div class="flex items-center justify-end gap-2">
       <button type="button" id="media-crop-cancel"
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-        İptal
+        {{ t(request, 'cancel') }}
       </button>
       <button type="button" id="media-crop-save" class="btn-primary py-1.5 px-3 text-xs">
         <i data-lucide="check" class="w-3.5 h-3.5"></i>
-        Kırpmayı Kaydet
+        {{ t(request, 'save_crop') }}
       </button>
     </div>
   </div>
@@ -106,30 +106,30 @@
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-md p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-1.5">
       <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      Dosyayı Düzenle
+      {{ t(request, 'edit_file') }}
     </h3>
 
     <div class="mb-4">
-      <label class="form-label text-xs">Dosya Adı</label>
-      <input id="file-edit-name" type="text" class="form-input text-sm" placeholder="Dosya adı">
-      <p class="form-hint">Bağlantı (link) bu işlemden etkilenmez.</p>
+      <label class="form-label text-xs">{{ t(request, 'file_name') }}</label>
+      <input id="file-edit-name" type="text" class="form-input text-sm" placeholder="{{ t(request, 'file_name') }}">
+      <p class="form-hint">{{ t(request, 'link_unchanged') }}</p>
     </div>
 
     <div class="mb-1">
-      <label class="form-label text-xs">Dosyayı Değiştir (opsiyonel)</label>
+      <label class="form-label text-xs">{{ t(request, 'replace_file') }}</label>
       <input id="file-edit-replace-input" type="file" class="form-input py-1.5 cursor-pointer text-xs">
-      <p class="form-hint">Yeni bir dosya seçerseniz içerik değişir, bağlantı (link) ve ad aynı kalır.</p>
+      <p class="form-hint">{{ t(request, 'replace_file_content_help') }}</p>
     </div>
 
     <div class="flex items-center justify-end gap-2 mt-4">
       <button type="button" id="file-edit-cancel"
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-        İptal
+        {{ t(request, 'cancel') }}
       </button>
       <button type="button" id="file-edit-save" class="btn-primary py-1.5 px-3 text-xs">
         <i data-lucide="check" class="w-3.5 h-3.5"></i>
-        Kaydet
+        {{ t(request, 'save') }}
       </button>
     </div>
   </div>
@@ -141,14 +141,14 @@
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
            {% if active_tab == 'images' %}border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
     <i data-lucide="image" class="w-3.5 h-3.5"></i>
-    Resim Arşivi
+    {{ t(request, 'image_library') }}
     <span class="text-xs text-slate-400 dark:text-slate-500">({{ images_total_all }})</span>
   </button>
   <button type="button" data-tab-btn="files"
     class="media-tab-btn inline-flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px transition-colors
            {% if active_tab == 'files' %}border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-400 font-medium{% else %}border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
     <i data-lucide="file" class="w-3.5 h-3.5"></i>
-    Dosya Arşivi
+    {{ t(request, 'file_library') }}
     <span class="text-xs text-slate-400 dark:text-slate-500">({{ files_total_all }})</span>
   </button>
 </div>
@@ -167,7 +167,7 @@
   {% endfor %}
   {% else %}
   <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-{{ size }} rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
-    <i data-lucide="unlink" class="w-3 h-3"></i> İlişkilendirilmemiş
+    <i data-lucide="unlink" class="w-3 h-3"></i> {{ t(request, 'unlinked') }}
   </span>
   {% endif %}
 {% endmacro %}
@@ -198,20 +198,20 @@
 
       <div class="relative flex-1 min-w-[160px]">
         <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
-        <input type="text" name="images_q" value="{{ images.q }}" placeholder="Görsel adı ara…" class="form-input form-input-icon py-1.5 text-sm">
+        <input type="text" name="images_q" value="{{ images.q }}" placeholder="{{ t(request, 'search_image_name') }}" class="form-input form-input-icon py-1.5 text-sm">
       </div>
 
       <select name="images_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
         {% for size in page_sizes %}
-        <option value="{{ size }}" {% if images.page_size == size %}selected{% endif %}>{{ size }} / sayfa</option>
+        <option value="{{ size }}" {% if images.page_size == size %}selected{% endif %}>{{ size }} / {{ t(request, 'per_page') }}</option>
         {% endfor %}
       </select>
 
       <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
-        <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrele
+        <i data-lucide="filter" class="w-3.5 h-3.5"></i> {{ t(request, 'filter') }}
       </button>
       {% if images.q %}
-      <a href="{{ qs_override(current_params, images_q='', tab='images') }}" title="Aramayı temizle"
+      <a href="{{ qs_override(current_params, images_q='', tab='images') }}" title="{{ t(request, 'filter_clear') }}"
         class="shrink-0 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>
       </a>
@@ -220,16 +220,16 @@
       <div class="flex-1"></div>
 
       <button type="button" id="images-upload-btn" class="btn-primary py-1.5 px-3 text-xs shrink-0">
-        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i> {{ t(request, 'upload') }}
       </button>
       <input type="file" id="images-upload-input" accept="image/*" multiple class="hidden">
       <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5 shrink-0">
         <button type="button" data-view-btn="grid" data-view-target="images"
-          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="{{ t(request, 'grid_view') }}">
           <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
         </button>
         <button type="button" data-view-btn="list" data-view-target="images"
-          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="{{ t(request, 'list_view') }}">
           <i data-lucide="list" class="w-3.5 h-3.5"></i>
         </button>
       </div>
@@ -238,10 +238,10 @@
 
   <div class="flex items-center justify-between mb-3">
     <p class="text-xs text-slate-400 dark:text-slate-500">
-      {{ images.total }} sonuç{% if images.q %} · "{{ images.q }}" için{% endif %} · Sayfa {{ images.page }}/{{ images.total_pages }}
+      {{ images.total }} {{ t(request, 'results') }}{% if images.q %} · “{{ images.q }}”{% endif %} · {{ t(request, 'page') }} {{ images.page }}/{{ images.total_pages }}
     </p>
     <p class="text-xs text-slate-400 dark:text-slate-500 hidden sm:flex items-center gap-1">
-      <i data-lucide="wand-2" class="w-3 h-3"></i> Kare ikona dönüştürmek için sihirli değnek ikonuna tıklayın.
+      <i data-lucide="wand-2" class="w-3 h-3"></i> {{ t(request, 'auto_icon_help') }}
     </p>
   </div>
 
@@ -254,20 +254,20 @@
         <img src="{{ img.url }}" alt="{{ img.display_name }}" class="max-w-full max-h-full object-contain">
         <button type="button" data-action="preview"
           class="absolute top-1.5 right-1.5 p-1.5 rounded-sm bg-black/40 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Büyüt">
+          title="{{ t(request, 'enlarge') }}">
           <i data-lucide="maximize" class="w-3.5 h-3.5 text-white"></i>
         </button>
         <div class="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-          <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Düzenle">
+          <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'edit') }}">
             <i data-lucide="pencil" class="w-3.5 h-3.5 text-white"></i>
           </button>
-          <button type="button" data-action="autocrop" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="İkon Olarak Ayarla">
+          <button type="button" data-action="autocrop" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'set_as_icon') }}">
             <i data-lucide="wand-2" class="w-3.5 h-3.5 text-white"></i>
           </button>
-          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Bağlantıyı kopyala">
+          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'copy_link') }}">
             <i data-lucide="link" class="w-3.5 h-3.5 text-white"></i>
           </button>
-          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Sil">
+          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'delete') }}">
             <i data-lucide="trash-2" class="w-3.5 h-3.5 text-white"></i>
           </button>
         </div>
@@ -285,7 +285,7 @@
     </div>
     {% else %}
     <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">
-      {% if images.q %}"{{ images.q }}" için sonuç bulunamadı.{% else %}Henüz görsel yüklenmemiş.{% endif %}
+      {% if images.q %}{{ t(request, 'search_no_results') }}{% else %}{{ t(request, 'no_images') }}{% endif %}
     </p>
     {% endfor %}
   </div>
@@ -294,7 +294,7 @@
   <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for img in images.results %}
     <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
-      <button type="button" data-action="preview" class="relative shrink-0 group/thumb" title="Büyüt">
+      <button type="button" data-action="preview" class="relative shrink-0 group/thumb" title="{{ t(request, 'enlarge') }}">
         <img src="{{ img.url }}" alt="" class="w-9 h-9 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-0.5">
         <span class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/thumb:bg-black/40 rounded-sm transition-colors">
           <i data-lucide="maximize" class="w-3 h-3 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"></i>
@@ -311,27 +311,27 @@
       {{ linked_badge(img, 'xs') }}
       <div class="flex items-center gap-1 shrink-0">
         <button type="button" data-action="edit"
-          class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Düzenle">
+          class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="{{ t(request, 'edit') }}">
           <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
         </button>
         <button type="button" data-action="autocrop"
-          class="p-1.5 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="İkon Olarak Ayarla">
+          class="p-1.5 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="{{ t(request, 'set_as_icon') }}">
           <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
         </button>
         <button type="button" data-action="copy"
           class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                  border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-          <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+          <i data-lucide="link" class="w-3 h-3"></i> {{ t(request, 'copy') }}
         </button>
         <button type="button" data-action="delete"
-          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Sil">
+          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="{{ t(request, 'delete') }}">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </div>
     </div>
     {% else %}
     <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">
-      {% if images.q %}"{{ images.q }}" için sonuç bulunamadı.{% else %}Henüz görsel yüklenmemiş.{% endif %}
+      {% if images.q %}{{ t(request, 'search_no_results') }}{% else %}{{ t(request, 'no_images') }}{% endif %}
     </p>
     {% endfor %}
   </div>
@@ -339,7 +339,7 @@
   {# Sayfalama #}
   {% if images.total_pages > 1 %}
   <div class="flex items-center justify-between mt-4 px-1">
-    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ images.page }} / {{ images.total_pages }}</span>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'page') }} {{ images.page }} / {{ images.total_pages }}</span>
     <div class="pagination">
       {% if images.page > 1 %}
       <a href="{{ qs_override(current_params, tab='images', images_page=images.page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
@@ -373,18 +373,18 @@
 
       <div class="relative flex-1 min-w-[160px]">
         <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
-        <input type="text" name="files_q" value="{{ files.q }}" placeholder="Dosya adı ara…" class="form-input form-input-icon py-1.5 text-sm">
+        <input type="text" name="files_q" value="{{ files.q }}" placeholder="{{ t(request, 'search_file_name') }}" class="form-input form-input-icon py-1.5 text-sm">
       </div>
 
       <select name="files_type" class="form-input py-1.5 text-sm flex-[0_0_140px] min-w-0">
-        <option value="">— Tür —</option>
+        <option value="">— {{ t(request, 'type') }} —</option>
         {% for key, label in type_categories.items() %}
         <option value="{{ key }}" {% if files_type == key %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
 
       <select name="files_os" class="form-input py-1.5 text-sm flex-[0_0_130px] min-w-0">
-        <option value="">— İşletim Sistemi —</option>
+        <option value="">— {{ t(request, 'operating_system') }} —</option>
         {% for os_val, os_label in [('windows','Windows'), ('macos','macOS'), ('linux','Linux'), ('android','Android'), ('ios','iOS'), ('web','Web')] %}
         <option value="{{ os_val }}" {% if files_os == os_val %}selected{% endif %}>{{ os_label }}</option>
         {% endfor %}
@@ -397,7 +397,7 @@
       </select>
 
       <button type="submit" class="btn-primary py-1.5 px-3 text-sm shrink-0">
-        <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrele
+        <i data-lucide="filter" class="w-3.5 h-3.5"></i> {{ t(request, 'filter') }}
       </button>
       {% if files.q or files_type or files_os %}
       <a href="{{ qs_override(current_params, tab='files', files_q='', files_type='', files_os='') }}" title="Filtreleri temizle"
@@ -409,16 +409,16 @@
       <div class="flex-1"></div>
 
       <button type="button" id="files-upload-btn" class="btn-primary py-1.5 px-3 text-xs shrink-0">
-        <i data-lucide="upload" class="w-3.5 h-3.5"></i> Yükle
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i> {{ t(request, 'upload') }}
       </button>
       <input type="file" id="files-upload-input" multiple class="hidden">
       <div class="flex items-center gap-0.5 border border-slate-200 dark:border-slate-800 rounded-sm p-0.5 shrink-0">
         <button type="button" data-view-btn="grid" data-view-target="files"
-          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Grid görünüm">
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="{{ t(request, 'grid_view') }}">
           <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i>
         </button>
         <button type="button" data-view-btn="list" data-view-target="files"
-          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="Liste görünüm">
+          class="view-toggle-btn p-1.5 rounded-sm transition-colors" title="{{ t(request, 'list_view') }}">
           <i data-lucide="list" class="w-3.5 h-3.5"></i>
         </button>
       </div>
@@ -426,7 +426,7 @@
   </form>
 
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-3">
-    {{ files.total }} sonuç{% if files.q %} · "{{ files.q }}" için{% endif %} · Sayfa {{ files.page }}/{{ files.total_pages }}
+    {{ files.total }} {{ t(request, 'results') }}{% if files.q %} · “{{ files.q }}”{% endif %} · {{ t(request, 'page') }} {{ files.page }}/{{ files.total_pages }}
   </p>
 
   {# Grid #}
@@ -446,13 +446,13 @@
         </div>
         {% endif %}
         <div class="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-          <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Düzenle">
+          <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'edit') }}">
             <i data-lucide="pencil" class="w-3.5 h-3.5 text-white"></i>
           </button>
-          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Bağlantıyı kopyala">
+          <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'copy_link') }}">
             <i data-lucide="link" class="w-3.5 h-3.5 text-white"></i>
           </button>
-          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="Sil">
+          <button type="button" data-action="delete" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'delete') }}">
             <i data-lucide="trash-2" class="w-3.5 h-3.5 text-white"></i>
           </button>
         </div>
@@ -471,7 +471,7 @@
     </div>
     {% else %}
     <p class="media-empty-placeholder col-span-full text-sm text-slate-400 dark:text-slate-500 text-center py-10">
-      {% if files.q or files_type or files_os %}Filtreye uyan dosya bulunamadı.{% else %}Henüz dosya yüklenmemiş.{% endif %}
+      {% if files.q or files_type or files_os %}{{ t(request, 'no_filter_files') }}{% else %}{{ t(request, 'no_files') }}{% endif %}
     </p>
     {% endfor %}
   </div>
@@ -500,23 +500,23 @@
       {{ linked_badge(f, 'xs') }}
       <div class="flex items-center gap-1 shrink-0">
         <button type="button" data-action="edit"
-          class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Düzenle">
+          class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="{{ t(request, 'edit') }}">
           <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
         </button>
         <button type="button" data-action="copy"
           class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                  border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-          <i data-lucide="link" class="w-3 h-3"></i> Kopyala
+          <i data-lucide="link" class="w-3 h-3"></i> {{ t(request, 'copy') }}
         </button>
         <button type="button" data-action="delete"
-          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Sil">
+          class="p-1.5 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="{{ t(request, 'delete') }}">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </div>
     </div>
     {% else %}
     <p class="media-empty-placeholder text-sm text-slate-400 dark:text-slate-500 text-center py-10">
-      {% if files.q or files_type or files_os %}Filtreye uyan dosya bulunamadı.{% else %}Henüz dosya yüklenmemiş.{% endif %}
+      {% if files.q or files_type or files_os %}{{ t(request, 'no_filter_files') }}{% else %}{{ t(request, 'no_files') }}{% endif %}
     </p>
     {% endfor %}
   </div>
@@ -524,7 +524,7 @@
   {# Sayfalama #}
   {% if files.total_pages > 1 %}
   <div class="flex items-center justify-between mt-4 px-1">
-    <span class="text-xs text-slate-400 dark:text-slate-500">Sayfa {{ files.page }} / {{ files.total_pages }}</span>
+    <span class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'page') }} {{ files.page }} / {{ files.total_pages }}</span>
     <div class="pagination">
       {% if files.page > 1 %}
       <a href="{{ qs_override(current_params, tab='files', files_page=files.page - 1) }}" class="page-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></a>
@@ -548,6 +548,15 @@
 
 {% block scripts %}
 <script>
+  window.mediaMessages = {
+    copyFailed: {{ t(request, 'copy_failed')|tojson }}, imageCompressing: {{ t(request, 'image_compressing')|tojson }},
+    actionFailed: {{ t(request, 'action_failed')|tojson }}, networkUploadFailed: {{ t(request, 'network_upload_failed')|tojson }},
+    uploadingItem: {{ t(request, 'uploading_item')|tojson }}, uploadFailedShort: {{ t(request, 'upload_failed_short')|tojson }},
+    imageProcessFailed: {{ t(request, 'image_process_failed')|tojson }}, croppedImageSaving: {{ t(request, 'cropped_image_saving')|tojson }},
+    iconCreating: {{ t(request, 'icon_creating')|tojson }}, fileReplacing: {{ t(request, 'file_replacing')|tojson }},
+    itemDeleteConfirm: {{ t(request, 'item_delete_confirm')|tojson }}, saveFailed: {{ t(request, 'content_save_failed')|tojson }},
+    deleteFailed: {{ t(request, 'delete_failed')|tojson }}
+  };
   // ── Sekme geçişi (URL'e ?tab= yazar — tam sayfa yenilemede korunur) ──
   (function () {
     const tabBtns   = document.querySelectorAll('[data-tab-btn]');
@@ -644,7 +653,7 @@
         const copied = document.execCommand('copy');
         field.remove();
         if (copied) done();
-        else if (window.showAdminNotice) window.showAdminNotice('Bağlantı kopyalanamadı. Lütfen tekrar deneyin.');
+        else if (window.showAdminNotice) window.showAdminNotice(window.mediaMessages.copyFailed);
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done).catch(fallback);
@@ -717,7 +726,7 @@
         let compressTimer = null;
         function startCompressPhase() {
           if (compressTimer || !willCompress) return;
-          uploadLabel.textContent = 'Görsel sıkıştırılıyor…';
+          uploadLabel.textContent = window.mediaMessages.imageCompressing;
           let fakePct = 85;
           compressTimer = setInterval(function () {
             fakePct = Math.min(fakePct + 2, 97);
@@ -740,12 +749,12 @@
             try { resolve(JSON.parse(xhr.responseText)); }
             catch (err) { reject(err); }
           } else {
-            reject(new Error('İşlem başarısız oldu (' + xhr.status + ').'));
+            reject(new Error(window.mediaMessages.actionFailed + ' (' + xhr.status + ')'));
           }
         };
         xhr.onerror = function () {
           stopCompressPhase();
-          reject(new Error('Ağ hatası — işlem başarısız oldu.'));
+          reject(new Error(window.mediaMessages.networkUploadFailed));
         };
         const fd = new FormData();
         fd.append('file', file);
@@ -761,10 +770,10 @@
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
-          await uploadOne(endpoint, file, 'Yükleniyor (' + (i + 1) + '/' + files.length + '): ' + file.name);
+          await uploadOne(endpoint, file, window.mediaMessages.uploadingItem.replace('{current}', i + 1).replace('{total}', files.length).replace('{name}', file.name));
         } catch (e) {
           hideUploadProgress();
-          window.showAdminNotice(file.name + ': ' + (e.message || 'yüklenemedi.'));
+          window.showAdminNotice(file.name + ': ' + (e.message || window.mediaMessages.uploadFailedShort));
           return false;
         }
       }
@@ -912,12 +921,12 @@
     cropSave.addEventListener('click', function () {
       if (!cropper || !cropTargetPath) return;
       const canvas = cropper.getCroppedCanvas();
-      if (!canvas) { window.showAdminNotice('Görsel işlenemedi.'); return; }
+      if (!canvas) { window.showAdminNotice(window.mediaMessages.imageProcessFailed); return; }
       canvas.toBlob(function (blob) {
         if (!blob) return;
         const file = new File([blob], 'cropped.png', { type: 'image/png' });
         // replace_path: aynı link üzerine yazılır, sıkıştırma uygulanmaz.
-        uploadOne('/admin/upload/icon-image', file, 'Kırpılan görsel kaydediliyor…', { replace_path: cropTargetPath })
+        uploadOne('/admin/upload/icon-image', file, window.mediaMessages.croppedImageSaving, { replace_path: cropTargetPath })
           .then(function () {
             hideUploadProgress();
             closeCropModal();
@@ -925,27 +934,27 @@
           })
           .catch(function (e) {
             hideUploadProgress();
-            window.showAdminNotice(e.message || 'Kaydedilemedi.');
+            window.showAdminNotice(e.message || window.mediaMessages.saveFailed);
           });
       }, 'image/png');
     });
 
     // ── İkon Olarak Ayarla (otomatik kare kırpma, aynı link üzerine) ────
     function handleAutoCrop(path) {
-      showUploadProgress('İkon otomatik oluşturuluyor…');
+      showUploadProgress(window.mediaMessages.iconCreating);
       const fd = new FormData();
       fd.append('path', path);
       fd.append('size', '256');
       fd.append('in_place', 'true');
       csrfFetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
-        .then(function (r) { if (!r.ok) throw new Error('İşlem başarısız oldu.'); return r.json(); })
+        .then(function (r) { if (!r.ok) throw new Error(window.mediaMessages.actionFailed); return r.json(); })
         .then(function () {
           hideUploadProgress();
           window.__reloadMediaTab('image');
         })
         .catch(function (e) {
           hideUploadProgress();
-          window.showAdminNotice(e.message || 'İşlem başarısız oldu.');
+          window.showAdminNotice(e.message || window.mediaMessages.actionFailed);
         });
     }
 
@@ -986,7 +995,7 @@
             closeFileEditModal();
             return;
           }
-          return uploadOne('/admin/media/replace-file', newFile, 'Dosya değiştiriliyor…', { path: path })
+          return uploadOne('/admin/media/replace-file', newFile, window.mediaMessages.fileReplacing, { path: path })
             .then(function () {
               hideUploadProgress();
               closeFileEditModal();
@@ -995,13 +1004,13 @@
         })
         .catch(function () {
           hideUploadProgress();
-          window.showAdminNotice('Kaydedilemedi.');
+          window.showAdminNotice(window.mediaMessages.saveFailed);
         });
     });
 
     // ── Silme ────────────────────────────────────────────────
     function handleDelete(path, kind) {
-      window.showAdminConfirm('Bu öğe kalıcı olarak silinecek. Devam edilsin mi?', function () {
+      window.showAdminConfirm(window.mediaMessages.itemDeleteConfirm, function () {
         const endpoint = kind === 'image' ? '/admin/upload/icon-image-delete' : '/admin/media/delete-file';
         const fd = new FormData();
         fd.append('path', path);
@@ -1011,11 +1020,11 @@
               const data = await response.json();
               const detail = data.detail;
               const titles = detail.downloads ? detail.downloads.map(function (d) { return d.title; }).join('\n') : '';
-              throw new Error((detail.message || detail || 'Silinemedi.') + (titles ? '\n\n' + titles : ''));
+              throw new Error((detail.message || detail || window.mediaMessages.deleteFailed) + (titles ? '\n\n' + titles : ''));
             }
             window.__reloadMediaTab(kind);
           })
-          .catch(function (error) { window.showAdminNotice(error.message || 'Silinemedi.'); });
+          .catch(function (error) { window.showAdminNotice(error.message || window.mediaMessages.deleteFailed); });
       });
     }
 

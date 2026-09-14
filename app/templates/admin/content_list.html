@@ -100,7 +100,7 @@
         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
 
           {# ID #}
-          <td class="px-3 py-3"><input class="admin-checkbox download-select" type="checkbox" name="download_ids" value="{{ d.id }}" form="download-bulk-form" aria-label="{{ d.title }} seç"></td>
+          <td class="px-3 py-3"><input class="admin-checkbox download-select" type="checkbox" name="download_ids" value="{{ d.id }}" form="download-bulk-form" aria-label="{{ tf(request, 'selected_aria', name=d.title) }}"></td>
           <td class="px-2 py-3 text-xs text-slate-400 dark:text-slate-500 tabular-nums">{{ d.id }}</td>
 
           {# Başlık + sürüm #}
@@ -120,7 +120,7 @@
               </div>
               {% if d.is_featured %}
               <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 shrink-0"
-                title="Sitede sabitlenmiş (Öne Çıkanlar) — bu liste sırası site sıralamasını etkilemez">
+                title="{{ t(request, 'pinned_help') }}">
                 <i data-lucide="star" class="w-3 h-3"></i> {{ t(request, 'pinned') }}
               </span>
               {% endif %}
@@ -188,7 +188,7 @@
               </a>
               <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-                <button type="submit" data-confirm-message="{{ d.title }} kalıcı olarak silinecek. Devam edilsin mi?"
+                <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name=d.title) }}"
                   class="btn-danger py-1.5 px-2.5">
                   <i data-lucide="trash-2" class="w-3 h-3"></i>
                 </button>

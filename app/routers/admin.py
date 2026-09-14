@@ -895,7 +895,7 @@ async def download_bulk(
     except ValueError as exc:
         request.session["flash_message"] = str(exc)
     else:
-        request.session["flash_message"] = f"{count} içerik için toplu işlem tamamlandı."
+        request.session["flash_message"] = translate(request, "bulk_completed").format(count=count)
     return _redirect(_same_admin_page(request, "/admin/downloads"))
 
 
@@ -1034,7 +1034,7 @@ async def download_new_post(
             status_code=422,
         )
 
-    request.session["flash_message"] = f'“{download.title}” uygulaması eklendi.'
+    request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
     if _wants_json(request):
         return JSONResponse(
             {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
@@ -1303,13 +1303,13 @@ async def download_edit_post(
         )
 
     if was_draft:
-        request.session["flash_message"] = f'“{download.title}” uygulaması eklendi.'
+        request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
         if _wants_json(request):
             return JSONResponse(
                 {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
             )
         return _redirect("/admin/downloads")
-    request.session["flash_message"] = "Değişiklikler başarıyla kaydedildi."
+    request.session["flash_message"] = translate(request, "changes_saved")
     if _wants_json(request):
         return JSONResponse(
             {
@@ -1364,7 +1364,7 @@ async def version_history_edit(
     if not version:
         raise HTTPException(status_code=422, detail="Sürüm boş olamaz.")
     await crud.update_version_history_entry(session, entry, version)
-    request.session["flash_message"] = "Sürüm geçmişi kaydı güncellendi."
+    request.session["flash_message"] = translate(request, "version_record_updated")
     return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
@@ -1383,7 +1383,7 @@ async def version_history_delete(
     if not entry or entry.download_id != download_id:
         raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
     await crud.delete_version_history_entry(session, entry)
-    request.session["flash_message"] = "Sürüm geçmişi kaydı silindi."
+    request.session["flash_message"] = translate(request, "version_record_deleted")
     return _redirect(f"/admin/downloads/{download_id}/edit")
 
 
@@ -1459,7 +1459,7 @@ async def category_delete(
     except ValueError as exc:
         request.session["flash_message"] = str(exc)
     else:
-        request.session["flash_message"] = f'Kategori silindi; {moved} içerik hedef kategoriye aktarıldı.'
+        request.session["flash_message"] = translate(request, "category_deleted_transferred").format(count=moved)
     return _redirect("/admin/categories")
 
 
@@ -1476,7 +1476,7 @@ async def category_bulk_delete(
     except ValueError as exc:
         request.session["flash_message"] = str(exc)
     else:
-        request.session["flash_message"] = f"Kategoriler silindi; {moved} içerik aktarıldı."
+        request.session["flash_message"] = translate(request, "categories_deleted_transferred").format(count=moved)
     return _redirect("/admin/categories")
 
 
@@ -1730,7 +1730,7 @@ async def settings_appearance_update(
         sidebar_tag_limit=current.sidebar_tag_limit,
     )
     if payload.logo_mode in {"image", "image_text"} and not logo_light:
-        request.session["flash_message"] = "Resimli logo modu için aydınlık logo yükleyin."
+        request.session["flash_message"] = translate(request, "appearance_logo_required")
         return _redirect("/admin/settings/appearance")
     updated = await crud.update_appearance_settings(
         session,
@@ -1740,7 +1740,7 @@ async def settings_appearance_update(
         hero_image_path=hero_image,
     )
     refresh_site_branding_globals(updated)
-    request.session["flash_message"] = "Görünüm ayarları güncellendi."
+    request.session["flash_message"] = translate(request, "appearance_updated")
     return _redirect("/admin/settings/appearance")
 
 
@@ -1757,7 +1757,7 @@ async def settings_menu_limits_update(
     await crud.update_menu_limits(
         session, navbar_limit, footer_limit, sidebar_category_limit, sidebar_tag_limit
     )
-    request.session["flash_message"] = "Menü görünürlük sınırları güncellendi."
+    request.session["flash_message"] = translate(request, "menu_limits_updated")
     return _redirect("/admin/settings/menu")
 
 
@@ -1778,7 +1778,7 @@ async def settings_branding_update(
     )
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
-    request.session["flash_message"] = "Site kimliği güncellendi."
+    request.session["flash_message"] = translate(request, "branding_updated")
     return _redirect("/admin/settings/general")
 
 
@@ -1811,7 +1811,7 @@ async def settings_audit_log_limit_update(
     except ValueError as exc:
         request.session["flash_message"] = str(exc)
     else:
-        request.session["flash_message"] = "İşlem geçmişi kayıt sınırı güncellendi."
+        request.session["flash_message"] = translate(request, "audit_limit_updated")
     return _redirect("/admin/settings/general")
 
 
@@ -1829,7 +1829,7 @@ async def settings_account_update(
     effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
 
     if not verify_admin_password(current_password, effective_hash):
-        request.session["flash_message"] = "Mevcut şifre yanlış. Hiçbir şey değiştirilmedi."
+        request.session["flash_message"] = translate(request, "wrong_current_password")
         return _redirect("/admin/settings/account")
 
     new_username = (new_username or "").strip()
@@ -1837,11 +1837,11 @@ async def settings_account_update(
     new_password_confirm = new_password_confirm or ""
 
     if new_password and new_password != new_password_confirm:
-        request.session["flash_message"] = "Yeni şifreler eşleşmiyor. Hiçbir şey değiştirilmedi."
+        request.session["flash_message"] = translate(request, "passwords_mismatch")
         return _redirect("/admin/settings/account")
 
     if new_password and (len(new_password) < 12 or len(new_password.encode()) > 1024):
-        request.session["flash_message"] = "Yeni şifre en az 12 karakter ve en fazla 1024 bayt olmalı. Hiçbir şey değiştirilmedi."
+        request.session["flash_message"] = translate(request, "password_policy_failed")
         return _redirect("/admin/settings/account")
 
     password_hash = await run_in_threadpool(hash_admin_password, new_password) if new_password else None
@@ -1868,7 +1868,7 @@ async def settings_session_duration_update(
     minutes = max(5, min(int(session_max_age_minutes), 60 * 24 * 30))  # 5 dk – 30 gün arası
     updated = await crud.update_session_max_age(session, minutes)
     refresh_session_max_age(updated.session_max_age_minutes)
-    request.session["flash_message"] = "Oturum süresi güncellendi."
+    request.session["flash_message"] = translate(request, "session_updated")
     return _redirect("/admin/settings/account")
 
 
@@ -1882,7 +1882,7 @@ async def settings_avatar_update(
 ):
     updated = await crud.update_admin_avatar(session, admin_icon, admin_icon_color)
     refresh_site_branding_globals(updated)
-    request.session["flash_message"] = "Profil ikonu güncellendi."
+    request.session["flash_message"] = translate(request, "profile_icon_updated")
     return _redirect("/admin/settings/account")
 
 
@@ -1932,7 +1932,7 @@ async def menu_item_create(
     site_settings = await crud.get_site_settings(session)
     limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
     if len(await crud.get_menu_items(session, location=location)) >= limit:
-        request.session["flash_message"] = f"Bu bölüm en fazla {limit} menü öğesi içerebilir."
+        request.session["flash_message"] = translate(request, "menu_limit_reached").format(count=limit)
         return _redirect("/admin/settings/menu")
     data = MenuItemCreate(
         label=label, label_en=label_en or None, url=url, icon=icon or None,
@@ -1940,7 +1940,7 @@ async def menu_item_create(
         location=location,
     )
     await crud.create_menu_item(session, data)
-    request.session["flash_message"] = f"\"{label}\" menü öğesi eklendi."
+    request.session["flash_message"] = translate(request, "menu_item_added").format(label=label)
     return _redirect("/admin/settings/menu")
 
 
@@ -1959,7 +1959,7 @@ async def menu_item_from_source(
     limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
     items = await crud.get_menu_items(session, location=location)
     if len(items) >= limit:
-        request.session["flash_message"] = f"Bu bölüm en fazla {limit} menü öğesi içerebilir."
+        request.session["flash_message"] = translate(request, "menu_limit_reached").format(count=limit)
         return _redirect("/admin/settings/menu")
     if source_type == "category":
         source = await crud.get_category_by_id(session, source_id)
@@ -1973,10 +1973,10 @@ async def menu_item_from_source(
     if not source:
         raise HTTPException(status_code=404, detail="Kaynak bulunamadı.")
     if any(item.url == url for item in items):
-        request.session["flash_message"] = "Bu bağlantı seçilen menüde zaten var."
+        request.session["flash_message"] = translate(request, "menu_source_duplicate")
         return _redirect("/admin/settings/menu")
     await crud.create_menu_item(session, MenuItemCreate(label=label, url=url, icon=icon, location=location))
-    request.session["flash_message"] = f'"{label}" menüye eklendi.'
+    request.session["flash_message"] = translate(request, "menu_source_added").format(label=label)
     return _redirect("/admin/settings/menu")
 
 
@@ -2001,7 +2001,7 @@ async def menu_item_edit(
         is_active=is_active, open_in_new_tab=open_in_new_tab,
     )
     await crud.update_menu_item(session, item, data)
-    request.session["flash_message"] = "Menü öğesi güncellendi."
+    request.session["flash_message"] = translate(request, "menu_item_updated")
     return _redirect("/admin/settings/menu")
 
 

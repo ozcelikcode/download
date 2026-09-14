@@ -30,7 +30,7 @@
         <div>
           <label for="tag-name" class="form-label">{{ t(request, 'name') }} <span class="text-red-500">*</span></label>
           <input id="tag-name" name="name" type="text" required
-            placeholder="Örn: açık-kaynak"
+            placeholder="{{ t(request, 'example') }}: open-source"
             class="form-input">
           <p class="form-hint">{{ t(request, 'slug_auto') }}</p>
         </div>
@@ -57,7 +57,7 @@
 
           {# Normal görünüm #}
           <div id="tag-view-{{ t.id }}" class="flex items-center gap-3">
-            <input type="checkbox" class="admin-checkbox tag-select" name="tag_ids" value="{{ t.id }}" form="tag-bulk-form" aria-label="{{ t.name }} seç">
+            <input type="checkbox" class="admin-checkbox tag-select" name="tag_ids" value="{{ t.id }}" form="tag-bulk-form" aria-label="{{ tf(request, 'selected_aria', name=t.name) }}">
 
             <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-sm flex items-center justify-center shrink-0">
               <i data-lucide="hash" class="w-4 h-4 text-slate-400 dark:text-slate-500"></i>
@@ -77,7 +77,7 @@
               </button>
               <form method="post" action="/admin/tags/{{ t.id }}/delete" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-                <button type="submit" data-confirm-message="#{{ t.name }} etiketi kalıcı olarak silinecek. Devam edilsin mi?"
+                <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name='#' ~ t.name) }}"
                   class="btn-danger py-1.5 px-2.5">
                   <i data-lucide="trash-2" class="w-3 h-3"></i><span class="sr-only">{{ t(request, 'delete') }}</span>
                 </button>
