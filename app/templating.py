@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.branding import resolve_accent_theme, resolve_icon_color
 from app.config import settings
+from app.content_security import safe_http_url, safe_navigation_url, sanitize_rich_text
 from app.models import FileType, IconType, SiteSettings
 
 from app.security import csrf_token
@@ -146,6 +147,9 @@ templates.env.filters["human_size"] = _human_size
 templates.env.filters["icon_name"] = _icon_name
 templates.env.filters["pluralize"] = _pluralize
 templates.env.filters["thousands"] = _thousands
+templates.env.filters["sanitize_html"] = sanitize_rich_text
+templates.env.filters["safe_http_url"] = safe_http_url
+templates.env.filters["safe_navigation_url"] = safe_navigation_url
 templates.env.globals["pagination_range"] = _pagination_range
 
 

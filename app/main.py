@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import PurePosixPath
 
 from fastapi import FastAPI, Request, status
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +19,7 @@ from app.database import AsyncSessionLocal, engine
 from app.dependencies import refresh_session_max_age
 from app.i18n import translate
 from app.routers import admin, public, reports
+from app.storage import migrate_legacy_local_downloads
 from app.templating import refresh_site_branding_globals, templates
 
 # ---------------------------------------------------------------------------
@@ -37,10 +39,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    if len(settings.app_secret_key) < 32 or settings.app_secret_key == "change-me-in-production":
-        raise RuntimeError("APP_SECRET_KEY en az 32 karakterlik rastgele bir sır olmalıdır.")
     settings.upload_path  # upload klasörünü oluştur
+    settings.download_path  # özel indirme klasörünü oluştur
     async with AsyncSessionLocal() as session:
+        migrated = await migrate_legacy_local_downloads(session)
+        if migrated:
+            logger.info("%d eski yerel indirme özel depoya taşındı", migrated)
         site_settings = await crud.get_site_settings(session)
         refresh_site_branding_globals(site_settings)
         refresh_session_max_age(site_settings.session_max_age_minutes)
@@ -87,6 +91,13 @@ async def security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "same-origin"
     if request.url.path.startswith("/admin"):
         response.headers["Cache-Control"] = "no-store"
+    if (
+        request.url.path.startswith("/static/uploads/")
+        and PurePosixPath(request.url.path).suffix.lower()
+        in {".css", ".htm", ".html", ".js", ".mjs", ".svg", ".svgz", ".xhtml", ".xml"}
+    ):
+        response.headers["Content-Disposition"] = "attachment"
+        response.headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
     if settings.app_base_url.startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000"
     return response

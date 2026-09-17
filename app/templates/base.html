@@ -66,7 +66,7 @@
     {# Nav (desktop) — /admin/settings/menu üzerinden yönetilir #}
     <nav class="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto">
       {% for item in menu_items | default([]) %}
-      <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+      <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
         class="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-sm whitespace-nowrap transition-colors
         {% if request.url.path == item.url %}
           text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 font-medium
@@ -139,7 +139,7 @@
   {# Mobile dropdown menu — /admin/settings/menu üzerinden yönetilir #}
   <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
     {% for item in menu_items | default([]) %}
-    <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+    <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
       class="flex items-center gap-1.5 px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm">
       {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3.5 h-3.5"></i>{% endif %}
       {{ item.label_en if ui_language(request) == 'en' and item.label_en else item.label }}
@@ -270,7 +270,7 @@
     {# Footer bağlantıları — /admin/settings/menu üzerinden yönetilir #}
     <div class="flex items-center gap-4 flex-wrap">
       {% for item in footer_menu_items | default([]) %}
-      <a href="{{ item.url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
+      <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
         class="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
         {% if item.icon %}<i data-lucide="{{ item.icon }}" class="w-3 h-3"></i>{% endif %}
         {{ item.label_en if ui_language(request) == 'en' and item.label_en else item.label }}

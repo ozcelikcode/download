@@ -9,6 +9,7 @@ sıkıştırılır; "İkon Olarak Ayarla" eylemi de kare kırpmayı burada yapar
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -16,11 +17,32 @@ from PIL import Image, ImageOps
 logger = logging.getLogger(__name__)
 
 MAX_DIMENSION = 1600
+MAX_IMAGE_PIXELS = 25_000_000
 JPEG_QUALITY = 82
 WEBP_QUALITY = 82
+ALLOWED_RASTER_FORMATS = {"BMP", "GIF", "ICO", "JPEG", "PNG", "WEBP"}
 
 # Pillow tarafından açılamayan (ör. HEIC, SVG) formatlara dokunulmaz.
 _SKIP_SUFFIXES = {".svg"}
+
+
+def validate_raster_image_file(path: Path) -> None:
+    """Dosyanın uzantı/MIME beyanından bağımsız, güvenli bir raster görsel olduğunu doğrular."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(path) as image:
+                image_format = (image.format or "").upper()
+                width, height = image.size
+                if image_format not in ALLOWED_RASTER_FORMATS:
+                    raise ValueError("Desteklenmeyen görsel biçimi.")
+                if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
+                    raise ValueError("Görsel boyutları güvenli sınırı aşıyor.")
+                image.verify()
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise ValueError("Görsel boyutları güvenli sınırı aşıyor.") from exc
+    except (OSError, SyntaxError) as exc:
+        raise ValueError("Dosya geçerli bir raster görsel değil.") from exc
 
 
 def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:

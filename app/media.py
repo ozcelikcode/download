@@ -15,20 +15,26 @@ from app.models import Download, FileType
 def media_path(value: str | None, origin: str | None = None) -> Path | None:
     if not value:
         return None
-    root = settings.upload_path.resolve()
+    public_root = settings.upload_path.resolve()
+    private_root = settings.download_path.resolve()
     parsed = urlsplit(value)
     allowed_hosts = {urlsplit(settings.app_base_url).netloc, urlsplit(origin or "").netloc}
     if parsed.netloc and parsed.netloc not in allowed_hosts:
         return None
     path = unquote(parsed.path)
     if path.startswith("/static/uploads/"):
-        candidate = root / path.removeprefix("/static/uploads/")
+        candidate = public_root / path.removeprefix("/static/uploads/")
+    elif path.startswith("/admin/media/files/"):
+        candidate = private_root / path.removeprefix("/admin/media/files/")
     elif not parsed.scheme and not parsed.netloc:
         candidate = Path(path)
     else:
         return None
     resolved = candidate.resolve()
-    return resolved if resolved != root and resolved.is_relative_to(root) else None
+    for root in (public_root, private_root):
+        if resolved != root and resolved.is_relative_to(root):
+            return resolved
+    return None
 
 
 class _MediaReferences(HTMLParser):

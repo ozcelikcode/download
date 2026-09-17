@@ -34,7 +34,6 @@ import asyncio
 import json
 import logging
 import math
-import mimetypes
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -52,15 +51,16 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.branding import SITE_ICON_COLORS
 from app.config import settings
+from app.content_security import normalize_navigation_url
 from app.database import AsyncSessionLocal
-from app.imaging import compress_image_file, make_square_icon
+from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
 from app.i18n import translate
 from app.link_checks import resolve_public_url
 from app.dependencies import (
@@ -96,6 +96,20 @@ import secrets
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_csrf)])
+
+_ACTIVE_WEB_EXTENSIONS = {
+    ".css", ".htm", ".html", ".js", ".mjs", ".svg", ".svgz", ".xhtml", ".xml",
+}
+_ACTIVE_WEB_CONTENT_TYPES = {
+    "application/javascript", "application/xhtml+xml", "image/svg+xml", "text/css",
+    "text/html", "text/javascript", "text/xml",
+}
+_SAFE_IMAGE_EXTENSIONS = {".bmp", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".webp"}
+_REMOTE_IMAGE_TYPES = {
+    "image/bmp": ".bmp", "image/gif": ".gif", "image/jpeg": ".jpg",
+    "image/png": ".png", "image/webp": ".webp", "image/x-icon": ".ico",
+    "image/vnd.microsoft.icon": ".ico",
+}
 
 # ---------------------------------------------------------------------------
 # Yardımcılar
@@ -142,9 +156,26 @@ def _wants_json(request: Request) -> bool:
     return "application/json" in request.headers.get("accept", "")
 
 
-def _stored_upload_path(value: object) -> Optional[str]:
+def _ensure_safe_public_upload(filename: str | None, content_type: str | None) -> None:
+    suffix = Path((filename or "").replace("\\", "/")).suffix.lower()
+    normalized_type = (content_type or "").split(";", 1)[0].strip().lower()
+    if suffix in _ACTIVE_WEB_EXTENSIONS or normalized_type in _ACTIVE_WEB_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Tarayıcıda çalışabilen HTML, SVG, JavaScript ve CSS dosyaları yüklenemez.",
+        )
+
+
+def _stored_download_path(value: object) -> Optional[str]:
     path = media_path(str(value or ""))
-    return str(path) if path is not None and path.is_file() else None
+    private_root = settings.download_path.resolve()
+    return (
+        str(path)
+        if path is not None
+        and path.is_file()
+        and path.is_relative_to(private_root)
+        else None
+    )
 
 
 def _parse_file_size_to_bytes(value_str: Optional[str], unit: str) -> Optional[int]:
@@ -190,8 +221,9 @@ def _deconstruct_file_size(bytes_val: Optional[int]) -> tuple[Optional[float], s
 
 
 async def _save_upload(file: UploadFile) -> str:
-    """Yüklenen dosyayı UPLOAD_DIR'e kaydeder, yolu döndürür."""
-    upload_dir = settings.upload_path
+    """Yüklenen indirme dosyasını web kökü dışındaki özel depoya kaydeder."""
+    _ensure_safe_public_upload(file.filename, file.content_type)
+    upload_dir = settings.download_path
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / _unique_upload_filename(file.filename)
     await save_upload(file, dest)
@@ -202,7 +234,9 @@ async def _save_upload(file: UploadFile) -> str:
 def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str:
     """Çakışmaları önlemek için orijinal ada kısa bir uuid ön eki ekler."""
     safe_name = Path(original_name or "").name
-    ext = Path(safe_name).suffix or fallback_ext
+    ext = Path(safe_name).suffix.lower()
+    if ext not in _SAFE_IMAGE_EXTENSIONS:
+        ext = fallback_ext
     return f"{uuid.uuid4().hex[:12]}{ext}"
 
 
@@ -216,7 +250,10 @@ async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
-    await save_upload(file, dest)
+    try:
+        await save_upload(file, dest, validator=validate_raster_image_file)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if compress:
         compress_image_file(dest)
     logger.info("İkon yüklendi: %s (sıkıştırma=%s)", dest, compress)
@@ -236,7 +273,12 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
     dest = _resolve_icon_path(existing_path)
     if not dest.is_file():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
-    await save_upload(file, dest)
+    if dest.suffix.lower() not in _SAFE_IMAGE_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Güvensiz görsel uzantısı yerinde güncellenemez.")
+    try:
+        await save_upload(file, dest, validator=validate_raster_image_file)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     logger.info("İkon yerinde güncellendi (link değişmedi): %s", dest)
     return existing_path
 
@@ -274,13 +316,13 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
                         continue
                     resp.raise_for_status()
                     content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
-                    if not content_type.startswith("image/"):
+                    if content_type not in _REMOTE_IMAGE_TYPES:
                         raise ValueError("Bağlantı bir görsel dosyası döndürmüyor.")
 
                     total = int(resp.headers.get("content-length") or 0)
                     if total > settings.max_upload_size_bytes:
                         raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
-                    ext = mimetypes.guess_extension(content_type) or ".jpg"
+                    ext = _REMOTE_IMAGE_TYPES[content_type]
                     icons_dir = settings.upload_path / "icons"
                     icons_dir.mkdir(parents=True, exist_ok=True)
                     filename = f"{uuid.uuid4().hex[:12]}{ext}"
@@ -300,6 +342,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
             raise ValueError("Çok fazla yönlendirme.")
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
+        validate_raster_image_file(dest)
         compress_image_file(dest)
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
@@ -320,7 +363,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
 # Medya Arşivi — sisteme yüklenmiş tüm resim ve dosyaların listesi
 # ---------------------------------------------------------------------------
 
-_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"}
+_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "ico"}
 
 _MEDIA_ICON_MAP = {
     "zip": "archive", "rar": "archive", "7z": "archive", "tar": "archive", "gz": "archive",
@@ -487,7 +530,7 @@ async def media_view(
     icons_dir = upload_root / "icons"
 
     images = _list_media_files(icons_dir, "/static/uploads/icons")
-    files = _list_media_files(upload_root, "/static/uploads")
+    files = _list_media_files(settings.download_path, "/admin/media/files")
     usage = await media_usage(session, str(request.base_url))
     for item in images + files:
         item["used_by"] = usage.get(media_path(item["url"]), [])
@@ -564,15 +607,36 @@ async def media_upload_file(
     file: UploadFile = File(...),
 ):
     """Dosya Arşivi için genel amaçlı dosya yükleme (herhangi bir tür, orijinal haliyle saklanır)."""
-    upload_dir = settings.upload_path
+    _ensure_safe_public_upload(file.filename, file.content_type)
+    upload_dir = settings.download_path
     upload_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_upload_filename(file.filename)
     dest = upload_dir / filename
     await save_upload(file, dest)
-    web_path = f"/static/uploads/{quote(filename)}"
+    web_path = f"/admin/media/files/{quote(filename)}"
     await crud.record_media_upload(session, web_path, _admin)
     logger.info("Dosya arşivine yüklendi: %s", dest)
     return {"path": web_path, "storage_path": str(dest), "name": filename}
+
+
+@router.get("/media/files/{filename:path}", name="admin_media_file")
+async def media_file(
+    filename: str,
+    _admin: str = Depends(require_admin),
+):
+    safe_name = Path(unquote(filename or "")).name
+    if not safe_name or safe_name != unquote(filename):
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
+    path = settings.download_path / safe_name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
+    if path.suffix.lower().lstrip(".") in _IMAGE_EXTS:
+        return FileResponse(path)
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/octet-stream",
+    )
 
 
 @router.post("/media/replace-file", name="admin_media_replace_file")
@@ -586,9 +650,11 @@ async def media_replace_file(
     filename = Path(unquote(path or "")).name
     if not filename:
         raise HTTPException(status_code=400, detail="Geçersiz yol.")
-    dest = settings.upload_path / filename
-    if not dest.is_file():
+    dest = media_path(path)
+    if dest is None or not dest.is_file() or not dest.is_relative_to(settings.download_path.resolve()):
         raise HTTPException(status_code=404, detail="Kaynak dosya bulunamadı.")
+    _ensure_safe_public_upload(dest.name, file.content_type)
+    _ensure_safe_public_upload(file.filename, file.content_type)
     await save_upload(file, dest)
     logger.info("Dosya yerinde güncellendi (link değişmedi): %s", dest)
     add_event(session, "replace", "media_assets", path)
@@ -640,7 +706,7 @@ async def upload_icon_image(
     replace_path: Optional[str] = Form(None),
     skip_compression: bool = Form(False),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if (file.content_type or "").split(";", 1)[0].strip().lower() not in _REMOTE_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail="Sadece görsel dosyaları yüklenebilir.")
 
     if replace_path:
@@ -962,7 +1028,7 @@ async def download_new_post(
     icon_image_file: Optional[UploadFile] = File(None),
 ):
     # ── Dosya yükleme ────────────────────────────────────────────────────
-    file_path: Optional[str] = _stored_upload_path(file_final_path)
+    file_path: Optional[str] = _stored_download_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
@@ -1094,7 +1160,7 @@ async def download_draft_autosave(
             version=None if is_latest else str(form.get("version") or "").strip() or None,
             is_latest_version=is_latest,
             file_type=file_type,
-            file_path=_stored_upload_path(form.get("file_final_path")) or draft.file_path,
+            file_path=_stored_download_path(form.get("file_final_path")) or draft.file_path,
             external_url=str(form.get("external_url") or "").strip() or None,
             file_size_bytes=_parse_file_size_to_bytes(
                 str(form.get("file_size_value") or ""),
@@ -1217,7 +1283,7 @@ async def download_edit_post(
     was_draft = download.is_draft
 
     # ── Dosya yükleme ────────────────────────────────────────────────────
-    file_path: Optional[str] = _stored_upload_path(file_final_path) or download.file_path
+    file_path: Optional[str] = _stored_download_path(file_final_path) or download.file_path
     if upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
 
@@ -1929,6 +1995,10 @@ async def menu_item_create(
     open_in_new_tab: bool = Form(False),
     location: str = Form("navbar"),
 ):
+    try:
+        url = normalize_navigation_url(url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     site_settings = await crud.get_site_settings(session)
     limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
     if len(await crud.get_menu_items(session, location=location)) >= limit:
@@ -1996,6 +2066,10 @@ async def menu_item_edit(
     item = await crud.get_menu_item_by_id(session, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Menü öğesi bulunamadı.")
+    try:
+        url = normalize_navigation_url(url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     data = MenuItemUpdate(
         label=label, label_en=label_en or None, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,

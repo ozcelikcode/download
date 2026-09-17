@@ -11,9 +11,16 @@ from app.schemas import DownloadCreate
 
 @pytest.mark.parametrize("field", ["file_path", "icon_image_path", "thumbnail_path", "description"])
 async def test_used_media_cannot_be_deleted(admin_client, db_session, field):
-    file = settings.upload_path / "görsel dosya.png"
+    if field == "file_path":
+        file = settings.download_path / "paket.zip"
+        url = "/admin/media/files/" + quote(file.name)
+        tab = "files"
+    else:
+        file = settings.upload_path / "icons" / "görsel dosya.png"
+        file.parent.mkdir(parents=True, exist_ok=True)
+        url = "/static/uploads/icons/" + quote(file.name)
+        tab = "images"
     file.write_bytes(b"original")
-    url = "/static/uploads/" + quote(file.name)
     values = {"title": "Bağlı içerik", "is_active": False, "external_url": "https://example.com/file"}
     if field == "file_path":
         values.update(file_type="local", file_path=str(file))
@@ -28,7 +35,7 @@ async def test_used_media_cannot_be_deleted(admin_client, db_session, field):
     assert response.json()["detail"]["downloads"][0]["id"] == download.id
     assert file.read_bytes() == b"original"
     assert await db_session.scalar(select(MediaAsset).where(MediaAsset.path == url))
-    page = await admin_client.get("/admin/media?tab=files")
+    page = await admin_client.get(f"/admin/media?tab={tab}")
     assert "Bağlı içerik" in page.text
 
 

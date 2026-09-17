@@ -10,8 +10,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.content_security import normalize_http_url, normalize_navigation_url, sanitize_rich_text
 from app.models import FileType, IconType
 
 
@@ -104,6 +105,11 @@ class MenuItemBase(BaseModel):
     is_active: bool = True
     open_in_new_tab: bool = False
 
+    @field_validator("url", mode="before")
+    @classmethod
+    def validate_url(cls, value: object) -> str:
+        return normalize_navigation_url(str(value or ""))
+
 
 class MenuItemCreate(MenuItemBase):
     location: str = Field("navbar", pattern="^(navbar|footer)$")
@@ -116,6 +122,13 @@ class MenuItemUpdate(BaseModel):
     icon: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
     open_in_new_tab: Optional[bool] = None
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def validate_url(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        return normalize_navigation_url(str(value))
 
 
 class MenuItemRead(MenuItemBase):
@@ -171,6 +184,16 @@ class DownloadBase(BaseModel):
     is_featured: bool = False
     is_official_source: bool = True
 
+    @field_validator("description", mode="before")
+    @classmethod
+    def sanitize_description(cls, value: object) -> str | None:
+        return sanitize_rich_text(None if value is None else str(value))
+
+    @field_validator("external_url", "icon_image_url", mode="before")
+    @classmethod
+    def validate_remote_url(cls, value: object) -> str | None:
+        return normalize_http_url(None if value is None else str(value))
+
     @model_validator(mode="after")
     def check_file_source(self) -> "DownloadBase":
         if self.file_type == FileType.local and not self.file_path:
@@ -215,6 +238,16 @@ class DownloadUpdate(BaseModel):
     is_featured: Optional[bool] = None
     is_official_source: Optional[bool] = None
     tag_ids: Optional[List[int]] = None
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def sanitize_description(cls, value: object) -> str | None:
+        return sanitize_rich_text(None if value is None else str(value))
+
+    @field_validator("external_url", "icon_image_url", mode="before")
+    @classmethod
+    def validate_remote_url(cls, value: object) -> str | None:
+        return normalize_http_url(None if value is None else str(value))
 
 
 class DownloadRead(BaseModel):

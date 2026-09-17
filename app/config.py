@@ -6,7 +6,14 @@ pydantic-settings ile .env dosyasından yüklenir.
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_INSECURE_SECRET_KEYS = {
+    "change-me-in-production",
+    "replace-with-a-long-random-value",
+}
 
 
 class Settings(BaseSettings):
@@ -28,6 +35,7 @@ class Settings(BaseSettings):
 
     # Dosya yükleme
     upload_dir: str = "app/static/uploads"
+    download_dir: str = "storage/downloads"
     max_upload_size_mb: int = 500
 
     # Veritabanı
@@ -35,6 +43,16 @@ class Settings(BaseSettings):
 
     # Rate limiting
     rate_limit_downloads_per_hour: int = 10
+
+    @field_validator("app_secret_key")
+    @classmethod
+    def validate_app_secret_key(cls, value: str) -> str:
+        """Bilinen örnek değerlerin üretimde oturum imzalamasını engelle."""
+        if len(value) < 32 or value in _INSECURE_SECRET_KEYS:
+            raise ValueError(
+                "APP_SECRET_KEY en az 32 karakterlik rastgele bir sır olmalıdır."
+            )
+        return value
 
     @property
     def upload_path(self) -> Path:
@@ -45,6 +63,12 @@ class Settings(BaseSettings):
     @property
     def max_upload_size_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
+
+    @property
+    def download_path(self) -> Path:
+        path = Path(self.download_dir)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
 
 @lru_cache

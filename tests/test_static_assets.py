@@ -40,3 +40,11 @@ def test_templates_do_not_load_runtime_assets_from_a_cdn() -> None:
     ]
 
     assert offenders == []
+
+
+@pytest.mark.asyncio
+async def test_legacy_active_uploads_are_forced_to_download(client: AsyncClient) -> None:
+    response = await client.get("/static/uploads/legacy.html")
+
+    assert response.headers["content-disposition"] == "attachment"
+    assert response.headers["content-security-policy"] == "sandbox; default-src 'none'"

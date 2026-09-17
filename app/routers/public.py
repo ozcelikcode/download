@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.config import settings
 from app.checksums import file_checksum
+from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
 from app.models import FileType
@@ -34,6 +35,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["public"])
 
 PAGE_SIZE = 12
+
+
+def _private_download_file(value: str | None) -> Path | None:
+    """Yalnızca özel indirme deposundaki normal dosyaların sunulmasına izin ver."""
+    if not value:
+        return None
+    path = Path(value).resolve()
+    root = settings.download_path.resolve()
+    if path == root or not path.is_relative_to(root) or not path.is_file():
+        return None
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -236,11 +248,19 @@ async def detail(
         "request": request,
         "download": download,
         "page_title": f"{download.title} {download.version or ''}".strip(),
-        "meta_description": (download.description or f"{download.title} — ücretsiz indir.")[:160],
+        "meta_description": (
+            rich_text_to_plain_text(download.description)
+            or f"{download.title} — ücretsiz indir."
+        )[:160],
         "current_category": download.category,
         "current_search": None,
         "version_timeline": _build_version_timeline(download),
-        "sha256": await file_checksum(session, download.file_path) if download.file_type == FileType.local else None,
+        "sha256": (
+            await file_checksum(session, str(local_file))
+            if download.file_type == FileType.local
+            and (local_file := _private_download_file(download.file_path))
+            else None
+        ),
     }
     ctx.update(await _sidebar_context(request, session))
 
@@ -320,39 +340,47 @@ async def do_download(
 
     ip = get_request_ip(request)
     ua = request.headers.get("user-agent", "")
+    download_id = download.id
+    download_type = download.file_type
 
-    # Rate limit kontrolü
-    allowed = await crud.check_rate_limit(
-        session, ip, max_per_hour=settings.rate_limit_downloads_per_hour
+    # Yalnızca sunulabilecek dosyalar sayacı ve saatlik kotayı tüketir.
+    file_path = None
+    external_url = None
+    if download_type == FileType.local:
+        file_path = _private_download_file(download.file_path)
+        if file_path is None:
+            logger.error("Dosya bulunamadı: %s", download.file_path)
+            raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadı.")
+    else:
+        try:
+            external_url = normalize_http_url(download.external_url)
+        except ValueError:
+            logger.error("Güvensiz dış bağlantı engellendi: download_id=%d", download_id)
+            raise HTTPException(status_code=404, detail="İndirme bağlantısı geçersiz.")
+        if external_url is None:
+            logger.error("Dış bağlantı bulunamadı: download_id=%d", download_id)
+            raise HTTPException(status_code=404, detail="İndirme bağlantısı bulunamadı.")
+
+    allowed = await crud.record_download_if_allowed(
+        session,
+        download_id,
+        ip,
+        ua[:500],
+        max_per_hour=settings.rate_limit_downloads_per_hour,
     )
     if not allowed:
-        logger.warning("Rate limit aşıldı: ip=%s download_id=%d", ip, download.id)
+        logger.warning("Rate limit aşıldı: ip=%s download_id=%d", ip, download_id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Saatlik indirme limitine ulaştınız. Lütfen bekleyiniz.",
         )
 
-    # Yalnızca sunulabilecek dosyalar sayacı ve saatlik kotayı tüketir.
-    file_path = None
-    if download.file_type == FileType.local:
-        file_path = Path(download.file_path) if download.file_path else None
-        if file_path is None or not file_path.is_file():
-            logger.error("Dosya bulunamadı: %s", download.file_path)
-            raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadı.")
-    elif not download.external_url:
-        logger.error("Dış bağlantı bulunamadı: download_id=%d", download.id)
-        raise HTTPException(status_code=404, detail="İndirme bağlantısı bulunamadı.")
-
-    # Log yaz + sayacı artır
-    await crud.create_download_log(session, download.id, ip, ua[:500])
-    await crud.increment_download_count(session, download.id)
-
     logger.info("İndirme başlatıldı: slug=%r ip=%s", slug, ip)
 
-    if download.file_type == FileType.external:
+    if download_type == FileType.external:
         # Dış bağlantıya yönlendir
         return RedirectResponse(
-            url=download.external_url,
+            url=external_url,
             status_code=status.HTTP_302_FOUND,
         )
 

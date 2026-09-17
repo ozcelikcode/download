@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import anyio
@@ -10,7 +11,12 @@ from fastapi import HTTPException, UploadFile
 from app.config import settings
 
 
-async def save_upload(file: UploadFile, destination: Path) -> None:
+async def save_upload(
+    file: UploadFile,
+    destination: Path,
+    *,
+    validator: Callable[[Path], None] | None = None,
+) -> None:
     limit = settings.max_upload_size_bytes
     if file.size is not None and file.size > limit:
         raise HTTPException(status_code=413, detail="Dosya yükleme boyutu sınırını aşıyor.")
@@ -27,6 +33,8 @@ async def save_upload(file: UploadFile, destination: Path) -> None:
                 if received > limit:
                     raise HTTPException(status_code=413, detail="Dosya yükleme boyutu sınırını aşıyor.")
                 await output.write(chunk)
+        if validator is not None:
+            await anyio.to_thread.run_sync(validator, temporary)
         await anyio.to_thread.run_sync(temporary.replace, destination)
     finally:
         temporary.unlink(missing_ok=True)

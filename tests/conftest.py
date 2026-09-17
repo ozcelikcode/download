@@ -33,6 +33,7 @@ def isolated_uploads(tmp_path, monkeypatch):
     """Hiçbir test gerçek app/static/uploads dizinine yazmasın diye
     yükleme dizinini her testte geçici bir klasöre yönlendirir."""
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
+    monkeypatch.setattr(settings, "download_dir", str(tmp_path / "downloads"))
 
 
 @pytest.fixture(autouse=True)

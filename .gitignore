@@ -6,10 +6,16 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# SQLite çalışma dosyaları (ana .db dosyası korunur)
+# Çalışma veritabanları ve SQLite yan dosyaları
+*.db
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Kullanıcı yüklemeleri çalışma verisidir; Git'e eklenmez.
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+storage/
 
 # Yarım kalmış atomik yüklemeler
 .upload-*.part

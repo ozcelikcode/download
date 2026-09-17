@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
 
 from slugify import slugify
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -1036,6 +1036,54 @@ async def check_rate_limit(
     result = await session.execute(stmt)
     count = result.scalar_one()
     return count < max_per_hour
+
+
+async def record_download_if_allowed(
+    session: AsyncSession,
+    download_id: int,
+    ip_address: str,
+    user_agent: Optional[str],
+    max_per_hour: int,
+) -> bool:
+    """Kotayı, indirme kaydını ve sayacı tek bir SQLite işlemi içinde günceller.
+
+    `BEGIN IMMEDIATE` eşzamanlı isteklerin aynı eski sayımı görmesini engeller.
+    Bu fonksiyon çağrılmadan önce sunulacak hedefin varlığı doğrulanmış olmalıdır.
+    """
+    await session.rollback()
+    await session.execute(text("BEGIN IMMEDIATE"))
+    try:
+        window_start = datetime.now(timezone.utc) - timedelta(hours=1)
+        count = await session.scalar(
+            select(func.count()).where(
+                DownloadLog.ip_address == ip_address,
+                DownloadLog.downloaded_at >= window_start,
+            )
+        )
+        if (count or 0) >= max_per_hour:
+            await session.rollback()
+            return False
+
+        session.add(
+            DownloadLog(
+                download_id=download_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        )
+        result = await session.execute(
+            update(Download)
+            .where(Download.id == download_id)
+            .values(download_count=Download.download_count + 1)
+        )
+        if result.rowcount != 1:
+            await session.rollback()
+            return False
+        await session.commit()
+        return True
+    except Exception:
+        await session.rollback()
+        raise
 
 
 # ===========================================================================

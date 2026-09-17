@@ -1,20 +1,36 @@
 """Dosya bütünlüğü, indirme sayacı ve oturum süresi için regresyon testleri."""
 
 import io
+import asyncio
 
 import pytest
 import httpx
 from fastapi import HTTPException, UploadFile
 from httpx import AsyncClient
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
-from app.config import settings
+from app.config import Settings, settings
 from app.dependencies import hash_admin_password
 from app.models import DownloadLog
 from app.schemas import DownloadCreate
 from app.uploads import save_upload
+
+
+@pytest.mark.parametrize(
+    "secret",
+    ["change-me-in-production", "replace-with-a-long-random-value", "too-short"],
+)
+def test_insecure_application_secrets_are_rejected(secret: str):
+    with pytest.raises(ValidationError, match="APP_SECRET_KEY"):
+        Settings(app_secret_key=secret)
+
+
+def test_random_application_secret_is_accepted():
+    configured = Settings(app_secret_key="a" * 32)
+    assert configured.app_secret_key == "a" * 32
 
 
 async def test_local_upload_preserves_existing_file(admin_client: AsyncClient):
@@ -52,19 +68,20 @@ async def test_oversized_upload_leaves_no_files(admin_client, monkeypatch, endpo
     )
     assert response.status_code == 413
     assert not [p for p in settings.upload_path.rglob("*") if p.is_file()]
+    assert not [p for p in settings.download_path.rglob("*") if p.is_file()]
 
 
 async def test_rejected_replacement_preserves_original(admin_client, monkeypatch):
-    original = settings.upload_path / "setup.zip"
+    original = settings.download_path / "setup.zip"
     original.write_bytes(b"original")
     monkeypatch.setattr(settings, "max_upload_size_mb", 0)
     response = await admin_client.post(
-        "/admin/media/replace-file", data={"path": "/static/uploads/setup.zip"},
+        "/admin/media/replace-file", data={"path": "/admin/media/files/setup.zip"},
         files={"file": ("new.zip", b"too large", "application/zip")},
     )
     assert response.status_code == 413
     assert original.read_bytes() == b"original"
-    assert list(settings.upload_path.iterdir()) == [original]
+    assert list(settings.download_path.iterdir()) == [original]
 
 
 async def test_stream_limit_preserves_original_after_partial_write(monkeypatch):
@@ -84,7 +101,7 @@ async def test_stream_limit_preserves_original_after_partial_write(monkeypatch):
 
 @pytest.mark.parametrize("source", ["missing", "directory"])
 async def test_unavailable_download_is_not_counted(client, db_session, source):
-    path = settings.upload_path if source == "directory" else settings.upload_path / "missing.zip"
+    path = settings.download_path if source == "directory" else settings.download_path / "missing.zip"
     download = await crud.create_download(db_session, DownloadCreate(
         title="Unavailable", file_type="local", file_path=str(path),
     ))
@@ -96,7 +113,7 @@ async def test_unavailable_download_is_not_counted(client, db_session, source):
 
 
 async def test_successful_download_counts_once(client, db_session):
-    path = settings.upload_path / "ready.zip"
+    path = settings.download_path / "ready.zip"
     path.write_bytes(b"archive")
     download = await crud.create_download(db_session, DownloadCreate(
         title="Ready", file_type="local", file_path=str(path),
@@ -118,6 +135,23 @@ async def test_forwarded_headers_do_not_bypass_download_limit(client, db_session
     second = await client.get(f"/dl/{download.slug}", headers={"X-Forwarded-For": "192.0.2.2"})
     assert first.status_code == 302
     assert second.status_code == 429
+
+
+async def test_parallel_downloads_reserve_rate_limit_atomically(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "rate_limit_downloads_per_hour", 1)
+    download = await crud.create_download(db_session, DownloadCreate(
+        title="Atomic external", external_url="https://example.com/file.zip",
+    ))
+
+    responses = await asyncio.gather(
+        client.get(f"/dl/{download.slug}"),
+        client.get(f"/dl/{download.slug}"),
+    )
+
+    assert sorted(response.status_code for response in responses) == [302, 429]
+    await db_session.refresh(download)
+    assert download.download_count == 1
+    assert await db_session.scalar(select(func.count()).select_from(DownloadLog)) == 1
 
 
 async def test_login_cookie_uses_configured_duration(client: AsyncClient, db_session: AsyncSession):
