@@ -20,6 +20,44 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Klavye erişimi: görünür odak, içerik atlama ve modal sayfa kilidi. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--theme-accent, #2563eb);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  transform: translateY(-150%);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--theme-border, #bfdbfe);
+  border-radius: 3px;
+  background: var(--theme-panel, #ffffff);
+  color: var(--theme-accent, #2563eb);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: transform 0.15s ease;
+}
+.skip-link:focus { transform: translateY(0); }
+body.dialog-open { overflow: hidden; }
+.context-actions:focus-within { opacity: 1 !important; }
+
+@media (hover: none), (pointer: coarse) {
+  .context-actions { opacity: 1 !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ------------------------------------------------------------
    Custom Scrollbar
    ------------------------------------------------------------ */
@@ -354,6 +392,43 @@ input[type="radio"]:not(.sr-only):not(.choice-input):disabled { cursor: not-allo
    sınıflarını (yükleme sırası nedeniyle) eziyor. İkonlu input'lar için
    kaynak sırasında .form-input'tan SONRA gelen özel bir sınıf kullanılır. */
 .form-input-icon { padding-left: 2rem; }
+
+/* Ortak, erişilebilir bildirim sistemi. İçerik JS tarafında yalnız textContent ile yazılır. */
+.app-toast-region {
+  position: fixed; top: 1rem; right: 1rem; z-index: 70;
+  display: grid; gap: 0.5rem; width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+.app-toast {
+  display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) 1.5rem;
+  align-items: start; gap: 0.625rem; padding: 0.75rem;
+  border: 1px solid #e2e8f0; border-left-width: 3px; border-radius: 3px;
+  background: #fff; color: #334155; box-shadow: 0 4px 14px rgb(15 23 42 / 0.10);
+  pointer-events: auto; animation: app-toast-in 160ms ease-out;
+}
+.dark .app-toast { background: #0f172a; color: #cbd5e1; border-color: #334155; }
+.app-toast-success { border-left-color: #16a34a; }
+.app-toast-warning { border-left-color: #d97706; }
+.app-toast-error { border-left-color: #dc2626; }
+.app-toast-info { border-left-color: var(--theme-accent, #2563eb); }
+.app-toast-success .app-toast-icon { color: #16a34a; }
+.app-toast-warning .app-toast-icon { color: #d97706; }
+.app-toast-error .app-toast-icon { color: #dc2626; }
+.app-toast-info .app-toast-icon { color: var(--theme-accent, #2563eb); }
+.app-toast-icon { width: 1.1rem; height: 1.1rem; margin-top: 0.1rem; }
+.app-toast-message { min-width: 0; font-size: 0.8125rem; line-height: 1.25rem; overflow-wrap: anywhere; }
+.app-toast-close {
+  display: inline-flex; width: 1.5rem; height: 1.5rem; align-items: center; justify-content: center;
+  margin: -0.2rem -0.2rem 0 0; border-radius: 3px; color: #94a3b8; font-size: 1.1rem;
+}
+.app-toast-close:hover { color: #475569; background: #f1f5f9; }
+.dark .app-toast-close:hover { color: #cbd5e1; background: #1e293b; }
+.app-toast.is-leaving { opacity: 0; transform: translateX(0.5rem); transition: opacity 150ms, transform 150ms; }
+@keyframes app-toast-in { from { opacity: 0; transform: translateY(-0.4rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .app-toast { animation: none; }
+  .app-toast.is-leaving { transition: none; }
+}
 
 /* Dosya boyutu birim seçici — dar bir alanda (%10) okunur kalması için
    tek harfli etiket (M/K/G/B, title'da tam adı) + minimal padding. */

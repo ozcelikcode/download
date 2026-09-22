@@ -8,7 +8,7 @@ Her model için Base / Create / Update / Read ayrımı yapılmıştır.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -30,6 +30,39 @@ class PaginatedResponse(BaseModel):
     total_pages: int
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class PublicDownloadFilters(BaseModel):
+    """Herkese açık indirme listelerinde izin verilen filtreler."""
+
+    sort: Literal["newest", "popular", "title"] = "newest"
+    os: Literal["", "windows", "macos", "linux", "android", "ios", "web"] = ""
+    source: Literal["", "local", "external"] = ""
+    trust: Literal["", "official", "third_party"] = ""
+
+    @property
+    def is_active(self) -> bool:
+        return self.sort != "newest" or bool(self.os or self.source or self.trust)
+
+
+class AdminHealthSummary(BaseModel):
+    """Yönetim panelindeki içerik ve dosya sağlığı özeti."""
+
+    broken_links: int = Field(0, ge=0)
+    missing_local_files: int = Field(0, ge=0)
+    unused_media: int = Field(0, ge=0)
+    uncategorized_content: int = Field(0, ge=0)
+    private_storage_bytes: int = Field(0, ge=0)
+    private_file_count: int = Field(0, ge=0)
+
+    @property
+    def attention_count(self) -> int:
+        return (
+            self.broken_links
+            + self.missing_local_files
+            + self.unused_media
+            + self.uncategorized_content
+        )
 
 
 # ===========================================================================

@@ -29,18 +29,19 @@
   {% if is_admin %}
   <div class="relative shrink-0" id="admin-actions-wrap">
     <button type="button" id="admin-actions-btn"
+      data-disclosure-button aria-controls="admin-actions-menu" aria-expanded="false" aria-haspopup="menu"
       class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
              border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
       <i data-lucide="shield" class="w-3.5 h-3.5"></i>
       {{ t(request, 'actions') }}
       <i data-lucide="chevron-down" class="w-3 h-3"></i>
     </button>
-    <div id="admin-actions-menu" class="hidden absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-30">
-      <a href="/admin/downloads/{{ download.id }}/edit"
+    <div id="admin-actions-menu" role="menu" class="hidden absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-30">
+      <a href="/admin/downloads/{{ download.id }}/edit" role="menuitem"
         class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
         <i data-lucide="pencil" class="w-3.5 h-3.5"></i> {{ t(request, 'edit_content') }}
       </a>
-      <button type="button" id="admin-delete-btn"
+      <button type="button" id="admin-delete-btn" role="menuitem"
         class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'delete_content') }}
       </button>
@@ -58,12 +59,12 @@
         <strong class="text-slate-700 dark:text-slate-300">{{ download.title }}</strong> {{ t(request, 'delete_warning') }}
       </p>
       <div class="flex items-center justify-end gap-2">
-        <button type="button" id="admin-delete-cancel"
+        <button type="button" id="admin-delete-cancel" data-dialog-close
           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400
                  border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
           {{ t(request, 'cancel') }}
         </button>
-        <button type="button" id="admin-delete-confirm" class="btn-danger py-1.5 px-3 text-sm">
+        <button type="button" id="admin-delete-confirm" data-dialog-initial-focus class="btn-danger py-1.5 px-3 text-sm">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'yes_delete') }}
         </button>
       </div>
@@ -145,22 +146,27 @@
 {# ================================================================
    İNDİRME CTA KARTI
    ================================================================ #}
-<div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-sm p-4 mb-4 flex flex-wrap items-center gap-4">
+<div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-sm p-4 mb-4">
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="shrink-0">
+      <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
+        {{ t(request, 'external_destination') if download.file_type.value == 'external' else t(request, 'direct_download') }}
+      </p>
+      <a href="/dl/{{ download.slug }}"
+        id="download-btn-main"
+        {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
+        class="btn-download py-2.5 px-6 text-base font-semibold">
+        {% if download.file_type.value == 'external' %}
+        <i data-lucide="external-link" class="w-4.5 h-4.5"></i>
+        {{ t(request, 'open_link') }}
+        {% else %}
+        <i data-lucide="download" class="w-4.5 h-4.5"></i>
+        {{ t(request, 'download_now') }}
+        {% endif %}
+      </a>
+    </div>
 
-  <a href="/dl/{{ download.slug }}"
-    id="download-btn-main"
-    {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
-    class="btn-download py-2.5 px-6 text-base font-semibold">
-    {% if download.file_type.value == 'external' %}
-    <i data-lucide="external-link" class="w-4.5 h-4.5"></i>
-    {{ t(request, 'open_link') }}
-    {% else %}
-    <i data-lucide="download" class="w-4.5 h-4.5"></i>
-    {{ t(request, 'download_now') }}
-    {% endif %}
-  </a>
-
-  <div class="flex flex-col gap-0.5 text-sm">
+    <div class="flex flex-col gap-1 text-sm min-w-0">
     {% if download.file_type.value == 'external' and download.source_domain %}
     <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
       <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -172,15 +178,27 @@
     </span>
     {% endif %}
 
+    {% if download_filename %}
+    <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 min-w-0">
+      <i data-lucide="file-archive" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0"></i>
+      {{ t(request, 'filename') }}:
+      <strong class="text-slate-700 dark:text-slate-300 truncate" title="{{ download_filename }}">{{ download_filename }}</strong>
+    </span>
+    {% endif %}
+
     {% if download.file_size_human %}
     <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
       <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
       {{ t(request, 'file_size') }}: <strong class="text-slate-700 dark:text-slate-300">{{ download.file_size_human }}</strong>
     </span>
     {% endif %}
-  </div>
+    <span class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+      <i data-lucide="{{ 'external-link' if download.file_type.value == 'external' else 'server' }}" class="w-3.5 h-3.5"></i>
+      {{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}
+    </span>
+    </div>
 
-  <div class="flex-1"></div>
+    <div class="flex-1"></div>
 
   {# Kaynak güvenilirlik göstergesi #}
   {% if download.file_type.value == 'external' %}
@@ -200,6 +218,17 @@
     <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500 dark:text-green-400"></i>
     {{ t(request, 'safe_download') }}
   </span>
+    {% endif %}
+  </div>
+
+  {% if download.os_compatibility %}
+  {% set cta_os_labels = {'windows':'Windows','macos':'macOS','linux':'Linux','android':'Android','ios':'iOS','web':'Web'} %}
+  <div class="flex items-center flex-wrap gap-1.5 mt-3 pt-3 border-t border-blue-100 dark:border-blue-500/20">
+    <span class="text-xs text-slate-400 dark:text-slate-500 mr-1">{{ t(request, 'compatibility') }}</span>
+    {% for os_name in download.os_compatibility.split(',') %}
+    <span class="inline-flex items-center px-2 py-0.5 text-xs rounded-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">{{ cta_os_labels.get(os_name|trim, os_name|trim) }}</span>
+    {% endfor %}
+  </div>
   {% endif %}
 </div>
 
@@ -249,10 +278,18 @@
     {% endif %}
 
     {% if sha256 %}
-    <div class="py-3 border-b border-slate-50 dark:border-slate-800">
+    <div class="py-3 border-b border-slate-50 dark:border-slate-800 sm:col-span-2">
       <dt class="text-slate-400 dark:text-slate-500 mb-1">SHA-256</dt>
-      <dd class="font-mono text-xs break-all select-all text-slate-700 dark:text-slate-300">{{ sha256 }}</dd>
+      <dd class="flex items-start gap-2">
+        <code id="sha256-value" class="font-mono text-xs break-all select-all text-slate-700 dark:text-slate-300 flex-1">{{ sha256 }}</code>
+        <button type="button" id="copy-sha256" data-value="{{ sha256 }}"
+          class="btn-secondary py-1 px-2 text-xs shrink-0" aria-label="{{ t(request, 'copy_checksum') }}">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">{{ t(request, 'copy') }}</span>
+        </button>
+      </dd>
       <dd class="text-xs text-slate-400 mt-1">{{ t(request, 'checksum_help') }}</dd>
+      <dd id="copy-sha256-status" class="sr-only" role="status" aria-live="polite"></dd>
     </div>
     {% endif %}
 
@@ -321,7 +358,7 @@
       {% if entry.is_current %}bg-blue-50 dark:bg-blue-500/10{% else %}hover:bg-slate-50 dark:hover:bg-slate-800/60{% endif %}">
 
       {# Zaman çizgisi noktası #}
-      <span class="absolute left-1.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full shrink-0
+      <span class="absolute left-1.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-sm shrink-0
         {% if entry.is_current %}bg-blue-600 dark:bg-blue-400{% else %}bg-slate-300 dark:bg-slate-600{% endif %}"></span>
       {% if not loop.last %}
       <span class="absolute left-[7px] top-1/2 w-px h-full bg-slate-150 dark:bg-slate-800"></span>
@@ -346,7 +383,7 @@
         <span class="text-xs text-slate-400 dark:text-slate-500">{{ entry.date | format_date }}</span>
         {% if entry.url %}
         <a href="{{ entry.url }}"
-          class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          class="context-actions text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {{ t(request, 'view') }} <i data-lucide="arrow-right" class="w-3 h-3"></i>
         </a>
         {% endif %}
@@ -361,14 +398,88 @@
   {% endif %}
 </div>
 
-{# ================================================================
-   AYNI KATEGORİDEKİ DİĞER İNDİRMELER (sidebar zaten gösteriyor,
-   buraya küçük bir "ilgili" bölümü eklenebilir — şimdilik placeholder)
-   ================================================================ #}
+{% if related_downloads %}
+<section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 mb-4" aria-labelledby="related-downloads-title">
+  <div class="flex items-end justify-between gap-3 mb-3">
+    <div>
+      <h2 id="related-downloads-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+        {{ t(request, 'related_downloads') }}
+      </h2>
+      <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ t(request, 'related_downloads_help') }}</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    {% for related in related_downloads %}
+    <a href="/download/{{ related.slug }}" class="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-sm hover:border-blue-200 dark:hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-colors group">
+      <div class="icon-box {{ related.icon_type.value }} w-9 h-9 shrink-0 overflow-hidden bg-slate-50 dark:bg-slate-800">
+        {% if related.icon_type.value == 'image' and (related.icon_image_path or related.icon_image_url) %}
+        <img src="{{ related.icon_image_path or (related.icon_image_url | safe_http_url) }}" alt="" class="w-full h-full object-contain p-0.5">
+        {% else %}
+        <i data-lucide="{{ related.icon_type | icon_name(related.file_type, related.icon_extension) }}" class="w-4 h-4"></i>
+        {% endif %}
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">{{ related.title }}</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500 truncate">
+          {% if related.is_latest_version %}{{ t(request, 'latest_release') }}{% elif related.version %}{{ related.version }}{% elif related.category %}{{ related.category.name }}{% endif %}
+          {% if related.download_count %} · {{ related.download_count | thousands }} {{ t(request, 'downloads') }}{% endif %}
+        </p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 shrink-0"></i>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<div class="h-16 sm:hidden" aria-hidden="true"></div>
+<div class="sm:hidden fixed inset-x-0 bottom-0 z-30 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+  <a href="/dl/{{ download.slug }}" {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
+    class="btn-download w-full justify-center py-2.5 text-sm font-semibold">
+    <i data-lucide="{{ 'external-link' if download.file_type.value == 'external' else 'download' }}" class="w-4 h-4"></i>
+    {{ t(request, 'open_link') if download.file_type.value == 'external' else t(request, 'download_now') }}
+    {% if download.file_size_human %}<span class="font-normal opacity-80">· {{ download.file_size_human }}</span>{% endif %}
+  </a>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
+{% if sha256 %}
+<script>
+  (function () {
+    const button = document.getElementById('copy-sha256');
+    const status = document.getElementById('copy-sha256-status');
+    if (!button || !status) return;
+
+    function fallbackCopy(value) {
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand('copy');
+      input.remove();
+      if (!copied) throw new Error('copy failed');
+    }
+
+    button.addEventListener('click', async function () {
+      try {
+        if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(button.dataset.value);
+        else fallbackCopy(button.dataset.value);
+        status.textContent = {{ t(request, 'checksum_copied') | tojson }};
+        window.AppToast.show(status.textContent, { id: 'checksum-copy', type: 'success', duration: 2000 });
+      } catch (error) {
+        status.textContent = {{ t(request, 'copy_failed') | tojson }};
+        window.AppToast.show(status.textContent, { id: 'checksum-copy', type: 'error', duration: 4000 });
+      }
+    });
+  })();
+</script>
+{% endif %}
 {% if is_admin %}
 <script>
   (function () {

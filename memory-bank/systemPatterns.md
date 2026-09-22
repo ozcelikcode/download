@@ -1,42 +1,30 @@
 # System Patterns
 
 ## Architecture
-Klasik katmanlı FastAPI monolith — `app/` altında modüler ayrım:
 
-```
-app/
-├── main.py         # App factory, lifespan, middleware, exception handlers
-├── config.py       # pydantic-settings tabanlı .env okuyucu (singleton `settings`)
-├── database.py     # Async SQLAlchemy engine/session, Base, get_db
-├── models.py       # ORM modelleri (Category, Tag, Download, DownloadTag, DownloadLog)
-├── schemas.py      # Pydantic v2 şemaları
-├── crud.py         # Tüm async DB işlemleri (routerlar doğrudan SQLAlchemy yazmaz)
-├── dependencies.py # get_db re-export, get_request_ip, require_admin, session imzalama
-├── templating.py   # Jinja2Templates instance + custom filtreler
-├── routers/
-│   ├── public.py   # Herkese açık: /, /category/{slug}, /search, /tag/{slug}, /download/{slug}, /dl/{slug}
-│   └── admin.py    # Admin: /admin/login, /admin, /admin/downloads/*, /admin/categories, /admin/tags
-├── templates/      # Jinja2 (base.html + admin/base_admin.html iki ayrı layout)
-└── static/         # css/app.css, uploads/
-```
+- Katmanlı FastAPI monolith: `routers`, `crud`, `models`, `schemas`, `templates` ayrımı korunur.
+- Rotalar ve SQLAlchemy işlemleri asenkrondur; DB sorguları mümkün olduğunca `app/crud.py` içinde tutulur.
+- Router ayrımı: `public.py`, `admin.py`, rapor/denetim için `reports.py`.
+- Pydantic v2 giriş doğrulaması ve SQLAlchemy async session kullanılır.
 
-## Key technical decisions
-- **Async her yerde**: FastAPI route'ları ve SQLAlchemy sorguları `async def`/`await`.
-- **CRUD katmanı zorunlu**: DB erişimi router'larda değil `crud.py` içinde — router ince kalır.
-- **Self-referencing Download**: `parent_id` ile sürüm geçmişi (`versions` / `parent` relationship'leri, `Download.models.py:157-199`).
-- **Session tabanlı admin auth**: `itsdangerous.URLSafeTimedSerializer` ile imzalı cookie (`admin_session`), bcrypt şifre karşılaştırma — JWT/OAuth yok, kasıtlı olarak minimal.
-- **Rate limiting**: `DownloadLog` tablosu + `ix_download_logs_ip_time` indeksiyle IP+zaman sorgusu; saatlik limit `settings.rate_limit_downloads_per_hour`.
-- **Sayfalama**: her zaman query param (`?page=x`), path parametresi asla kullanılmaz (agents.md kuralı).
-- **Computed properties model üzerinde**: `file_size_human`, `source_domain` gibi türetilmiş alanlar `Download` modelinde property olarak tanımlı, DB'de saklanmaz.
-- **Migration**: Alembic — model değişikliği sonrası mutlaka migration üretilir (`make migration msg="..."`).
+## Data and storage
 
-## Component relationships
-- `Category` 1—N `Download` (SET NULL on delete).
-- `Tag` M2M `Download` (junction: `DownloadTag`, CASCADE on delete).
-- `Download` 1—N `Download` (self-ref, `parent_id`, SET NULL on delete) — sürüm geçmişi.
-- `Download` 1—N `DownloadLog` (CASCADE on delete) — indirme logu/rate limit.
+- SQLite + Alembic; model değişiklikleri migration gerektirir.
+- Yerel indirilebilir dosyalar `app/static` dışında özel depoda tutulur ve yalnız kontrollü rotalardan sunulur.
+- Public görseller `app/static/uploads`, indirme paketleri `storage/downloads` altında tutulur.
+- Sayfalama her zaman `?page=x` query parametresiyle yapılır.
 
-## Design/UI patterns
-- Tailwind: sadece `rounded-sm`, gölge kullanımı minimal.
-- İki farklı base template: `templates/base.html` (public) ve `templates/admin/base_admin.html` (admin panel).
-- Hata sayfaları özel: `errors/404.html`, `errors/429.html`, `errors/500.html` — `main.py` içindeki exception handler'lar bunları render eder ve sidebar context'ini boş geçer.
+## Security and observability
+
+- CSRF koruması, imzalı admin oturumu, giriş/indirme rate limit'i ve güvenlik başlıkları aktiftir.
+- Zengin metin `nh3` ile temizlenir; dış ve navigasyon URL'leri izin verilen şemalarla sınırlandırılır.
+- Yüklemeler boyut ve gerçek içerik türü bakımından doğrulanır; yazma işlemleri geçici dosya üzerinden atomik yapılır.
+- Admin değişiklikleri `AuditLog`, dış bağlantı sonuçları `LinkCheck` ile izlenir.
+- Dashboard dosya sistemi kontrolleri `app/health.py` içinde, bloklayan tarama işi threadpool'da çalışır.
+
+## UI patterns
+
+- Jinja2 + Tailwind; yalnız `rounded-sm`, ölçülü gölge ve minimum JavaScript.
+- Public ve admin için ayrı base template vardır; tema, erişilebilirlik ve toast JavaScript'i ortaktır.
+- Tema açık/koyu/sistem seçeneklerini ve merkezi vurgu rengini destekler.
+- Ortak toast API'si `window.AppToast`; kısa başarılı/uyarı/hata/bilgi geri bildirimleri içindir. İlerleme göstergeleri ve onay dialogları ayrı kalır.

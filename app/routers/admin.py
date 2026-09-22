@@ -60,6 +60,7 @@ from app.branding import SITE_ICON_COLORS
 from app.config import settings
 from app.content_security import normalize_navigation_url
 from app.database import AsyncSessionLocal
+from app.health import get_admin_health
 from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
 from app.i18n import translate
 from app.link_checks import resolve_public_url
@@ -881,6 +882,8 @@ async def dashboard(
         session, page=1, page_size=5, include_inactive=True, pin_featured=False
     )
     stats = await crud.get_dashboard_stats(session)
+    health = await get_admin_health(session)
+    recent_activity = await crud.get_recent_audit_logs(session)
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
@@ -889,6 +892,8 @@ async def dashboard(
             "request": request,
             "recent_items": recent_items,
             "stats": stats,
+            "health": health,
+            "recent_activity": recent_activity,
             "admin_user": _admin,
             "flash_message": flash_message,
         },
@@ -912,12 +917,14 @@ async def content_list(
 ):
     page_size = 20
     category_id_int = _int_or_none(category_id)
+    uncategorized = category_id == "uncategorized"
     items, total = await crud.get_downloads_paginated(
         session,
         page=page,
         page_size=page_size,
         search=q or None,
         category_id=category_id_int,
+        uncategorized=uncategorized,
         status=status_filter or None,
         file_type_filter=file_type_filter or None,
         include_inactive=True,
@@ -939,7 +946,7 @@ async def content_list(
             "total_pages": total_pages,
             "categories": categories,
             "q": q or "",
-            "category_id": category_id_int,
+            "category_id": "uncategorized" if uncategorized else category_id_int,
             "status_filter": status_filter or "",
             "file_type_filter": file_type_filter or "",
             "admin_user": _admin,

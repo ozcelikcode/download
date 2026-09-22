@@ -19,6 +19,8 @@
     });
     document.querySelectorAll('.theme-option-btn').forEach((option) => {
       const active = option.dataset.themeOption === mode;
+      option.setAttribute('role', 'menuitemradio');
+      option.setAttribute('aria-checked', active ? 'true' : 'false');
       option.classList.toggle('text-blue-600', active);
       option.classList.toggle('dark:text-blue-400', active);
       option.classList.toggle('bg-blue-50', active);
@@ -36,14 +38,20 @@
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       menu.classList.toggle('hidden');
+      button.setAttribute('aria-expanded', menu.classList.contains('hidden') ? 'false' : 'true');
     });
     document.addEventListener('click', (event) => {
-      if (!wrap.contains(event.target)) menu.classList.add('hidden');
+      if (!wrap.contains(event.target)) {
+        menu.classList.add('hidden');
+        button.setAttribute('aria-expanded', 'false');
+      }
     });
     document.querySelectorAll('.theme-option-btn').forEach((option) => {
       option.addEventListener('click', () => {
         applyTheme(option.dataset.themeOption, true);
         menu.classList.add('hidden');
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
       });
     });
   }

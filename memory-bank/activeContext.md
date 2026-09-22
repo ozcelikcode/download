@@ -1,18 +1,23 @@
 # Active Context
 
-## Current work focus
-İlk memory-bank oluşturuluyor (2026-07-09) — bu, proje kod tabanının statik analizinden türetildi, geliştiriciyle canlı bir oturumdan değil. Bu yüzden "current work" burada bilinen son commit durumu üzerinden çıkarım.
+## Current focus
 
-## Recent changes (git history'den)
-- `5be56f7 update`, `cc15ea8 Update download.db` — genel güncellemeler.
-- `24336b8 Create Finder_Icon_macOS_Tahoe.png` — `app/static/uploads/icons/` altına macOS ikon asset'i eklendi.
-- Alembic'te iki migration var: `initial_schema` ve `add_os_icon_fields` → `Download.os_compatibility`, `icon_image_path`, `icon_image_url` alanları sonradan eklendi (models.py:147-151).
+Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma şu anda UI kullanılabilirliği ve içerik keşfi geliştirmelerinde.
 
-## Active decisions / open questions
-- `.env` dosyası repoda mevcut ve gerçek değerler içerebilir — commit edilmemesi gerekiyor ama şu an git status'ta görünmüyor (muhtemelen zaten ignore'lu/tracked değil, kontrol edilmeli).
-- Admin varsayılan şifresi (`admin123`) README'de belirtilmiş — prod'a geçmeden değiştirilmesi gerektiği not düşülmüş.
-- `.idea/` klasörü git status'ta untracked görünüyor — JetBrains IDE config, muhtemelen .gitignore'a eklenmesi gerekir.
+## Recently completed
 
-## Next steps
-- Bir sonraki oturumda kullanıcının talebine göre bu bölüm güncellenecek.
-- **update memory bank** komutu geldiğinde tüm dosyalar (özellikle bu dosya ve [progress.md](progress.md)) gözden geçirilmeli.
+- Ortak erişilebilirlik davranışları: skip link, focus-visible, dialog focus trap, Escape ile kapatma, `aria-expanded`, reduced-motion ve dokunmatik işlem görünürlüğü.
+- Public listeleme: query-param tabanlı sıralama, işletim sistemi, kaynak türü ve kaynak güveni filtreleri.
+- Detay sayfası: ilgili içerikler, güçlendirilmiş indirme kartı, mobil CTA ve SHA-256 kopyalama.
+- Admin dashboard: sağlık merkezi ve son işlem akışı.
+- Ortak toast sistemi: public/admin layout, sunucu flash mesajları ve kopyalama geri bildirimleri.
+
+## Next UI work
+
+1. Admin içerik tablosunda sıralama, aktif filtre özeti ve mobil kart görünümü.
+2. Sağlık merkezi kartlarının eksik dosya/kullanılmayan medya için tam filtrelenmiş hedeflere bağlanması.
+3. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
+
+## Operational note
+
+Repo içindeki `.venv`, artık bulunmayan bir Python 3.13 yoluna bağlı. Testler geçici Python 3.12 ortamında çalıştırılıyor; yerel geliştirme ortamı yeniden oluşturulmalı.

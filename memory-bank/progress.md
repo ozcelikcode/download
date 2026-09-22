@@ -1,24 +1,23 @@
 # Progress
 
-## What works
-- **Veritabanı şeması**: Category, Tag, Download (self-ref sürüm geçmişi), DownloadTag (M2M), DownloadLog — tamamlanmış, 2 alembic migration uygulanmış.
-- **Public routes** (`app/routers/public.py`): anasayfa, kategori filtreleme, arama, etiket filtreleme, detay sayfası, indirme tetikleyici (`/dl/{slug}`).
-- **Admin routes** (`app/routers/admin.py`): login/logout, dashboard, dosya ekle/düzenle/sil, kategori CRUD, etiket CRUD.
-- **Auth**: bcrypt + imzalı session cookie tabanlı admin girişi çalışıyor.
-- **Rate limiting altyapısı**: `DownloadLog` + indeks mevcut, saatlik limit config'den okunuyor.
-- **Hata sayfaları**: 404/429/500 için özel Jinja2 template + handler.
-- **Computed alanlar**: `file_size_human`, `source_domain` model üzerinde.
-- **Admin panelinde os_compatibility / icon_image_path / icon_image_url** alanları (ikinci migration ile) eklenmiş — uygulama ikonu ve OS uyumluluğu gösterimi.
+## Working system
 
-## What's left / unknown (kod incelemesinden görülemeyen)
-- Test suite var mı belirsiz — repo kökünde `tests/` klasörü görünmüyor, doğrulanmalı.
-- CSRF koruması prompt.txt'de hedef olarak belirtilmiş; `dependencies.py`/`main.py` içinde açık bir CSRF middleware/token mekanizması görülmedi — kontrol edilmesi gerekebilir.
-- SEO (dinamik meta etiketleri) template'lerde ne kadar uygulanmış, doğrulanmadı.
+- Public indirme kataloğu, kategori/etiket/arama, filtreleme, detay, ilgili içerik ve güvenli indirme akışı.
+- Async FastAPI + SQLAlchemy, SQLite ve Alembic migration düzeni.
+- Admin içerik/kategori/etiket/menü/medya/ayar yönetimi, taslaklar ve toplu işlemler.
+- TR/EN arayüz, açık/koyu/sistem teması ve yönetilebilir marka/hero görünümü.
+- CSRF, oturum güvenliği, giriş ve indirme rate limit'i, audit log, bağlantı denetimi ve özel dosya deposu.
+- HTML/URL sanitizasyonu, güvenli görsel yükleme ve depo sınırı kontrolleri.
+- Özel 404/429/500 sayfaları ve güvenlik başlıkları.
+- Erişilebilir ortak UI davranışları ve ortak toast bildirim sistemi.
+- Admin sağlık merkezi: kırık bağlantı, eksik yerel dosya, kullanılmayan medya, taslak, kategorisiz içerik ve depo kullanımı.
 
-## Current status
-Proje fonksiyonel bir MVP durumunda görünüyor: tüm ana route'lar, admin paneli ve DB şeması mevcut. `download.db` dosyası repoda commit edilmiş (gerçek/test verisi olabilir).
+## Remaining UI roadmap
 
-## Known issues
-- Admin varsayılan şifresi (`admin123`) prod'da değiştirilmediyse güvenlik riski (README'de uyarılmış).
-- `.env` içindeki `APP_SECRET_KEY` varsayılan/placeholder ise session imzalama zayıf olur.
-- `download.db-wal` boyutu 0 ama `-shm` dosyası var — WAL checkpoint durumu kontrol edilebilir, önemli değilse temizlenebilir.
+- Admin içerik tablosu sıralama ve mobil görünüm iyileştirmeleri.
+- Gelişmiş toplu kategori/etiket/işletim sistemi işlemleri.
+- İsteğe bağlı ekran görüntüsü galerisi, sistem gereksinimleri, lisans, mimari ve değişiklik günlüğü alanları.
+
+## Verification
+
+Tam test paketi her orta ölçekli parçadan sonra çalıştırılır. Güncel test sayısı teslim notunda belirtilmelidir.

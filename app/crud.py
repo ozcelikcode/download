@@ -14,13 +14,14 @@ from typing import List, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
 
 from slugify import slugify
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import case, delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.audit import add_event
 from app.models import (
+    AuditLog,
     Category,
     Download,
     DownloadLog,
@@ -617,12 +618,16 @@ async def get_downloads_paginated(
     page_size: int = 12,
     category_slug: Optional[str] = None,
     category_id: Optional[int] = None,
+    uncategorized: bool = False,
     tag_slug: Optional[str] = None,
     search: Optional[str] = None,
     featured_only: bool = False,
     include_inactive: bool = False,
     status: Optional[str] = None,
     file_type_filter: Optional[str] = None,
+    os_filter: Optional[str] = None,
+    official_filter: Optional[str] = None,
+    sort: str = "newest",
     pin_featured: bool = True,
 ) -> Tuple[List[Download], int]:
     """
@@ -657,7 +662,12 @@ async def get_downloads_paginated(
             Category.slug == category_slug
         )
 
-    if category_id:
+    if uncategorized:
+        stmt = stmt.where(
+            Download.category_id.is_(None),
+            Download.is_draft.is_(False),
+        )
+    elif category_id:
         stmt = stmt.where(Download.category_id == category_id)
 
     if tag_slug:
@@ -679,6 +689,23 @@ async def get_downloads_paginated(
     if file_type_filter:
         stmt = stmt.where(Download.file_type == FileType(file_type_filter))
 
+    if os_filter:
+        compatibility = (
+            literal(",") + func.coalesce(Download.os_compatibility, "") + literal(",")
+        )
+        stmt = stmt.where(compatibility.like(f"%,{os_filter},%"))
+
+    if official_filter == "official":
+        stmt = stmt.where(
+            Download.file_type == FileType.external,
+            Download.is_official_source.is_(True),
+        )
+    elif official_filter == "third_party":
+        stmt = stmt.where(
+            Download.file_type == FileType.external,
+            Download.is_official_source.is_(False),
+        )
+
     # Toplam sayım
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await session.execute(count_stmt)
@@ -686,7 +713,11 @@ async def get_downloads_paginated(
 
     # Sayfalama
     offset = (page - 1) * page_size
-    if pin_featured:
+    if sort == "popular":
+        stmt = stmt.order_by(Download.download_count.desc(), Download.created_at.desc())
+    elif sort == "title":
+        stmt = stmt.order_by(func.lower(Download.title), Download.id)
+    elif pin_featured:
         stmt = stmt.order_by(Download.is_featured.desc(), Download.created_at.desc())
     else:
         stmt = stmt.order_by(Download.created_at.desc())
@@ -738,6 +769,18 @@ async def get_dashboard_stats(session: AsyncSession) -> dict:
     }
 
 
+async def get_recent_audit_logs(
+    session: AsyncSession, limit: int = 6
+) -> list[AuditLog]:
+    """Dashboard akışı için en yeni işlem kayıtlarını döndürür."""
+    stmt = (
+        select(AuditLog)
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .limit(max(1, min(limit, 20)))
+    )
+    return list((await session.scalars(stmt)).all())
+
+
 async def get_download_by_slug(
     session: AsyncSession, slug: str
 ) -> Optional[Download]:
@@ -759,6 +802,54 @@ async def get_download_by_slug(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_related_downloads(
+    session: AsyncSession, download: Download, limit: int = 4
+) -> List[Download]:
+    """Aynı kategori ve ortak etiketlere göre ilişkili aktif içerikleri döndürür."""
+    tag_ids = [tag.id for tag in download.tags]
+    relation_filters = []
+    score = literal(0)
+    stmt = _download_base_query().where(
+        Download.id != download.id,
+        Download.parent_id.is_(None),
+        Download.is_draft.is_(False),
+    )
+
+    if download.category_id is not None:
+        same_category = Download.category_id == download.category_id
+        relation_filters.append(same_category)
+        score += case((same_category, 3), else_=0)
+
+    if tag_ids:
+        shared_tags = (
+            select(
+                DownloadTag.download_id.label("download_id"),
+                func.count(DownloadTag.tag_id).label("shared_count"),
+            )
+            .where(DownloadTag.tag_id.in_(tag_ids))
+            .group_by(DownloadTag.download_id)
+            .subquery()
+        )
+        stmt = stmt.outerjoin(shared_tags, shared_tags.c.download_id == Download.id)
+        shared_count = func.coalesce(shared_tags.c.shared_count, 0)
+        relation_filters.append(shared_count > 0)
+        score += shared_count
+
+    if not relation_filters:
+        return []
+
+    stmt = (
+        stmt.where(or_(*relation_filters))
+        .order_by(
+            score.desc(),
+            Download.download_count.desc(),
+            Download.created_at.desc(),
+        )
+        .limit(max(1, min(limit, 12)))
+    )
+    return list((await session.scalars(stmt)).all())
 
 
 async def get_download_by_id(

@@ -30,6 +30,7 @@
 
     <select name="category_id" class="form-input py-1.5 text-sm flex-[0_0_150px] min-w-0">
       <option value="">— {{ t(request, 'category') }} —</option>
+      <option value="uncategorized" {% if category_id == 'uncategorized' %}selected{% endif %}>{{ t(request, 'uncategorized_content') }}</option>
       {% for c in categories %}
       <option value="{{ c.id }}" {% if category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
       {% endfor %}

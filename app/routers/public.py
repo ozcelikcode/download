@@ -28,6 +28,7 @@ from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
 from app.models import FileType
+from app.schemas import PublicDownloadFilters
 from app.templating import templates
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["public"])
 
 PAGE_SIZE = 12
+
+
+def _public_list_filters(
+    sort: str = Query("newest", pattern="^(newest|popular|title)$"),
+    os: str = Query("", pattern="^(|windows|macos|linux|android|ios|web)$"),
+    source: str = Query("", pattern="^(|local|external)$"),
+    trust: str = Query("", pattern="^(|official|third_party)$"),
+) -> PublicDownloadFilters:
+    return PublicDownloadFilters(sort=sort, os=os, source=source, trust=trust)
+
+
+def _filter_context(filters: PublicDownloadFilters, search: str = "") -> dict:
+    params = filters.model_dump()
+    if search:
+        params["q"] = search
+    return {
+        "filters": filters,
+        "filter_params": params,
+        "has_filters": filters.is_active,
+    }
 
 
 def _private_download_file(value: str | None) -> Path | None:
@@ -91,10 +112,17 @@ async def _sidebar_context(request: Request, session: AsyncSession) -> dict:
 async def index(
     request: Request,
     page: int = Query(1, ge=1),
+    filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
     items, total = await crud.get_downloads_paginated(
-        session, page=page, page_size=PAGE_SIZE
+        session,
+        page=page,
+        page_size=PAGE_SIZE,
+        file_type_filter=filters.source or None,
+        os_filter=filters.os or None,
+        official_filter=filters.trust or None,
+        sort=filters.sort,
     )
     featured, _ = await crud.get_downloads_paginated(
         session, page=1, page_size=6, featured_only=True
@@ -114,6 +142,7 @@ async def index(
         "page_title": translate(request, "all_downloads"),
         "meta_description": translate(request, "meta_default"),
     }
+    ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
@@ -127,6 +156,7 @@ async def category_view(
     slug: str,
     request: Request,
     page: int = Query(1, ge=1),
+    filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
     category = await crud.get_category_by_slug(session, slug)
@@ -134,7 +164,14 @@ async def category_view(
         raise HTTPException(status_code=404, detail="Kategori bulunamadı.")
 
     items, total = await crud.get_downloads_paginated(
-        session, page=page, page_size=PAGE_SIZE, category_slug=slug
+        session,
+        page=page,
+        page_size=PAGE_SIZE,
+        category_slug=slug,
+        file_type_filter=filters.source or None,
+        os_filter=filters.os or None,
+        official_filter=filters.trust or None,
+        sort=filters.sort,
     )
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
 
@@ -151,6 +188,7 @@ async def category_view(
         "page_title": category.name,
         "meta_description": category.description or f"{category.name} {translate(request, 'category_meta')}",
     }
+    ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
@@ -164,6 +202,7 @@ async def search(
     request: Request,
     q: str = Query("", alias="q"),
     page: int = Query(1, ge=1),
+    filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
     q = q.strip()
@@ -172,6 +211,10 @@ async def search(
         page=page,
         page_size=PAGE_SIZE,
         search=q if q else None,
+        file_type_filter=filters.source or None,
+        os_filter=filters.os or None,
+        official_filter=filters.trust or None,
+        sort=filters.sort,
     )
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
 
@@ -188,6 +231,7 @@ async def search(
         "page_title": f'"{q}" {translate(request, "search_results")}' if q else translate(request, "search_page"),
         "meta_description": f"{q} {translate(request, 'search_meta')}" if q else translate(request, "search_meta_default"),
     }
+    ctx.update(_filter_context(filters, q))
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
@@ -201,6 +245,7 @@ async def tag_view(
     slug: str,
     request: Request,
     page: int = Query(1, ge=1),
+    filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
     tag = await crud.get_tag_by_slug(session, slug)
@@ -208,7 +253,14 @@ async def tag_view(
         raise HTTPException(status_code=404, detail="Etiket bulunamadı.")
 
     items, total = await crud.get_downloads_paginated(
-        session, page=page, page_size=PAGE_SIZE, tag_slug=slug
+        session,
+        page=page,
+        page_size=PAGE_SIZE,
+        tag_slug=slug,
+        file_type_filter=filters.source or None,
+        os_filter=filters.os or None,
+        official_filter=filters.trust or None,
+        sort=filters.sort,
     )
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
 
@@ -226,6 +278,7 @@ async def tag_view(
         "page_title": f"#{tag.name}",
         "meta_description": f"{tag.name} {translate(request, 'tag_meta')}",
     }
+    ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
@@ -244,6 +297,13 @@ async def detail(
     if not download:
         raise HTTPException(status_code=404, detail="İndirme bulunamadı.")
 
+    local_file = (
+        _private_download_file(download.file_path)
+        if download.file_type == FileType.local
+        else None
+    )
+    related_downloads = await crud.get_related_downloads(session, download)
+
     ctx = {
         "request": request,
         "download": download,
@@ -255,10 +315,11 @@ async def detail(
         "current_category": download.category,
         "current_search": None,
         "version_timeline": _build_version_timeline(download),
+        "related_downloads": related_downloads,
+        "download_filename": local_file.name if local_file else None,
         "sha256": (
             await file_checksum(session, str(local_file))
-            if download.file_type == FileType.local
-            and (local_file := _private_download_file(download.file_path))
+            if local_file
             else None
         ),
     }

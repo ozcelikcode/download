@@ -17,6 +17,6 @@ Kullanıcıların bir uygulama/dosya için "indirme sayfası" arayışında kar�
 
 ## UX goals
 - "Tıkla ve indir" — az tıklamayla hedefe ulaşmak, gereksiz adım yok.
-- Açık, minimal mavi palet (slate-50 arka plan, blue-600 vurgu), dark mode yok.
-- 2 sütunlu layout: solda içerik, sağda arama + kategori/etiket sidebar.
+- Minimal, yönetilebilir vurgu renkleri; açık/koyu/sistem temalarında tutarlı görünüm.
+- Responsive içerik + kategori/etiket sidebar düzeni; küçük ekranlarda tek sütuna düşer.
 - Sade hero alanı, abartısız karşılama.

@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
   <script src="/static/vendor/lucide/1.24.0/lucide.min.js"></script>
   <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
+  <script src="/static/js/accessibility.js?v={{ css_asset_v }}" defer></script>
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   <script src="/static/js/csrf.js"></script>
 </head>
@@ -26,13 +27,14 @@
 {# Tema seçici: Aydınlık / Karanlık / Sistem #}
 <div class="fixed top-4 right-4 z-40" id="theme-menu-wrap">
   <button type="button" id="theme-toggle-btn"
+    data-disclosure-button aria-controls="theme-menu" aria-expanded="false" aria-haspopup="menu"
     class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
     aria-label="{{ t(request, 'theme') }}">
     <span data-theme-icon="light"><i data-lucide="sun" class="w-4.5 h-4.5"></i></span>
     <span data-theme-icon="dark" class="hidden"><i data-lucide="moon" class="w-4.5 h-4.5"></i></span>
     <span data-theme-icon="system" class="hidden"><i data-lucide="sun-moon" class="w-4.5 h-4.5"></i></span>
   </button>
-  <div id="theme-menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
+  <div id="theme-menu" role="menu" class="hidden absolute right-0 top-full mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
     <button type="button" data-theme-option="light"
       class="theme-option-btn flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
       <i data-lucide="sun" class="w-3.5 h-3.5"></i> {{ t(request, 'light') }}
@@ -64,7 +66,7 @@
 
     {# Hata mesajı #}
     {% if error %}
-    <div class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-sm">
+    <div role="alert" class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-sm">
       <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 dark:text-red-400 shrink-0"></i>
       <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
     </div>

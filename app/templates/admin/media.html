@@ -15,30 +15,23 @@
   </div>
 </div>
 
-{# Kopyalama geri bildirimi #}
-<div id="media-copy-toast" class="fixed top-4 left-4 z-50 hidden">
-  <div class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-2.5">
-    <i data-lucide="check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0"></i>
-    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'link_copied') }}</span>
-  </div>
-</div>
-
 {# Yükleme ilerleme çubuğu (Progress Bar) #}
-<div id="media-upload-toast" class="fixed top-4 right-4 z-50 hidden">
+<div id="media-upload-toast" role="status" aria-live="polite" class="fixed top-4 right-4 z-50 hidden">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg px-4 py-3 w-72">
     <div class="flex items-center justify-between mb-2 gap-2">
       <span id="media-upload-label" class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{{ t(request, 'uploading') }}</span>
       <span id="media-upload-percent" class="text-xs text-slate-400 dark:text-slate-500 shrink-0">0%</span>
     </div>
-    <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-      <div id="media-upload-bar" class="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-[width] duration-150" style="width:0%"></div>
+    <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-sm overflow-hidden">
+      <div id="media-upload-bar" class="h-full bg-blue-600 dark:bg-blue-500 rounded-sm transition-[width] duration-150" style="width:0%"></div>
     </div>
   </div>
 </div>
 
 {# Tam boyutlu görsel önizleme (lightbox) #}
-<div id="media-lightbox" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 p-6">
+<div id="media-lightbox" data-dialog role="dialog" aria-modal="true" aria-label="{{ t(request, 'image_preview') }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 p-6">
   <button type="button" id="media-lightbox-close"
+    data-dialog-close
     class="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors" title="{{ t(request, 'close') }}">
     <i data-lucide="x" class="w-6 h-6"></i>
   </button>
@@ -88,7 +81,7 @@
     </label>
 
     <div class="flex items-center justify-end gap-2">
-      <button type="button" id="media-crop-cancel"
+      <button type="button" id="media-crop-cancel" data-dialog-close
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
         {{ t(request, 'cancel') }}
@@ -122,7 +115,7 @@
     </div>
 
     <div class="flex items-center justify-end gap-2 mt-4">
-      <button type="button" id="file-edit-cancel"
+      <button type="button" id="file-edit-cancel" data-dialog-close
         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400
                border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
         {{ t(request, 'cancel') }}
@@ -253,11 +246,11 @@
       <div class="relative aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center p-2">
         <img src="{{ img.url }}" alt="{{ img.display_name }}" class="max-w-full max-h-full object-contain">
         <button type="button" data-action="preview"
-          class="absolute top-1.5 right-1.5 p-1.5 rounded-sm bg-black/40 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+          class="context-actions absolute top-1.5 right-1.5 p-1.5 rounded-sm bg-black/40 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
           title="{{ t(request, 'enlarge') }}">
           <i data-lucide="maximize" class="w-3.5 h-3.5 text-white"></i>
         </button>
-        <div class="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="context-actions absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'edit') }}">
             <i data-lucide="pencil" class="w-3.5 h-3.5 text-white"></i>
           </button>
@@ -445,7 +438,7 @@
           </span>
         </div>
         {% endif %}
-        <div class="absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="context-actions absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'edit') }}">
             <i data-lucide="pencil" class="w-3.5 h-3.5 text-white"></i>
           </button>
@@ -549,7 +542,7 @@
 {% block scripts %}
 <script>
   window.mediaMessages = {
-    copyFailed: {{ t(request, 'copy_failed')|tojson }}, imageCompressing: {{ t(request, 'image_compressing')|tojson }},
+    linkCopied: {{ t(request, 'link_copied')|tojson }}, copyFailed: {{ t(request, 'copy_failed')|tojson }}, imageCompressing: {{ t(request, 'image_compressing')|tojson }},
     actionFailed: {{ t(request, 'action_failed')|tojson }}, networkUploadFailed: {{ t(request, 'network_upload_failed')|tojson }},
     uploadingItem: {{ t(request, 'uploading_item')|tojson }}, uploadFailedShort: {{ t(request, 'upload_failed_short')|tojson }},
     imageProcessFailed: {{ t(request, 'image_process_failed')|tojson }}, croppedImageSaving: {{ t(request, 'cropped_image_saving')|tojson }},
@@ -632,15 +625,12 @@
 
   // ── Bağlantı kopyalama ───────────────────────────────────
   (function () {
-    const toast = document.getElementById('media-copy-toast');
-    let toastTimer = null;
-
     window.__copyMediaLink = function (path) {
       const url = window.location.origin + path;
       function done() {
-        toast.classList.remove('hidden');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { toast.classList.add('hidden'); }, 1600);
+        window.AppToast.show(window.mediaMessages.linkCopied, {
+          id: 'media-copy', type: 'success', duration: 1600
+        });
       }
       function fallback() {
         const field = document.createElement('textarea');

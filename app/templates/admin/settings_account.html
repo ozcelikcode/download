@@ -52,7 +52,7 @@
         <input type="radio" name="admin_icon_color" value="{{ color }}" class="peer sr-only avatar-color-radio"
           {% if site_settings.admin_icon_color == color %}checked{% endif %}
           data-color-light="{{ hexes[0] }}" data-color-dark="{{ hexes[1] }}">
-        <span class="block w-6 h-6 rounded-full ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
+        <span class="block w-6 h-6 rounded-sm ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
           style="background: {{ hexes[0] }};"></span>
       </label>
       {% endfor %}
