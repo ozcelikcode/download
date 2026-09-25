@@ -10,11 +10,11 @@
 - HTML/URL sanitizasyonu, güvenli görsel yükleme ve depo sınırı kontrolleri.
 - Özel 404/429/500 sayfaları ve güvenlik başlıkları.
 - Erişilebilir ortak UI davranışları ve ortak toast bildirim sistemi.
+- Admin içerik tablosu sıralaması, etkin filtre etiketleri ve mobil kart sunumu.
 - Admin sağlık merkezi: kırık bağlantı, eksik yerel dosya, kullanılmayan medya, taslak, kategorisiz içerik ve depo kullanımı.
 
 ## Remaining UI roadmap
 
-- Admin içerik tablosu sıralama ve mobil görünüm iyileştirmeleri.
 - Gelişmiş toplu kategori/etiket/işletim sistemi işlemleri.
 - İsteğe bağlı ekran görüntüsü galerisi, sistem gereksinimleri, lisans, mimari ve değişiklik günlüğü alanları.
 

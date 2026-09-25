@@ -11,12 +11,12 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma
 - Detay sayfası: ilgili içerikler, güçlendirilmiş indirme kartı, mobil CTA ve SHA-256 kopyalama.
 - Admin dashboard: sağlık merkezi ve son işlem akışı.
 - Ortak toast sistemi: public/admin layout, sunucu flash mesajları ve kopyalama geri bildirimleri.
+- Admin içerik listesi: yeni/popüler/alfabetik sıralama, kaldırılabilir etkin filtre etiketleri ve mobil kart görünümü; mobil seçimler var olan toplu işlem formuna bağlanır.
 
 ## Next UI work
 
-1. Admin içerik tablosunda sıralama, aktif filtre özeti ve mobil kart görünümü.
-2. Sağlık merkezi kartlarının eksik dosya/kullanılmayan medya için tam filtrelenmiş hedeflere bağlanması.
-3. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
+1. Sağlık merkezi kartlarının eksik dosya/kullanılmayan medya için tam filtrelenmiş hedeflere bağlanması.
+2. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
 
 ## Operational note
 

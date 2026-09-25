@@ -38,7 +38,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from urllib.parse import quote, unquote, urljoin, urlsplit
+from urllib.parse import quote, unquote, urlencode, urljoin, urlsplit
 
 import httpx
 from fastapi import (
@@ -912,21 +912,30 @@ async def content_list(
     category_id: Optional[str] = None,
     status_filter: Optional[str] = None,
     file_type_filter: Optional[str] = None,
+    sort: str = "newest",
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
     page_size = 20
+    q = q.strip() if q and q.strip() else None
+    status_filter = status_filter if status_filter in {"active", "inactive", "draft"} else None
+    file_type_filter = file_type_filter if file_type_filter in {"external", "local"} else None
+    if category_id != "uncategorized" and _int_or_none(category_id) is None:
+        category_id = None
     category_id_int = _int_or_none(category_id)
     uncategorized = category_id == "uncategorized"
+    if sort not in {"newest", "popular", "title"}:
+        sort = "newest"
     items, total = await crud.get_downloads_paginated(
         session,
         page=page,
         page_size=page_size,
-        search=q or None,
+        search=q,
         category_id=category_id_int,
         uncategorized=uncategorized,
         status=status_filter or None,
         file_type_filter=file_type_filter or None,
+        sort=sort,
         include_inactive=True,
         pin_featured=False,
     )
@@ -934,6 +943,47 @@ async def content_list(
 
     total_pages = max(1, math.ceil(total / page_size))
     categories = await crud.get_categories(session)
+    category_names = {str(category.id): category.name for category in categories}
+    query_state = {
+        key: value
+        for key, value in {
+            "q": (q or "").strip(),
+            "category_id": category_id or "",
+            "status_filter": status_filter or "",
+            "file_type_filter": file_type_filter or "",
+            "sort": sort if sort != "newest" else "",
+        }.items()
+        if value
+    }
+    status_labels = {
+        "active": translate(request, "active"),
+        "inactive": translate(request, "inactive"),
+        "draft": translate(request, "draft"),
+    }
+    filter_chips = []
+    chip_values = [
+        ("q", f"{translate(request, 'search')}: {q}" if q else ""),
+        (
+            "category_id",
+            f"{translate(request, 'category')}: "
+            f"{translate(request, 'uncategorized_content') if uncategorized else category_names.get(category_id or '', category_id or '')}",
+        ),
+        ("status_filter", status_labels.get(status_filter or "", "")),
+        (
+            "file_type_filter",
+            translate(request, "local_file") if file_type_filter == "local"
+            else translate(request, "external_link") if file_type_filter == "external"
+            else "",
+        ),
+    ]
+    for key, label in chip_values:
+        if not label or key not in query_state:
+            continue
+        remaining = {name: value for name, value in query_state.items() if name != key}
+        filter_chips.append({
+            "label": label,
+            "remove_url": "/admin/downloads" + ("?" + urlencode(remaining) if remaining else ""),
+        })
     flash_message = request.session.pop("flash_message", None)
 
     return templates.TemplateResponse(
@@ -949,6 +999,9 @@ async def content_list(
             "category_id": "uncategorized" if uncategorized else category_id_int,
             "status_filter": status_filter or "",
             "file_type_filter": file_type_filter or "",
+            "sort": sort,
+            "filter_chips": filter_chips,
+            "active_filter_count": len(filter_chips),
             "admin_user": _admin,
             "flash_message": flash_message,
         },
