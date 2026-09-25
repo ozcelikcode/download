@@ -118,6 +118,47 @@ async def test_incomplete_draft_cannot_be_finalized(
     assert draft.is_draft is True
 
 
+async def test_autosave_preserves_partial_url_but_final_save_rejects_it(
+    admin_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    autosaved = await admin_client.post(
+        "/admin/downloads/drafts/autosave",
+        data={
+            "draft_token": "draft-token-partial-url",
+            "title": "Kısmi URL",
+            "file_type": "external",
+            "external_url": "jjj",
+            "icon_type": "auto",
+            "is_official_source": "true",
+        },
+    )
+    assert autosaved.status_code == 200
+    draft_id = autosaved.json()["draft_id"]
+    draft = await crud.get_download_by_id(db_session, draft_id)
+
+    assert draft is not None
+    assert draft.external_url == "jjj"
+    assert draft.is_draft is True
+
+    finalized = await admin_client.post(
+        f"/admin/downloads/{draft_id}/edit",
+        data={
+            "title": "Kısmi URL",
+            "file_type": "external",
+            "external_url": "jjj",
+            "icon_type": "auto",
+            "is_active": "true",
+            "is_official_source": "true",
+        },
+        headers={"Accept": "application/json"},
+    )
+    await db_session.refresh(draft)
+
+    assert finalized.status_code == 422
+    assert draft.is_draft is True
+    assert draft.external_url == "jjj"
+
+
 async def test_local_file_is_uploaded_before_draft_autosave(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:

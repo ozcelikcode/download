@@ -2,7 +2,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
-from app.schemas import DownloadCreate
+from app.schemas import DownloadCreate, TagCreate
 
 
 async def _set_language(admin_client: AsyncClient, language: str) -> None:
@@ -94,8 +94,11 @@ async def test_invalid_language_is_rejected_and_current_language_remains(admin_c
     assert 'value="en" class="peer sr-only" checked' in page.text
 
 
-async def test_english_admin_pages_render_from_the_shared_setting(admin_client: AsyncClient):
+async def test_english_admin_pages_render_from_the_shared_setting(
+    admin_client: AsyncClient, db_session: AsyncSession
+):
     await _set_language(admin_client, "en")
+    await crud.create_tag(db_session, TagCreate(name="Rendered tag"))
     pages = {
         "/admin": "Overview and site statistics",
         "/admin/downloads": "Search by title",

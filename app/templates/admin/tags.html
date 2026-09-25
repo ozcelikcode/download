@@ -52,32 +52,32 @@
 
       {% if tags %}
       <ul class="divide-y divide-slate-50 dark:divide-slate-800">
-        {% for t in tags %}
+        {% for tag in tags %}
         <li class="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
 
           {# Normal görünüm #}
-          <div id="tag-view-{{ t.id }}" class="flex items-center gap-3">
-            <input type="checkbox" class="admin-checkbox tag-select" name="tag_ids" value="{{ t.id }}" form="tag-bulk-form" aria-label="{{ tf(request, 'selected_aria', name=t.name) }}">
+          <div id="tag-view-{{ tag.id }}" class="flex items-center gap-3">
+            <input type="checkbox" class="admin-checkbox tag-select" name="tag_ids" value="{{ tag.id }}" form="tag-bulk-form" aria-label="{{ tf(request, 'selected_aria', name=tag.name) }}">
 
             <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-sm flex items-center justify-center shrink-0">
               <i data-lucide="hash" class="w-4 h-4 text-slate-400 dark:text-slate-500"></i>
             </div>
 
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ t.name }}</p>
-              <p class="text-xs text-slate-400 dark:text-slate-500 font-mono">{{ t.slug }}</p>
+              <p class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ tag.name }}</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500 font-mono">{{ tag.slug }}</p>
             </div>
 
             <div class="context-actions flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" onclick="toggleTagEdit({{ t.id }})"
+              <button type="button" onclick="toggleTagEdit({{ tag.id }})"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 {{ t(request, 'edit') }}
               </button>
-              <form method="post" action="/admin/tags/{{ t.id }}/delete" class="inline">
+              <form method="post" action="/admin/tags/{{ tag.id }}/delete" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-                <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name='#' ~ t.name) }}"
+                <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name='#' ~ tag.name) }}"
                   class="btn-danger py-1.5 px-2.5">
                   <i data-lucide="trash-2" class="w-3 h-3"></i><span class="sr-only">{{ t(request, 'delete') }}</span>
                 </button>
@@ -86,17 +86,17 @@
           </div>
 
           {# Düzenleme formu (gizli) #}
-          <form id="tag-edit-{{ t.id }}" method="post"
-            action="/admin/tags/{{ t.id }}/edit"
+          <form id="tag-edit-{{ tag.id }}" method="post"
+            action="/admin/tags/{{ tag.id }}/edit"
             class="hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
             <div class="flex items-center gap-2">
-              <input name="name" type="text" required value="{{ t.name }}"
+              <input name="name" type="text" required value="{{ tag.name }}"
                 class="form-input text-sm flex-1">
               <button type="submit" class="btn-primary py-1.5 px-3 text-xs shrink-0">
                 <i data-lucide="save" class="w-3 h-3"></i> {{ t(request, 'save') }}
               </button>
-              <button type="button" onclick="toggleTagEdit({{ t.id }})"
+              <button type="button" onclick="toggleTagEdit({{ tag.id }})"
                 class="inline-flex items-center px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0">
                 <i data-lucide="x" class="w-3 h-3"></i>

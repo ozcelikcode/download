@@ -277,10 +277,15 @@ class DownloadUpdate(BaseModel):
     def sanitize_description(cls, value: object) -> str | None:
         return sanitize_rich_text(None if value is None else str(value))
 
-    @field_validator("external_url", "icon_image_url", mode="before")
-    @classmethod
-    def validate_remote_url(cls, value: object) -> str | None:
-        return normalize_http_url(None if value is None else str(value))
+    @model_validator(mode="after")
+    def validate_remote_urls(self) -> "DownloadUpdate":
+        # Taslaklar yazım sırasında geçersiz/geçici URL değerlerini koruyabilir;
+        # yayınlanmış içerik oluşturulurken aynı sıkı doğrulama uygulanır.
+        if self.is_draft is True:
+            return self
+        self.external_url = normalize_http_url(self.external_url)
+        self.icon_image_url = normalize_http_url(self.icon_image_url)
+        return self
 
 
 class DownloadRead(BaseModel):

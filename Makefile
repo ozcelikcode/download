@@ -23,7 +23,7 @@ endif
 
 # Geliştirme sunucusu (hot-reload)
 dev:
-	.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+	.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
 
 # SQLite ve bellek-içi yükleme ilerlemesi için tek worker.
 prod:

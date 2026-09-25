@@ -12,6 +12,8 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma
 - Admin dashboard: sağlık merkezi ve son işlem akışı.
 - Ortak toast sistemi: public/admin layout, sunucu flash mesajları ve kopyalama geri bildirimleri.
 - Admin içerik listesi: yeni/popüler/alfabetik sıralama, kaldırılabilir etkin filtre etiketleri ve mobil kart görünümü; mobil seçimler var olan toplu işlem formuna bağlanır.
+- Admin etiket sayfasındaki döngü değişkeni çeviri yardımcısını gölgeleyip dolu listede 500 üretiyordu; değişken ayrıştırıldı ve regresyon testi eklendi.
+- Yeni indirme taslaklarında kısmi/geçersiz URL otomatik kaydedilir; yayınlama sırasında HTTP/HTTPS doğrulaması korunur.
 
 ## Next UI work
 
@@ -20,4 +22,4 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma
 
 ## Operational note
 
-Repo içindeki `.venv`, artık bulunmayan bir Python 3.13 yoluna bağlı. Testler geçici Python 3.12 ortamında çalıştırılıyor; yerel geliştirme ortamı yeniden oluşturulmalı.
+`.venv` yanlışlıkla Git'e eklenmiş ve artık bulunmayan Python 3.13 yoluna bağlıydı; Git'ten çıkarıldı. Yerel geliştirme ortamı Python 3.12 ile yeniden kuruldu ve Git dışında tutuluyor. `make dev` reload izlemesi yalnızca `app/` ile sınırlı. Test/önbellek çıktıları ile indirilen Tailwind CLI temizlendi; test kaynakları ve uygulamanın servis ettiği derlenmiş CSS korundu. Eski yüklemeleri özel depoya taşıyan başlangıç göçü `.gitkeep` işaret dosyasını atlar. CSS derleme aracı gerektiğinde `make tailwind-cli` ile yeniden indirilir.

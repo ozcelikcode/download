@@ -69,7 +69,9 @@ async def migrate_legacy_local_downloads(session: AsyncSession) -> int:
     legacy_files = [
         path.resolve()
         for path in public_root.rglob("*")
-        if path.is_file() and not path.resolve().is_relative_to(icons_root)
+        if path.is_file()
+        and path.name != ".gitkeep"
+        and not path.resolve().is_relative_to(icons_root)
     ]
     migrated: dict[Path, Path] = {}
     updated = 0

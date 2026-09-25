@@ -114,3 +114,16 @@ async def test_unlinked_legacy_archive_file_is_also_migrated(
     assert updated == 0
     assert not source.exists()
     assert (settings.download_path / source.name).read_bytes() == b"archive"
+
+
+async def test_upload_directory_placeholder_is_not_migrated(
+    db_session: AsyncSession,
+):
+    placeholder = settings.upload_path / ".gitkeep"
+    placeholder.touch()
+
+    updated = await migrate_legacy_local_downloads(db_session)
+
+    assert updated == 0
+    assert placeholder.is_file()
+    assert not (settings.download_path / placeholder.name).exists()
