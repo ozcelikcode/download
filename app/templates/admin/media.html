@@ -547,6 +547,9 @@
     uploadingItem: {{ t(request, 'uploading_item')|tojson }}, uploadFailedShort: {{ t(request, 'upload_failed_short')|tojson }},
     imageProcessFailed: {{ t(request, 'image_process_failed')|tojson }}, croppedImageSaving: {{ t(request, 'cropped_image_saving')|tojson }},
     iconCreating: {{ t(request, 'icon_creating')|tojson }}, fileReplacing: {{ t(request, 'file_replacing')|tojson }},
+    uploadComplete: {{ t(request, 'media_upload_complete')|tojson }}, uploadPartial: {{ t(request, 'media_upload_partial')|tojson }},
+    nameSaved: {{ t(request, 'media_name_saved')|tojson }}, fileReplaced: {{ t(request, 'media_file_replaced')|tojson }},
+    imageUpdated: {{ t(request, 'media_image_updated')|tojson }}, itemDeleted: {{ t(request, 'media_item_deleted')|tojson }},
     itemDeleteConfirm: {{ t(request, 'item_delete_confirm')|tojson }}, saveFailed: {{ t(request, 'content_save_failed')|tojson }},
     deleteFailed: {{ t(request, 'delete_failed')|tojson }}
   };
@@ -582,12 +585,38 @@
     });
 
     // Bir işlem sonrası hangi sekmede kalınacağını bilmek için global yardımcı.
-    window.__reloadMediaTab = function (kind) {
+    window.__reloadMediaTab = function (kind, message, type) {
       const url = new URL(window.location);
       url.searchParams.set('tab', kind === 'image' ? 'images' : 'files');
-      window.location.href = url.toString();
+      if (message) {
+        try {
+          sessionStorage.setItem('admin-media-feedback', JSON.stringify({
+            message: message,
+            type: type || 'success',
+          }));
+        } catch (error) {}
+      }
+      if (url.toString() === window.location.href) window.location.reload();
+      else window.location.assign(url.toString());
     };
   })();
+
+  document.addEventListener('DOMContentLoaded', function () {
+    let serialized;
+    try {
+      serialized = sessionStorage.getItem('admin-media-feedback');
+      if (serialized) sessionStorage.removeItem('admin-media-feedback');
+    } catch (error) {
+      return;
+    }
+    if (!serialized || !window.AppToast) return;
+    try {
+      const feedback = JSON.parse(serialized);
+      if (feedback && feedback.message) {
+        window.AppToast.show(feedback.message, { type: feedback.type || 'success' });
+      }
+    } catch (error) {}
+  });
 
   // ── Grid / Liste görünüm değiştirici (localStorage'da kalıcı) ────────
   (function () {
@@ -762,12 +791,27 @@
         try {
           await uploadOne(endpoint, file, window.mediaMessages.uploadingItem.replace('{current}', i + 1).replace('{total}', files.length).replace('{name}', file.name));
         } catch (e) {
-          hideUploadProgress();
-          window.showAdminNotice(file.name + ': ' + (e.message || window.mediaMessages.uploadFailedShort));
-          return false;
+          return {
+            uploaded: i,
+            failedName: file.name,
+            failedMessage: e.message || window.mediaMessages.uploadFailedShort,
+          };
         }
       }
-      return true;
+      return { uploaded: files.length, failedName: null, failedMessage: null };
+    }
+
+    function finishUploadQueue(result, kind, input) {
+      hideUploadProgress();
+      input.value = '';
+      if (result.uploaded > 0) {
+        const message = result.failedName
+          ? window.mediaMessages.uploadPartial.replace('{count}', result.uploaded).replace('{name}', result.failedName)
+          : window.mediaMessages.uploadComplete.replace('{count}', result.uploaded);
+        window.__reloadMediaTab(kind, message, result.failedName ? 'warning' : 'success');
+      } else if (result.failedName) {
+        window.showAdminNotice(result.failedName + ': ' + result.failedMessage);
+      }
     }
 
     // ── Resim Arşivi yükleme ──────────────────────────────────
@@ -777,10 +821,8 @@
       imagesUploadBtn.addEventListener('click', function () { imagesUploadInput.click(); });
       imagesUploadInput.addEventListener('change', async function () {
         if (!imagesUploadInput.files.length) return;
-        const ok = await uploadQueue('/admin/upload/icon-image', imagesUploadInput.files);
-        hideUploadProgress();
-        imagesUploadInput.value = '';
-        if (ok) window.__reloadMediaTab('image');
+        const result = await uploadQueue('/admin/upload/icon-image', imagesUploadInput.files);
+        finishUploadQueue(result, 'image', imagesUploadInput);
       });
     }
 
@@ -791,10 +833,8 @@
       filesUploadBtn.addEventListener('click', function () { filesUploadInput.click(); });
       filesUploadInput.addEventListener('change', async function () {
         if (!filesUploadInput.files.length) return;
-        const ok = await uploadQueue('/admin/media/upload-file', filesUploadInput.files);
-        hideUploadProgress();
-        filesUploadInput.value = '';
-        if (ok) window.__reloadMediaTab('file');
+        const result = await uploadQueue('/admin/media/upload-file', filesUploadInput.files);
+        finishUploadQueue(result, 'file', filesUploadInput);
       });
     }
 
@@ -803,7 +843,13 @@
       const fd = new FormData();
       fd.append('path', path);
       fd.append('display_name', displayName);
-      return csrfFetch('/admin/media/rename', { method: 'POST', body: fd });
+      return csrfFetch('/admin/media/rename', { method: 'POST', body: fd }).then(async function (response) {
+        if (!response.ok) {
+          const data = await response.json().catch(function () { return {}; });
+          throw new Error(data.detail || data.message || window.mediaMessages.saveFailed);
+        }
+        return response.json();
+      });
     }
 
     function updateCardNamesInPlace(path, displayName) {
@@ -868,8 +914,11 @@
       if (!cropTargetPath) return;
       const newName = cropNameInput.value.trim();
       renameMedia(cropTargetPath, newName)
-        .then(function () { updateCardNamesInPlace(cropTargetPath, newName || cropTargetPath.split('/').pop()); })
-        .catch(function () { window.showAdminNotice('Ad kaydedilemedi.'); });
+        .then(function () {
+          updateCardNamesInPlace(cropTargetPath, newName || cropTargetPath.split('/').pop());
+          window.AppToast.show(window.mediaMessages.nameSaved, { type: 'success' });
+        })
+        .catch(function (error) { window.showAdminNotice(error.message || window.mediaMessages.saveFailed); });
     });
 
     lockRatio.addEventListener('change', function () {
@@ -920,7 +969,7 @@
           .then(function () {
             hideUploadProgress();
             closeCropModal();
-            window.__reloadMediaTab('image');
+            window.__reloadMediaTab('image', window.mediaMessages.imageUpdated);
           })
           .catch(function (e) {
             hideUploadProgress();
@@ -940,7 +989,7 @@
         .then(function (r) { if (!r.ok) throw new Error(window.mediaMessages.actionFailed); return r.json(); })
         .then(function () {
           hideUploadProgress();
-          window.__reloadMediaTab('image');
+          window.__reloadMediaTab('image', window.mediaMessages.imageUpdated);
         })
         .catch(function (e) {
           hideUploadProgress();
@@ -980,21 +1029,22 @@
 
       renameMedia(path, newName)
         .then(function () {
+          updateCardNamesInPlace(path, newName || path.split('/').pop());
           if (!newFile) {
-            updateCardNamesInPlace(path, newName || path.split('/').pop());
             closeFileEditModal();
+            window.AppToast.show(window.mediaMessages.nameSaved, { type: 'success' });
             return;
           }
           return uploadOne('/admin/media/replace-file', newFile, window.mediaMessages.fileReplacing, { path: path })
             .then(function () {
               hideUploadProgress();
               closeFileEditModal();
-              window.__reloadMediaTab('file');
+              window.__reloadMediaTab('file', window.mediaMessages.fileReplaced);
             });
         })
-        .catch(function () {
+        .catch(function (error) {
           hideUploadProgress();
-          window.showAdminNotice(window.mediaMessages.saveFailed);
+          window.showAdminNotice(error.message || window.mediaMessages.saveFailed);
         });
     });
 
@@ -1012,7 +1062,7 @@
               const titles = detail.downloads ? detail.downloads.map(function (d) { return d.title; }).join('\n') : '';
               throw new Error((detail.message || detail || window.mediaMessages.deleteFailed) + (titles ? '\n\n' + titles : ''));
             }
-            window.__reloadMediaTab(kind);
+            window.__reloadMediaTab(kind, window.mediaMessages.itemDeleted);
           })
           .catch(function (error) { window.showAdminNotice(error.message || window.mediaMessages.deleteFailed); });
       });

@@ -56,6 +56,7 @@ async def test_new_download_returns_to_content_list(admin_client):
             "file_type": "external",
             "external_url": "https://example.com/new.zip",
             "icon_type": "auto",
+            "submission_intent": "publish",
             "is_active": "true",
         },
     )

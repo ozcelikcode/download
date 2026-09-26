@@ -12,6 +12,9 @@
 - Erişilebilir ortak UI davranışları ve ortak toast bildirim sistemi.
 - Admin içerik tablosu sıralaması, etkin filtre etiketleri ve mobil kart sunumu.
 - Admin sağlık merkezi: kırık bağlantı, eksik yerel dosya, kullanılmayan medya, taslak, kategorisiz içerik ve depo kullanımı.
+- Admin Site Sağlığı ekranı: kritik teknik bulgular, içerik/SEO önerileri, canonical, sitemap, robots ve `APP_BASE_URL` uygunluğu; örnek kayıtlar admin düzenleme ekranlarına bağlanır.
+- Arama ve filtre sayfaları `noindex,follow` kullanır; canonical URL'ler filtre parametrelerini taşımaz. İndirme detayında kısa açıklama meta açıklamasında önceliklidir.
+- Dinamik `sitemap.xml` yalnız aktif yayınları ve kullanılan kategori/etiket sayfalarını içerir; `robots.txt` sitemap'i tanıtır ve admin/indirme uçlarını dışarıda tutar.
 
 ## Remaining UI roadmap
 
@@ -20,4 +23,4 @@
 
 ## Verification
 
-Tam test paketi her orta ölçekli parçadan sonra çalıştırılır. Güncel test sayısı teslim notunda belirtilmelidir.
+Tam test paketi her orta ölçekli parçadan sonra çalıştırılır. Site Sağlığı/SEO çalışması sonrası tam paket: **188 geçti**; `pip check` ve `git diff --check` temiz.

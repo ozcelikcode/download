@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% set resolved_title = ((page_title ~ ' — ') if page_title else '') ~ site_name %}
   {% set resolved_description = meta_description if meta_description is defined and meta_description else t(request, 'meta_default') %}
+  {% set resolved_canonical = canonical_url(request) %}
   <meta name="description" content="{{ resolved_description }}">
-  <link rel="canonical" href="{{ canonical_url(request) }}">
+  {% if noindex | default(false) %}<meta name="robots" content="noindex,follow">{% endif %}
+  {% if resolved_canonical %}<link rel="canonical" href="{{ resolved_canonical }}">{% endif %}
   <meta property="og:type" content="website">
   <meta property="og:locale" content="{{ 'en_US' if ui_language(request) == 'en' else 'tr_TR' }}">
   <meta property="og:site_name" content="{{ site_name }}">
   <meta property="og:title" content="{{ resolved_title }}">
   <meta property="og:description" content="{{ resolved_description }}">
-  <meta property="og:url" content="{{ canonical_url(request) }}">
+  {% if resolved_canonical %}<meta property="og:url" content="{{ resolved_canonical }}">{% endif %}
   <meta name="twitter:card" content="summary">
   <title>{% block title %}{% if page_title %}{{ page_title }} — {% endif %}{{ site_name }}{% endblock %}</title>
 

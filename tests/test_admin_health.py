@@ -82,6 +82,7 @@ async def test_admin_dashboard_renders_health_center(admin_client):
     assert 'href="/admin/downloads?status_filter=draft"' in response.text
     assert 'href="/admin/downloads?category_id=uncategorized"' in response.text
     assert "0.0 B" in response.text
+    assert 'href="/admin/site-health"' in response.text
 
 
 async def test_admin_uncategorized_health_link_filters_content(admin_client, db_session):

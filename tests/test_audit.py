@@ -49,7 +49,7 @@ async def test_deleted_entity_keeps_its_history(admin_client, db_session):
     assert log.entity_id == category.id
 
 
-@pytest.mark.parametrize("path", ["/admin/audit", "/admin/links"])
+@pytest.mark.parametrize("path", ["/admin/audit", "/admin/links", "/admin/site-health"])
 async def test_reports_require_admin(client, path):
     response = await client.get(path)
     assert response.status_code == 302

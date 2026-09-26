@@ -108,6 +108,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   <input type="hidden" id="draft-id" name="draft_id" value="{{ download.id if download and download.is_draft else '' }}">
   <input type="hidden" id="draft-token" name="draft_token" value="{{ draft_token }}">
+  <input type="hidden" id="submission-intent" name="submission_intent" value="save">
 
   <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
@@ -351,7 +352,14 @@
         </p>
       </div>
     </div>
-    <button id="application-save-button" type="submit" class="btn-primary py-2 px-5 w-full justify-center mt-4">
+    {% if not edit_mode or download.is_draft %}
+    <button id="application-publish-button" type="button"
+      class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium py-2 px-5 w-full justify-center mt-4 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+      <i data-lucide="send" class="w-4 h-4"></i>
+      <span>{{ t(request, 'publish') }}</span>
+    </button>
+    {% endif %}
+    <button id="application-save-button" type="submit" formnovalidate class="btn-primary py-2 px-5 w-full justify-center mt-2">
       <i data-lucide="save" class="w-4 h-4"></i>
       <span id="application-save-label">{% if edit_mode and not download.is_draft %}{{ t(request, 'save_changes') }}{% else %}{{ t(request, 'save_application') }}{% endif %}</span>
     </button>
@@ -465,16 +473,16 @@
     {# Dosya boyutu #}
     <div class="mt-4">
       <label for="f-size" class="form-label">{{ t(request, 'file_size') }}</label>
-      <div class="flex gap-2 w-full">
+      <div class="grid grid-cols-[minmax(0,1fr)_6rem] gap-2 w-full">
         <input id="f-size" name="file_size_value" type="number" min="0" step="any"
           value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
           placeholder="{{ t(request, 'example') }}: 50"
-          class="form-input min-w-0 flex-[0_0_90%]">
-        <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 flex-[0_0_10%]" title="Birim">
-          <option value="MB" title="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>M</option>
-          <option value="KB" title="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>K</option>
-          <option value="GB" title="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>G</option>
-          <option value="B" title="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
+          class="form-input min-w-0 w-full">
+        <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 w-full" title="Birim">
+          <option value="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>MB</option>
+          <option value="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>KB</option>
+          <option value="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>GB</option>
+          <option value="B" {% if file_size_unit is defined and file_size_unit == 'B' %}selected{% endif %}>B</option>
         </select>
       </div>
       <p class="form-hint">{{ t(request, 'optional') }}</p>
@@ -663,13 +671,16 @@
   document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('application-form');
     const saveButton = document.getElementById('application-save-button');
+    const publishButton = document.getElementById('application-publish-button');
     const saveLabel = document.getElementById('application-save-label');
+    const submissionIntent = document.getElementById('submission-intent');
     const statusText = document.getElementById('save-status');
     const statusDetail = document.getElementById('save-status-detail');
     const statusDot = document.getElementById('save-status-dot');
     const draftId = document.getElementById('draft-id');
     const draftToken = document.getElementById('draft-token');
     const autosaveEnabled = form && form.dataset.autosave === 'true';
+    const defaultSaveLabel = saveLabel ? saveLabel.textContent : '';
     let dirty = false;
     let revision = 0;
     let timer = null;
@@ -678,6 +689,16 @@
     let manualSaving = false;
 
     if (!form || !saveButton) return;
+
+    if (publishButton) {
+      publishButton.addEventListener('click', function () {
+        if (manualSaving || !form.reportValidity()) return;
+        submissionIntent.value = 'publish';
+        const activeToggle = form.querySelector('input[name="is_active"]');
+        if (activeToggle) activeToggle.checked = true;
+        form.requestSubmit();
+      });
+    }
 
     function setStatus(state, title, detail) {
       statusText.textContent = title;
@@ -794,15 +815,35 @@
 
     form.addEventListener('submit', async function (event) {
       event.preventDefault();
-      if (manualSaving || !form.reportValidity()) return;
+      const shouldPublish = submissionIntent.value === 'publish';
+      if (manualSaving || ((!autosaveEnabled || shouldPublish) && !form.reportValidity())) return;
       manualSaving = true;
       clearTimeout(timer);
       saveButton.disabled = true;
+      if (publishButton) publishButton.disabled = true;
       saveLabel.textContent = window.formMessages.saving;
       setStatus('saving', window.formMessages.saving, window.formMessages.processingFields);
 
       try {
         if (fileUploadInFlight) await fileUploadInFlight;
+        if (autosaveEnabled && !shouldPublish) {
+          if (dirty || !draftId.value) {
+            if (!dirty) {
+              dirty = true;
+              revision += 1;
+            }
+            await saveDraft(false);
+          } else {
+            setStatus('saved', window.formMessages.draftSaved, '');
+          }
+          manualSaving = false;
+          saveButton.disabled = false;
+          if (publishButton) publishButton.disabled = false;
+          saveLabel.textContent = window.formMessages.saved;
+          setTimeout(function () { saveLabel.textContent = defaultSaveLabel; }, 1400);
+          submissionIntent.value = 'save';
+          return;
+        }
         if (autosaveEnabled && dirty) await saveDraft(false);
         const response = await csrfFetch(form.action, {
           method: 'POST',
@@ -818,6 +859,8 @@
       } catch (error) {
         manualSaving = false;
         saveButton.disabled = false;
+        if (publishButton) publishButton.disabled = false;
+        submissionIntent.value = 'save';
         saveLabel.textContent = {{ t(request, 'save_again')|tojson }};
         setStatus('error', window.formMessages.saveFailed, error.message || window.formMessages.tryAgain);
         window.showAdminNotice(error.message || window.formMessages.contentSaveFailed);

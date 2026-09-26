@@ -65,6 +65,93 @@ class AdminHealthSummary(BaseModel):
         )
 
 
+class HealthItem(BaseModel):
+    """Site sağlığı bulgusunun admin içinde açılabilen tekil kaydı."""
+
+    title: str
+    href: str
+    detail: str | None = None
+
+
+class HealthFinding(BaseModel):
+    """Tek bir kontrolün sayısı ve örnek düzeltme hedefleri."""
+
+    key: str
+    severity: Literal["critical", "warning", "info"]
+    count: int = Field(ge=0)
+    href: str
+    items: list[HealthItem] = Field(default_factory=list)
+
+
+class HealthCheck(BaseModel):
+    """Site yapılandırması veya SEO altyapısı için durum kontrolü."""
+
+    key: str
+    status: Literal["ok", "info", "warning", "error"]
+    detail: str | None = None
+    href: str | None = None
+
+
+class AdminSiteHealth(BaseModel):
+    """Admin Site Sağlığı ekranının teknik ve SEO bulguları."""
+
+    summary: AdminHealthSummary
+    technical_findings: list[HealthFinding] = Field(default_factory=list)
+    seo_findings: list[HealthFinding] = Field(default_factory=list)
+    checks: list[HealthCheck] = Field(default_factory=list)
+
+    @property
+    def critical_count(self) -> int:
+        return (
+            sum(item.count for item in self.findings if item.severity == "critical")
+            + sum(
+                check.key == "base_url" and check.status == "error"
+                for check in self.checks
+            )
+        )
+
+    @property
+    def warning_count(self) -> int:
+        return (
+            sum(item.count for item in self.findings if item.severity == "warning")
+            + sum(
+                check.key == "base_url" and check.status == "warning"
+                for check in self.checks
+            )
+        )
+
+    @property
+    def info_count(self) -> int:
+        return (
+            sum(item.count for item in self.findings if item.severity == "info")
+            + sum(
+                check.key == "base_url" and check.status == "info"
+                for check in self.checks
+            )
+        )
+
+    @property
+    def findings(self) -> list[HealthFinding]:
+        return [*self.technical_findings, *self.seo_findings]
+
+    @property
+    def seo_warning_count(self) -> int:
+        return sum(
+            finding.count
+            for finding in self.seo_findings
+            if finding.severity == "warning"
+        )
+
+    @property
+    def configuration_attention_count(self) -> int:
+        return int(
+            any(
+                check.key == "base_url" and check.status in {"warning", "error"}
+                for check in self.checks
+            )
+        )
+
+
 # ===========================================================================
 # Category
 # ===========================================================================

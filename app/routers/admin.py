@@ -54,13 +54,14 @@ from fastapi import (
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app import crud
 from app.branding import SITE_ICON_COLORS
 from app.config import settings
 from app.content_security import normalize_navigation_url
 from app.database import AsyncSessionLocal
-from app.health import get_admin_health
+from app.health import get_admin_site_health
 from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
 from app.i18n import translate
 from app.link_checks import resolve_public_url
@@ -881,8 +882,9 @@ async def dashboard(
     recent_items, _ = await crud.get_downloads_paginated(
         session, page=1, page_size=5, include_inactive=True, pin_featured=False
     )
+
     stats = await crud.get_dashboard_stats(session)
-    health = await get_admin_health(session)
+    site_health = await get_admin_site_health(session)
     recent_activity = await crud.get_recent_audit_logs(session)
     flash_message = request.session.pop("flash_message", None)
 
@@ -892,10 +894,30 @@ async def dashboard(
             "request": request,
             "recent_items": recent_items,
             "stats": stats,
-            "health": health,
+            "health": site_health.summary,
+            "seo_warning_count": site_health.seo_warning_count,
+            "configuration_attention_count": site_health.configuration_attention_count,
             "recent_activity": recent_activity,
             "admin_user": _admin,
             "flash_message": flash_message,
+        },
+    )
+
+
+@router.get("/site-health", name="admin_site_health")
+async def site_health(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    report = await get_admin_site_health(session)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/site_health.html",
+        context={
+            "request": request,
+            "admin_user": _admin,
+            "site_health": report,
         },
     )
 
@@ -1081,12 +1103,19 @@ async def download_new_post(
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
+    submission_intent: str = Form("save"),
     is_featured: bool = Form(False),
     is_official_source: bool = Form(True),
     tag_ids: List[str] = Form(default_factory=list),
     upload_file: Optional[UploadFile] = File(None),
     icon_image_file: Optional[UploadFile] = File(None),
 ):
+    if submission_intent != "publish":
+        return JSONResponse(
+            {"ok": False, "message": "Yayınlamak için Yayınla düğmesini kullanın."},
+            status_code=409,
+        )
+
     # ── Dosya yükleme ────────────────────────────────────────────────────
     file_path: Optional[str] = _stored_download_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
@@ -1331,6 +1360,7 @@ async def download_edit_post(
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
+    submission_intent: str = Form("save"),
     is_featured: bool = Form(False),
     is_official_source: bool = Form(True),
     tag_ids: List[str] = Form(default_factory=list),
@@ -1368,7 +1398,8 @@ async def download_edit_post(
     tag_id_list = [int(t) for t in tag_ids if t and str(t).isdigit()]
 
     try:
-        if was_draft:
+        publishing_draft = was_draft and submission_intent == "publish"
+        if publishing_draft:
             effective_type = FileType(file_type) if file_type else download.file_type
             if not (title or "").strip():
                 raise ValueError("Başlık zorunludur.")
@@ -1393,8 +1424,8 @@ async def download_edit_post(
             os_compatibility=os_tags,
             category_id=cat_id,
             parent_id=par_id,
-            is_active=is_active,
-            is_draft=False,
+            is_active=False if was_draft and not publishing_draft else is_active,
+            is_draft=was_draft and not publishing_draft,
             is_featured=is_featured,
             is_official_source=is_official_source,
             tag_ids=tag_id_list,
@@ -1428,7 +1459,19 @@ async def download_edit_post(
             status_code=422,
         )
 
-    if was_draft:
+    if was_draft and not publishing_draft:
+        request.session["flash_message"] = translate(request, "draft_saved")
+        if _wants_json(request):
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "message": translate(request, "draft_saved"),
+                    "redirect_url": f"/admin/downloads/{download_id}/edit",
+                }
+            )
+        return _redirect(f"/admin/downloads/{download_id}/edit")
+
+    if publishing_draft:
         request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
         if _wants_json(request):
             return JSONResponse(
@@ -1527,6 +1570,7 @@ async def categories_view(
     categories = await crud.get_categories(session)
     counts = await crud.get_category_download_counts(session)
     flash_message = request.session.pop("flash_message", None)
+    flash_type = request.session.pop("flash_type", "success")
     return templates.TemplateResponse(
         request=request, name="admin/categories.html",
         context={
@@ -1535,25 +1579,42 @@ async def categories_view(
             "category_counts": counts,
             "admin_user": _admin,
             "flash_message": flash_message,
+            "flash_type": flash_type,
         },
     )
 
 
 @router.post("/categories", name="admin_category_create")
 async def category_create(
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     name: str = Form(...),
     description: Optional[str] = Form(None),
 ):
-    data = CategoryCreate(name=name, description=description or None)
-    await crud.create_category(session, data)
+    try:
+        data = CategoryCreate(name=name.strip(), description=description or None)
+        category = await crud.create_category(session, data)
+    except IntegrityError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "category_duplicate")
+    except ValueError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "category_invalid")
+    else:
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "category_added").format(
+            name=category.name
+        )
     return _redirect("/admin/categories")
 
 
 @router.post("/categories/{category_id}/edit", name="admin_category_edit")
 async def category_edit(
     category_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     name: str = Form(...),
@@ -1562,8 +1623,20 @@ async def category_edit(
     category = await crud.get_category_by_id(session, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Kategori bulunamadı.")
-    data = CategoryUpdate(name=name, description=description or None)
-    await crud.update_category(session, category, data)
+    try:
+        data = CategoryUpdate(name=name.strip(), description=description or None)
+        await crud.update_category(session, category, data)
+    except IntegrityError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "category_duplicate")
+    except ValueError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "category_invalid")
+    else:
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "category_updated")
     return _redirect("/admin/categories")
 
 
@@ -1583,8 +1656,10 @@ async def category_delete(
     try:
         moved = await crud.transfer_and_delete_categories(session, [category.id], target_category_id)
     except ValueError as exc:
+        request.session["flash_type"] = "error"
         request.session["flash_message"] = str(exc)
     else:
+        request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "category_deleted_transferred").format(count=moved)
     return _redirect("/admin/categories")
 
@@ -1600,8 +1675,10 @@ async def category_bulk_delete(
     try:
         moved = await crud.transfer_and_delete_categories(session, category_ids, target_category_id)
     except ValueError as exc:
+        request.session["flash_type"] = "error"
         request.session["flash_message"] = str(exc)
     else:
+        request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "categories_deleted_transferred").format(count=moved)
     return _redirect("/admin/categories")
 
@@ -1618,26 +1695,43 @@ async def tags_view(
 ):
     tags = await crud.get_tags(session)
     flash_message = request.session.pop("flash_message", None)
+    flash_type = request.session.pop("flash_type", "success")
     return templates.TemplateResponse(
         request=request, name="admin/tags.html",
-        context={"request": request, "tags": tags, "admin_user": _admin, "flash_message": flash_message},
+        context={"request": request, "tags": tags, "admin_user": _admin, "flash_message": flash_message, "flash_type": flash_type},
     )
 
 
 @router.post("/tags", name="admin_tag_create")
 async def tag_create(
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     name: str = Form(...),
 ):
-    data = TagCreate(name=name)
-    await crud.create_tag(session, data)
+    try:
+        data = TagCreate(name=name.strip())
+        tag = await crud.create_tag(session, data)
+    except IntegrityError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "tag_duplicate")
+    except ValueError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "tag_invalid")
+    else:
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "tag_added").format(
+            name=tag.name
+        )
     return _redirect("/admin/tags")
 
 
 @router.post("/tags/{tag_id}/edit", name="admin_tag_edit")
 async def tag_edit(
     tag_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     name: str = Form(...),
@@ -1646,23 +1740,43 @@ async def tag_edit(
     tag = await crud.get_tag_by_id(session, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag bulunamadı.")
-    tag.name = name
-    tag.slug = slugify(name, allow_unicode=False, separator="-")
-    await session.commit()
-    await session.refresh(tag)
+    try:
+        clean_name = name.strip()
+        TagCreate(name=clean_name)
+        tag.name = clean_name
+        tag.slug = slugify(clean_name, allow_unicode=False, separator="-")
+        await session.commit()
+        await session.refresh(tag)
+    except IntegrityError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "tag_duplicate")
+    except ValueError:
+        await session.rollback()
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "tag_invalid")
+    else:
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "tag_updated")
     return _redirect("/admin/tags")
 
 
 @router.post("/tags/{tag_id}/delete", name="admin_tag_delete")
 async def tag_delete(
     tag_id: int,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
     tag = await crud.get_tag_by_id(session, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag bulunamadı.")
+    tag_name = tag.name
     await crud.delete_tag(session, tag)
+    request.session["flash_type"] = "success"
+    request.session["flash_message"] = translate(request, "tag_deleted").format(
+        name=tag_name
+    )
     return _redirect("/admin/tags")
 
 
@@ -1676,9 +1790,13 @@ async def tag_bulk_delete(
     try:
         count = await crud.bulk_delete_tags(session, tag_ids)
     except ValueError as exc:
+        request.session["flash_type"] = "error"
         request.session["flash_message"] = str(exc)
     else:
-        request.session["flash_message"] = f"{count} etiket silindi."
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "tags_deleted").format(
+            count=count
+        )
     return _redirect("/admin/tags")
 
 

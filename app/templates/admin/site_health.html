@@ -1,0 +1,105 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'site_health') }}{% endblock %}
+
+{% macro finding_card(finding) %}
+<article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4">
+  <div class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ t(request, 'health_finding_' ~ finding.key) }}</h3>
+      <p class="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{{ t(request, 'health_help_' ~ finding.key) }}</p>
+    </div>
+    <span class="shrink-0 inline-flex min-w-8 justify-center px-2 py-1 text-xs font-semibold rounded-sm
+      {% if finding.severity == 'critical' %}bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400
+      {% elif finding.severity == 'warning' %}bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400
+      {% else %}bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400{% endif %}">{{ finding.count }}</span>
+  </div>
+  {% if finding.items %}
+  <ul class="mt-3 divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
+    {% for item in finding.items %}
+    <li class="py-2 flex items-start justify-between gap-3 text-xs">
+      <div class="min-w-0">
+        <a href="{{ item.href }}" class="block truncate font-medium text-blue-600 dark:text-blue-400 hover:underline">{{ item.title }}</a>
+        {% if item.detail %}<p class="mt-0.5 truncate text-slate-500 dark:text-slate-400">{{ item.detail }}</p>{% endif %}
+      </div>
+      <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden="true"></i>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <a href="{{ finding.href }}" class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+    {{ t(request, 'health_show_all') }} <i data-lucide="arrow-right" class="w-3 h-3" aria-hidden="true"></i>
+  </a>
+</article>
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <div class="breadcrumb mb-1"><a href="/admin">{{ t(request, 'dashboard') }}</a><span class="breadcrumb-sep">›</span><span class="text-slate-700 dark:text-slate-300">{{ t(request, 'site_health') }}</span></div>
+      <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'site_health') }}</h1>
+      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ t(request, 'site_health_help') }}</p>
+    </div>
+    <a href="/" target="_blank" rel="noopener" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'go_to_site') }}</a>
+  </header>
+
+  <section aria-labelledby="site-health-overview-title">
+    <div class="flex items-center justify-between gap-3 mb-3">
+      <h2 id="site-health-overview-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'site_health_overview') }}</h2>
+      <span class="text-xs text-slate-500 dark:text-slate-400">{{ tf(request, 'health_storage_summary', count=site_health.summary.private_file_count, size=site_health.summary.private_storage_bytes | human_size) }}</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {% for key, value, icon, chip_classes in [
+        ('health_critical', site_health.critical_count, 'triangle-alert', 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400'),
+        ('health_warning', site_health.warning_count, 'alert-circle', 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'),
+        ('health_info', site_health.info_count, 'lightbulb', 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400')
+      ] %}
+      <div class="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4">
+        <span class="flex h-9 w-9 items-center justify-center rounded-sm {{ chip_classes }}"><i data-lucide="{{ icon }}" class="w-4 h-4" aria-hidden="true"></i></span>
+        <div><p class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, key) }}</p><p class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ value }}</p></div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section aria-labelledby="technical-health-title" class="space-y-3">
+    <div class="flex items-center gap-2">
+      <i data-lucide="activity" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i>
+      <h2 id="technical-health-title" class="text-base font-semibold text-slate-800 dark:text-slate-200">{{ t(request, 'technical_health') }}</h2>
+    </div>
+    {% if site_health.technical_findings %}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">{% for finding in site_health.technical_findings %}{{ finding_card(finding) }}{% endfor %}</div>
+    {% else %}
+    <div class="flex items-center gap-2 border border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/10 rounded-sm px-4 py-3 text-sm text-green-800 dark:text-green-300"><i data-lucide="circle-check" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, 'health_no_technical') }}</div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="seo-health-title" class="space-y-3">
+    <div>
+      <div class="flex items-center gap-2"><i data-lucide="search-check" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i><h2 id="seo-health-title" class="text-base font-semibold text-slate-800 dark:text-slate-200">{{ t(request, 'seo_health') }}</h2></div>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'seo_health_help') }}</p>
+    </div>
+    {% if site_health.seo_findings %}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">{% for finding in site_health.seo_findings %}{{ finding_card(finding) }}{% endfor %}</div>
+    {% else %}
+    <div class="flex items-center gap-2 border border-green-200 dark:border-green-500/20 bg-green-50 dark:bg-green-500/10 rounded-sm px-4 py-3 text-sm text-green-800 dark:text-green-300"><i data-lucide="circle-check" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, 'health_no_seo') }}</div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="health-checks-title" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800"><h2 id="health-checks-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'health_checks') }}</h2></div>
+    <ul class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
+      {% for check in site_health.checks %}
+      <li class="flex items-start gap-3 p-4 {% if not loop.first and loop.index0 > 1 %}md:border-t md:border-slate-100 md:dark:border-slate-800{% endif %}">
+        <i data-lucide="{% if check.status == 'ok' %}circle-check{% elif check.status == 'error' %}circle-x{% elif check.status == 'warning' %}triangle-alert{% else %}info{% endif %}" class="mt-0.5 w-4 h-4 shrink-0 {% if check.status == 'ok' %}text-green-600 dark:text-green-400{% elif check.status == 'error' %}text-red-600 dark:text-red-400{% elif check.status == 'warning' %}text-amber-600 dark:text-amber-400{% else %}text-blue-600 dark:text-blue-400{% endif %}" aria-hidden="true"></i>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ t(request, 'health_check_' ~ check.key) }}</h3><span class="text-[11px] font-medium {% if check.status == 'ok' %}text-green-700 dark:text-green-400{% elif check.status == 'error' %}text-red-700 dark:text-red-400{% elif check.status == 'warning' %}text-amber-700 dark:text-amber-400{% else %}text-blue-700 dark:text-blue-400{% endif %}">{{ t(request, 'health_status_' ~ check.status) }}</span></div>
+          <p class="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{{ t(request, 'health_detail_' ~ (check.detail or check.key)) }}</p>
+          {% if check.href %}<a href="{{ check.href }}" {% if check.href in ['/sitemap.xml', '/robots.txt'] %}target="_blank" rel="noopener"{% endif %} class="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">{{ check.href }} <i data-lucide="arrow-up-right" class="w-3 h-3" aria-hidden="true"></i></a>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

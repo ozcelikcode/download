@@ -11,6 +11,7 @@
 ## Main paths
 
 - `app/routers/`: public, admin ve rapor rotaları
+- `app/health.py` ve `app/seo.py`: admin sağlık denetimleri ile ortak SEO adres doğrulaması
 - `app/templates/`: public/admin Jinja şablonları
 - `app/static/css/app.css`: ortak bileşen stilleri
 - `app/static/js/`: ortak tarayıcı davranışları
@@ -31,4 +32,4 @@ Model değişikliğinde Alembic migration üretilmeli. Python/JS sözdizimi, `pi
 
 ## Environment note
 
-Mevcut `.venv` bozuk Python 3.13 symlink'i içeriyor. Python 3.12 ile yeniden oluşturulmadan doğrudan kullanılamaz.
+`.venv` daha önce bozuk Python 3.13 symlink'i içeriyordu; Python 3.12 ile yeniden oluşturuldu. Bu turda testler `.venv/bin/pytest` ile çalıştırıldı.

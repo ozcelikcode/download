@@ -13,13 +13,18 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma
 - Ortak toast sistemi: public/admin layout, sunucu flash mesajları ve kopyalama geri bildirimleri.
 - Admin içerik listesi: yeni/popüler/alfabetik sıralama, kaldırılabilir etkin filtre etiketleri ve mobil kart görünümü; mobil seçimler var olan toplu işlem formuna bağlanır.
 - Admin etiket sayfasındaki döngü değişkeni çeviri yardımcısını gölgeleyip dolu listede 500 üretiyordu; değişken ayrıştırıldı ve regresyon testi eklendi.
-- Yeni indirme taslaklarında kısmi/geçersiz URL otomatik kaydedilir; yayınlama sırasında HTTP/HTTPS doğrulaması korunur.
+- Etiket ve kategori ekleme/düzenleme/silme işlemleri sağ üstte ortak başarı toast'ı gösterir; yinelenen/geçersiz adlar hata toast'ı verir. Medya arşivinde işlem sonrası yenileme toast'ı kaybettiriyordu; sonuç artık yenileme boyunca korunup listede gösterilir.
+- Yeni indirme taslaklarında kısmi/geçersiz URL otomatik kaydedilir; yalnız `Yayınla` taslağı aktif olarak kesinleştirir ve HTTP/HTTPS doğrulamasını uygular. `Uygulamayı kaydet` taslağı kaydeder, kullanıcıyı düzenleme ekranında tutar.
+- Dosya boyutu alanında birim seçicisi sabit genişlikte `MB/KB/GB/B` seçeneklerini gösterir; dar yüzde genişliğinden kaynaklanan taşma giderildi.
+- Admin'e ayrı **Site Sağlığı** ekranı eklendi: teknik sorunlar, SEO içerik önerileri ve canonical/sitemap/robots/site-adresi kontrolleri tek yerde gruplanır; ilk kayıtlar doğrudan düzenleme ekranına bağlanır.
+- `/sitemap.xml` yayınlanmış içerikleri ve kullanılan kategori/etiket sayfalarını listeler; `/robots.txt` admin ve indirme uçlarını dışarıda tutar. Arama/filtre varyantları `noindex` olur, canonical adresleri gereksiz filtre parametrelerini taşımaz.
+- İndirme detaylarında kısa açıklama varsa arama meta açıklaması olarak kullanılır. Site adresi tek yardımcıda doğrulanır; geçersiz değer sitemap/canonical üretimini bozmaz.
 
 ## Next UI work
 
-1. Sağlık merkezi kartlarının eksik dosya/kullanılmayan medya için tam filtrelenmiş hedeflere bağlanması.
+1. Yeni Site Sağlığı ekranını canlı ortam verisiyle gözden geçirip önerilen bulguların uygunluğunu doğrulamak.
 2. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
 
 ## Operational note
 
-`.venv` yanlışlıkla Git'e eklenmiş ve artık bulunmayan Python 3.13 yoluna bağlıydı; Git'ten çıkarıldı. Yerel geliştirme ortamı Python 3.12 ile yeniden kuruldu ve Git dışında tutuluyor. `make dev` reload izlemesi yalnızca `app/` ile sınırlı. Test/önbellek çıktıları ile indirilen Tailwind CLI temizlendi; test kaynakları ve uygulamanın servis ettiği derlenmiş CSS korundu. Eski yüklemeleri özel depoya taşıyan başlangıç göçü `.gitkeep` işaret dosyasını atlar. CSS derleme aracı gerektiğinde `make tailwind-cli` ile yeniden indirilir.
+`.venv` daha önce bulunmayan Python 3.13 yoluna bağlıydı; Git'ten çıkarıldı ve geliştirme ortamı Python 3.12 ile yeniden kurularak Git dışında tutuldu. `make dev` reload izlemesi yalnızca `app/` ile sınırlı. Test/önbellek çıktıları ve derleme sonrası Tailwind CLI temiz tutulur; uygulamanın servis ettiği derlenmiş CSS korunur. Eski yüklemeleri özel depoya taşıyan başlangıç göçü `.gitkeep` işaret dosyasını atlar. CSS derleme aracı gerektiğinde `make tailwind-cli` ile yeniden indirilir.

@@ -8,6 +8,7 @@ Kullanıcıların bir uygulama/dosya için "indirme sayfası" arayışında kar�
 - Sürüm geçmişini (changelog benzeri) kullanıcıya şeffaf göstermek.
 - Kaynak şeffaflığı: dış linkse hangi domainden geldiğini (örn. `github.com`) açıkça belirtmek.
 - Basit spam/kötüye kullanım önleme (rate limiting) — karmaşık auth olmadan.
+- Site sahibine içerik/depo sorunlarını ve arama görünürlüğü için SEO eksiklerini tek admin sağlık ekranında gösterme.
 
 ## How it should work
 - Ziyaretçi anasayfada arama + kategori/etiket filtreleriyle dosya bulur.

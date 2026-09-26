@@ -101,6 +101,7 @@ async def test_english_admin_pages_render_from_the_shared_setting(
     await crud.create_tag(db_session, TagCreate(name="Rendered tag"))
     pages = {
         "/admin": "Overview and site statistics",
+        "/admin/site-health": "Technical checks",
         "/admin/downloads": "Search by title",
         "/admin/downloads/new": "Add New Download",
         "/admin/categories": "New Category",

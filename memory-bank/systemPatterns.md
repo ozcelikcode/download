@@ -21,6 +21,8 @@
 - Yüklemeler boyut ve gerçek içerik türü bakımından doğrulanır; yazma işlemleri geçici dosya üzerinden atomik yapılır.
 - Admin değişiklikleri `AuditLog`, dış bağlantı sonuçları `LinkCheck` ile izlenir.
 - Dashboard dosya sistemi kontrolleri `app/health.py` içinde, bloklayan tarama işi threadpool'da çalışır.
+- Admin Site Sağlığı teknik ve SEO bulgularını `app/health.py` içinde üretir; rapor şemaları `app/schemas.py` ile tiplenir. İlk kayıt örnekleri sınırlı sayıda gösterilir ve güvenli admin hedeflerine bağlanır.
+- `app/seo.py`, canonical, sitemap ve robots için `APP_BASE_URL` değerini tek noktada doğrular. Sitemap'e yalnız aktif yayınlar ile kullanılan kategori/etiket sayfaları eklenir; arama/filtre varyantları `noindex` durumundadır.
 
 ## UI patterns
 

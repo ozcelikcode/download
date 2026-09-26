@@ -121,6 +121,17 @@
         {{ t(request, 'dashboard') }}
       </a>
 
+      <a href="/admin/site-health"
+        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
+        {% if request.url.path == '/admin/site-health' %}
+          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
+        {% else %}
+          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
+        {% endif %}">
+        <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0"></i>
+        {{ t(request, 'site_health') }}
+      </a>
+
       <a href="/admin/downloads"
         class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
         {% if request.url.path == '/admin/downloads' %}
@@ -199,10 +210,10 @@
   {# ── Ana İçerik ──────────────────────────────────── #}
   <main id="main-content" tabindex="-1" class="flex-1 min-w-0 p-6">
     <nav class="sm:hidden flex flex-wrap gap-3 text-xs text-blue-600 dark:text-blue-400 mb-5" aria-label="{{ t(request, 'management') }}">
-      <a href="/admin">{{ t(request, 'dashboard') }}</a><a href="/admin/downloads">{{ t(request, 'contents') }}</a><a href="/admin/media">{{ t(request, 'media_archive') }}</a><a href="/admin/links">{{ t(request, 'link_report') }}</a><a href="/admin/audit">{{ t(request, 'audit_history') }}</a><a href="/admin/settings">{{ t(request, 'settings') }}</a>
+      <a href="/admin">{{ t(request, 'dashboard') }}</a><a href="/admin/site-health">{{ t(request, 'site_health') }}</a><a href="/admin/downloads">{{ t(request, 'contents') }}</a><a href="/admin/media">{{ t(request, 'media_archive') }}</a><a href="/admin/links">{{ t(request, 'link_report') }}</a><a href="/admin/audit">{{ t(request, 'audit_history') }}</a><a href="/admin/settings">{{ t(request, 'settings') }}</a>
     </nav>
     {% if flash_message %}
-    <div hidden data-toast-message="{{ flash_message }}" data-toast-type="success" data-toast-id="server-flash"></div>
+    <div hidden data-toast-message="{{ flash_message }}" data-toast-type="{{ flash_type|default('success') }}" data-toast-id="server-flash"></div>
     <noscript><div role="status" class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-sm text-sm text-emerald-800 dark:text-emerald-400"><span class="font-medium">{{ flash_message }}</span></div></noscript>
     {% endif %}
     {% block content %}{% endblock %}

@@ -17,6 +17,7 @@ from app.branding import resolve_accent_theme, resolve_icon_color
 from app.config import settings
 from app.content_security import safe_http_url, safe_navigation_url, sanitize_rich_text
 from app.models import FileType, IconType, SiteSettings
+from app.seo import inspect_public_base_url
 
 from app.security import csrf_token
 from app.i18n import set_ui_language, translate, translate_format, ui_language
@@ -171,10 +172,19 @@ templates.env.globals["qs_override"] = _qs_override
 
 
 def _canonical_url(request) -> str:
-    base_url = settings.app_base_url.rstrip("/")
+    base_url, _, _ = inspect_public_base_url()
+    if base_url is None:
+        return ""
     path = request.url.path
-    query = request.url.query
-    return f"{base_url}{path}{'?' + query if query else ''}"
+    # Filtreleme/arama parametreleri aynı içerik için gereksiz canonical
+    # varyantlar üretmesin. Gerçek liste sayfaları kendi page numarasını korur.
+    page = request.query_params.get("page")
+    try:
+        page_number = int(page or "")
+    except ValueError:
+        page_number = 0
+    page_suffix = f"?page={page_number}" if page_number > 1 else ""
+    return f"{base_url}{path}{page_suffix}"
 
 
 templates.env.globals["canonical_url"] = _canonical_url

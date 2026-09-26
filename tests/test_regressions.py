@@ -38,7 +38,12 @@ async def test_local_upload_preserves_existing_file(admin_client: AsyncClient):
     original.write_bytes(b"original")
     response = await admin_client.post(
         "/admin/downloads/new",
-        data={"title": "New file", "file_type": "local", "is_active": "true"},
+        data={
+            "title": "New file",
+            "file_type": "local",
+            "submission_intent": "publish",
+            "is_active": "true",
+        },
         files={"upload_file": ("setup.zip", b"new content", "application/zip")},
     )
     assert response.status_code == 302
@@ -49,7 +54,12 @@ async def test_local_upload_cannot_escape_upload_directory(admin_client: AsyncCl
     outside = settings.upload_path.parent / "outside.zip"
     response = await admin_client.post(
         "/admin/downloads/new",
-        data={"title": "Safe path", "file_type": "local", "is_active": "true"},
+        data={
+            "title": "Safe path",
+            "file_type": "local",
+            "submission_intent": "publish",
+            "is_active": "true",
+        },
         files={"upload_file": ("../outside.zip", b"content", "application/zip")},
     )
     assert response.status_code == 302
@@ -59,7 +69,11 @@ async def test_local_upload_cannot_escape_upload_directory(admin_client: AsyncCl
 @pytest.mark.parametrize("endpoint,field,data", [
     ("/admin/media/upload-file", "file", {}),
     ("/admin/upload/icon-image", "file", {}),
-    ("/admin/downloads/new", "upload_file", {"title": "Large", "file_type": "local"}),
+    (
+        "/admin/downloads/new",
+        "upload_file",
+        {"title": "Large", "file_type": "local", "submission_intent": "publish"},
+    ),
 ])
 async def test_oversized_upload_leaves_no_files(admin_client, monkeypatch, endpoint, field, data):
     monkeypatch.setattr(settings, "max_upload_size_mb", 0)

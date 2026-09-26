@@ -15,10 +15,14 @@ import logging
 import json
 import math
 import mimetypes
+from datetime import datetime
+from urllib.parse import quote
+from xml.etree import ElementTree
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
@@ -27,7 +31,8 @@ from app.checksums import file_checksum
 from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
-from app.models import FileType
+from app.models import Category, Download, DownloadTag, FileType, Tag
+from app.seo import inspect_public_base_url
 from app.schemas import PublicDownloadFilters
 from app.templating import templates
 
@@ -36,6 +41,85 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["public"])
 
 PAGE_SIZE = 12
+_SITEMAP_NAMESPACE = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+
+@router.get("/robots.txt", include_in_schema=False)
+async def robots_txt() -> PlainTextResponse:
+    """Arama motorlarına herkese açık sayfaları ve sitemap konumunu bildir."""
+    lines = ["User-agent: *", "Allow: /", "Disallow: /admin", "Disallow: /dl/"]
+    base_url, _, _ = inspect_public_base_url()
+    if base_url:
+        lines.append(f"Sitemap: {base_url}/sitemap.xml")
+    return PlainTextResponse("\n".join(lines) + "\n")
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
+    """Yalnızca herkese açık içerik ve gezinme sayfaları için sitemap üret."""
+    base_url, _, _ = inspect_public_base_url()
+    if not base_url:
+        return PlainTextResponse(
+            "APP_BASE_URL geçerli bir HTTP/HTTPS adresi olmalıdır.\n",
+            status_code=503,
+        )
+
+    root = ElementTree.Element("urlset", xmlns=_SITEMAP_NAMESPACE)
+
+    def add_url(path: str, last_modified: datetime | None = None) -> None:
+        url_node = ElementTree.SubElement(root, "url")
+        ElementTree.SubElement(url_node, "loc").text = f"{base_url}{path}"
+        if last_modified:
+            ElementTree.SubElement(url_node, "lastmod").text = last_modified.date().isoformat()
+
+    add_url("/")
+    categories = (
+        await session.execute(
+            select(Category.slug, Category.created_at)
+            .join(Download, Download.category_id == Category.id)
+            .where(
+                Download.parent_id.is_(None),
+                Download.is_active.is_(True),
+                Download.is_draft.is_(False),
+            )
+            .distinct()
+            .order_by(Category.slug)
+        )
+    ).all()
+    for category in categories:
+        add_url(f"/category/{quote(category.slug, safe='')}", category.created_at)
+
+    tags = (
+        await session.scalars(
+            select(Tag.slug)
+            .join(DownloadTag, DownloadTag.tag_id == Tag.id)
+            .join(Download, Download.id == DownloadTag.download_id)
+            .where(
+                Download.parent_id.is_(None),
+                Download.is_active.is_(True),
+                Download.is_draft.is_(False),
+            )
+            .distinct()
+            .order_by(Tag.slug)
+        )
+    ).all()
+    for slug in tags:
+        add_url(f"/tag/{quote(slug, safe='')}")
+
+    downloads = (
+        await session.execute(
+            select(Download.slug, Download.updated_at)
+            .where(Download.is_active.is_(True), Download.is_draft.is_(False))
+            .order_by(Download.slug)
+        )
+    ).all()
+    for download in downloads:
+        add_url(f"/download/{quote(download.slug, safe='')}", download.updated_at)
+
+    return Response(
+        content=ElementTree.tostring(root, encoding="utf-8", xml_declaration=True),
+        media_type="application/xml",
+    )
 
 
 def _public_list_filters(
@@ -141,6 +225,7 @@ async def index(
         "current_search": None,
         "page_title": translate(request, "all_downloads"),
         "meta_description": translate(request, "meta_default"),
+        "noindex": page > 1 or filters.is_active,
     }
     ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
@@ -174,6 +259,9 @@ async def category_view(
         sort=filters.sort,
     )
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
+    category_meta_description = (category.description or "").strip() or (
+        f"{category.name} {translate(request, 'category_meta')}"
+    )
 
     ctx = {
         "request": request,
@@ -186,7 +274,8 @@ async def category_view(
         "current_category": category,
         "current_search": None,
         "page_title": category.name,
-        "meta_description": category.description or f"{category.name} {translate(request, 'category_meta')}",
+        "meta_description": category_meta_description[:160],
+        "noindex": page > 1 or filters.is_active,
     }
     ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
@@ -229,7 +318,10 @@ async def search(
         "current_category": None,
         "current_search": q,
         "page_title": f'"{q}" {translate(request, "search_results")}' if q else translate(request, "search_page"),
-        "meta_description": f"{q} {translate(request, 'search_meta')}" if q else translate(request, "search_meta_default"),
+        "meta_description": (
+            f"{q} {translate(request, 'search_meta')}" if q else translate(request, "search_meta_default")
+        )[:160],
+        "noindex": True,
     }
     ctx.update(_filter_context(filters, q))
     ctx.update(await _sidebar_context(request, session))
@@ -277,6 +369,7 @@ async def tag_view(
         "current_search": None,
         "page_title": f"#{tag.name}",
         "meta_description": f"{tag.name} {translate(request, 'tag_meta')}",
+        "noindex": page > 1 or filters.is_active,
     }
     ctx.update(_filter_context(filters))
     ctx.update(await _sidebar_context(request, session))
@@ -309,7 +402,8 @@ async def detail(
         "download": download,
         "page_title": f"{download.title} {download.version or ''}".strip(),
         "meta_description": (
-            rich_text_to_plain_text(download.description)
+            (download.short_description or "").strip()
+            or rich_text_to_plain_text(download.description)
             or f"{download.title} — ücretsiz indir."
         )[:160],
         "current_category": download.category,
