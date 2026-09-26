@@ -2,7 +2,7 @@
 
 ## Current focus
 
-Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma şu anda UI kullanılabilirliği ve içerik keşfi geliştirmelerinde.
+Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Site Sağlığı/SEO bölümü; bulguları açıklayıp öneri sunacak ve ana sayfa SEO metinlerinin admin'den yönetilmesini sağlayacak şekilde genişletildi.
 
 ## Recently completed
 
@@ -19,10 +19,13 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Çalışma
 - Admin'e ayrı **Site Sağlığı** ekranı eklendi: teknik sorunlar, SEO içerik önerileri ve canonical/sitemap/robots/site-adresi kontrolleri tek yerde gruplanır; ilk kayıtlar doğrudan düzenleme ekranına bağlanır.
 - `/sitemap.xml` yayınlanmış içerikleri ve kullanılan kategori/etiket sayfalarını listeler; `/robots.txt` admin ve indirme uçlarını dışarıda tutar. Arama/filtre varyantları `noindex` olur, canonical adresleri gereksiz filtre parametrelerini taşımaz.
 - İndirme detaylarında kısa açıklama varsa arama meta açıklaması olarak kullanılır. Site adresi tek yardımcıda doğrulanır; geçersiz değer sitemap/canonical üretimini bozmaz.
+- Genel Ayarlar'a ana sayfa SEO başlığı ve meta açıklaması eklendi; değerler ana sayfanın `<title>`, meta description ve Open Graph açıklamasında kullanılır. Alanlar boşsa dil bazlı geçerli varsayılanlar korunur.
+- Site Sağlığı, eksik/uzun ana sayfa SEO metinlerini hata gibi göstermeden öneri olarak sınıflandırır; APP_BASE_URL yapılandırma hataları için çözüm adımı verir, ilgili ayar bağlantısını ve kritik/uyarı bulguları için görünür bir uyarı özeti sunar.
+- SEO formu karakter sınırlarını sunucuda doğrular; başarılı/kötü sonuçlar ortak toast ile bildirilir. İki nullable alanı ekleyen geriye uyumlu Alembic migration eklendi.
 
 ## Next UI work
 
-1. Yeni Site Sağlığı ekranını canlı ortam verisiyle gözden geçirip önerilen bulguların uygunluğunu doğrulamak.
+1. Site Sağlığı ekranını canlı ortam verisiyle gözden geçirip gerçek bulguların ve SEO önerilerinin uygunluğunu doğrulamak.
 2. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
 
 ## Operational note

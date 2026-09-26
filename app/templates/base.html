@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% set resolved_title = ((page_title ~ ' — ') if page_title else '') ~ site_name %}
+  {% set resolved_title = meta_title if meta_title is defined and meta_title else (((page_title ~ ' — ') if page_title else '') ~ site_name) %}
   {% set resolved_description = meta_description if meta_description is defined and meta_description else t(request, 'meta_default') %}
   {% set resolved_canonical = canonical_url(request) %}
   <meta name="description" content="{{ resolved_description }}">
@@ -16,7 +16,7 @@
   <meta property="og:description" content="{{ resolved_description }}">
   {% if resolved_canonical %}<meta property="og:url" content="{{ resolved_canonical }}">{% endif %}
   <meta name="twitter:card" content="summary">
-  <title>{% block title %}{% if page_title %}{{ page_title }} — {% endif %}{{ site_name }}{% endblock %}</title>
+  <title>{% block title %}{{ resolved_title }}{% endblock %}</title>
 
   {# Tema — FOUC önleyici (Tailwind'den önce çalışmalı) #}
   <script>

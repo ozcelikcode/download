@@ -80,6 +80,7 @@ class HealthFinding(BaseModel):
     severity: Literal["critical", "warning", "info"]
     count: int = Field(ge=0)
     href: str
+    recommendation_key: str | None = None
     items: list[HealthItem] = Field(default_factory=list)
 
 
@@ -89,6 +90,7 @@ class HealthCheck(BaseModel):
     key: str
     status: Literal["ok", "info", "warning", "error"]
     detail: str | None = None
+    recommendation_key: str | None = None
     href: str | None = None
 
 
@@ -150,6 +152,20 @@ class AdminSiteHealth(BaseModel):
                 for check in self.checks
             )
         )
+
+    @property
+    def action_target(self) -> str:
+        if any(
+            finding.severity in {"critical", "warning"}
+            for finding in self.technical_findings
+        ):
+            return "#technical-health-title"
+        if any(
+            finding.severity in {"critical", "warning"}
+            for finding in self.seo_findings
+        ):
+            return "#seo-health-title"
+        return "#health-checks-title"
 
 
 # ===========================================================================
@@ -264,6 +280,19 @@ class SiteSettingsUpdate(BaseModel):
     site_icon: str = Field(..., min_length=1, max_length=50)
     site_icon_color: str = Field(..., min_length=1, max_length=20)
     theme_color: str = Field("blue", min_length=1, max_length=20)
+
+
+class SeoSettingsUpdate(BaseModel):
+    seo_home_title: str | None = Field(None, max_length=100)
+    seo_meta_description: str | None = Field(None, max_length=320)
+
+    @field_validator("seo_home_title", "seo_meta_description", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
 
 
 class AppearanceSettingsUpdate(BaseModel):

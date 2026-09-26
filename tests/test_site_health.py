@@ -3,7 +3,7 @@ from __future__ import annotations
 from xml.etree import ElementTree
 
 from app.config import settings
-from app.models import Category, Download, FileType, LinkCheck, Tag
+from app.models import Category, Download, FileType, LinkCheck, SiteSettings, Tag
 
 
 async def test_site_health_page_groups_technical_and_seo_findings(admin_client, db_session):
@@ -57,7 +57,6 @@ async def test_site_health_page_groups_technical_and_seo_findings(admin_client, 
     await db_session.commit()
 
     response = await admin_client.get("/admin/site-health")
-
     assert response.status_code == 200
     assert "Site Sağlığı" in response.text
     assert "Teknik Sağlık" in response.text
@@ -69,6 +68,75 @@ async def test_site_health_page_groups_technical_and_seo_findings(admin_client, 
     assert "/admin/downloads/1/edit" in response.text
     assert "/sitemap.xml" in response.text
     assert "/robots.txt" in response.text
+
+
+async def test_site_health_recommends_homepage_seo_metadata(admin_client):
+    response = await admin_client.get("/admin/site-health")
+
+    assert response.status_code == 200
+    assert "Ana sayfa SEO alanları kişiselleştirilmemiş" in response.text
+    assert "Mevcut varsayılan metinler çalışmaya devam eder" in response.text
+    assert "/admin/settings/general#seo-settings" in response.text
+
+
+async def test_site_health_flags_long_homepage_metadata(admin_client, db_session):
+    db_session.add(SiteSettings(
+        seo_home_title="Uzun başlık " * 7,
+        seo_meta_description="Örnek açıklama. " * 14,
+    ))
+    await db_session.commit()
+
+    response = await admin_client.get("/admin/site-health")
+
+    assert response.status_code == 200
+    assert "Ana sayfa SEO başlığı uzun" in response.text
+    assert "Ana sayfa meta açıklaması uzun" in response.text
+    assert "Özgün ve sayfayı doğru anlatan bir özete odaklanın" in response.text
+
+
+async def test_site_health_explains_invalid_public_base_url(
+    admin_client, monkeypatch
+):
+    monkeypatch.setattr(settings, "app_base_url", "javascript:alert(1)")
+
+    response = await admin_client.get("/admin/site-health")
+
+    assert response.status_code == 200
+    assert "APP_BASE_URL geçerli bir HTTP/HTTPS kök adresi değil." in response.text
+    assert "APP_BASE_URL ortam değişkenini veya .env değerini geçerli HTTPS kök adresinizle değiştirip" in response.text
+    assert 'href="#health-checks-title"' in response.text
+
+
+async def test_manual_homepage_seo_settings_are_saved_and_used(admin_client, client):
+    response = await admin_client.post(
+        "/admin/settings/seo",
+        data={
+            "seo_home_title": "Özel Ana Sayfa Başlığı",
+            "seo_meta_description": "Sitemiz için arama sonuçlarında kullanılacak özel açıklama.",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/admin/settings/general#seo-settings"
+    homepage = await client.get("/")
+    assert "<title>Özel Ana Sayfa Başlığı</title>" in homepage.text
+    assert '<meta name="description" content="Sitemiz için arama sonuçlarında kullanılacak özel açıklama.">' in homepage.text
+    assert '<meta property="og:description" content="Sitemiz için arama sonuçlarında kullanılacak özel açıklama.">' in homepage.text
+
+
+async def test_invalid_homepage_seo_settings_notify_without_saving(admin_client):
+    response = await admin_client.post(
+        "/admin/settings/seo",
+        data={"seo_home_title": "Başlık " * 20, "seo_meta_description": "Geçerli açıklama."},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    settings_page = await admin_client.get("/admin/settings/general")
+    assert 'data-toast-type="error"' in settings_page.text
+    assert "SEO başlığı en fazla 100" in settings_page.text
+    assert 'value="" class="form-input"' in settings_page.text
 
 
 async def test_site_health_requires_admin(client):

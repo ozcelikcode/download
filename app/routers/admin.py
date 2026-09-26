@@ -85,6 +85,7 @@ from app.schemas import (
     MenuItemCreate,
     MenuItemUpdate,
     AppearanceSettingsUpdate,
+    SeoSettingsUpdate,
     SiteSettingsUpdate,
     TagCreate,
 )
@@ -1825,6 +1826,7 @@ async def settings_general_view(
 ):
     site_settings = await crud.get_site_settings(session)
     flash_message = request.session.pop("flash_message", None)
+    flash_type = request.session.pop("flash_type", "success")
     return templates.TemplateResponse(
         request=request, name="admin/settings_general.html",
         context={
@@ -1833,6 +1835,7 @@ async def settings_general_view(
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
+            "flash_type": flash_type,
             "page_title": "Ayarlar",
         },
     )
@@ -2024,6 +2027,29 @@ async def settings_branding_update(
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "branding_updated")
     return _redirect("/admin/settings/general")
+
+
+@router.post("/settings/seo", name="admin_settings_seo")
+async def settings_seo_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    seo_home_title: str = Form(""),
+    seo_meta_description: str = Form(""),
+):
+    try:
+        data = SeoSettingsUpdate(
+            seo_home_title=seo_home_title,
+            seo_meta_description=seo_meta_description,
+        )
+    except ValueError:
+        request.session["flash_type"] = "error"
+        request.session["flash_message"] = translate(request, "seo_settings_invalid")
+    else:
+        await crud.update_seo_settings(session, data)
+        request.session["flash_type"] = "success"
+        request.session["flash_message"] = translate(request, "seo_settings_updated")
+    return _redirect("/admin/settings/general#seo-settings")
 
 
 @router.post("/settings/language", name="admin_settings_language")

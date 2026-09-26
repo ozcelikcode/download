@@ -12,6 +12,7 @@
 
 - `app/routers/`: public, admin ve rapor rotaları
 - `app/health.py` ve `app/seo.py`: admin sağlık denetimleri ile ortak SEO adres doğrulaması
+- `app/models.py` / `app/routers/admin.py`: SiteSettings üzerinden admin tarafından yönetilen ana sayfa SEO başlığı ve meta açıklaması
 - `app/templates/`: public/admin Jinja şablonları
 - `app/static/css/app.css`: ortak bileşen stilleri
 - `app/static/js/`: ortak tarayıcı davranışları
@@ -29,6 +30,8 @@ pytest -q
 ```
 
 Model değişikliğinde Alembic migration üretilmeli. Python/JS sözdizimi, `pip check`, tam test paketi ve `git diff --check` teslim öncesi çalıştırılmalı.
+
+Ana sayfa SEO alanları `site_settings.seo_home_title` ve `site_settings.seo_meta_description` nullable sütunlarıdır; giriş uzunlukları sırasıyla 100 ve 320 karakterle sınırlanır. Sağlık ekranındaki 60/160 karakter kontrolleri yaklaşık editoryal eşiklerdir, sabit arama motoru sınırı olarak sunulmaz ve hata değil bilgi önerisi sayılır.
 
 ## Environment note
 

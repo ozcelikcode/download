@@ -31,7 +31,7 @@ from app.checksums import file_checksum
 from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
-from app.models import Category, Download, DownloadTag, FileType, Tag
+from app.models import Category, Download, DownloadTag, FileType, SiteSettings, Tag
 from app.seo import inspect_public_base_url
 from app.schemas import PublicDownloadFilters
 from app.templating import templates
@@ -157,11 +157,16 @@ def _private_download_file(value: str | None) -> Path | None:
 # Yardımcı: sidebar context (kategoriler + tag'lar her sayfada)
 # ---------------------------------------------------------------------------
 
-async def _sidebar_context(request: Request, session: AsyncSession) -> dict:
+async def _sidebar_context(
+    request: Request,
+    session: AsyncSession,
+    site_settings: SiteSettings | None = None,
+) -> dict:
     categories = await crud.get_categories_ordered(session)
     tags = await crud.get_tags_ordered(session)
     counts = await crud.get_category_download_counts(session)
-    site_settings = await crud.get_site_settings(session)
+    if site_settings is None:
+        site_settings = await crud.get_site_settings(session)
     menu_items = (await crud.get_menu_items(session, active_only=True, location="navbar"))[:site_settings.navbar_limit]
     footer_menu_items = (await crud.get_menu_items(session, active_only=True, location="footer"))[:site_settings.footer_limit]
     sidebar_block_order = [
@@ -211,6 +216,7 @@ async def index(
     featured, _ = await crud.get_downloads_paginated(
         session, page=1, page_size=6, featured_only=True
     )
+    site_settings = await crud.get_site_settings(session)
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
 
     ctx = {
@@ -224,11 +230,12 @@ async def index(
         "current_category": None,
         "current_search": None,
         "page_title": translate(request, "all_downloads"),
-        "meta_description": translate(request, "meta_default"),
+        "meta_title": site_settings.seo_home_title,
+        "meta_description": site_settings.seo_meta_description or translate(request, "meta_default"),
         "noindex": page > 1 or filters.is_active,
     }
     ctx.update(_filter_context(filters))
-    ctx.update(await _sidebar_context(request, session))
+    ctx.update(await _sidebar_context(request, session, site_settings))
     return templates.TemplateResponse(request=request, name="index.html", context=ctx)
 
 

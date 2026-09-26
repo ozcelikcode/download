@@ -161,6 +161,8 @@ class SiteSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Download Sitesi")
     site_language: Mapped[str] = mapped_column(String(2), nullable=False, default="tr")
+    seo_home_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    seo_meta_description: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
     site_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="download-cloud")
     site_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="blue")
     # Sitenin tüm vurgu bileşenlerinde kullanılan merkezi renk teması.

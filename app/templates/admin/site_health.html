@@ -7,6 +7,7 @@
     <div class="min-w-0">
       <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ t(request, 'health_finding_' ~ finding.key) }}</h3>
       <p class="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{{ t(request, 'health_help_' ~ finding.key) }}</p>
+      {% if finding.recommendation_key %}<p class="mt-2 text-xs leading-relaxed text-blue-700 dark:text-blue-300"><span class="font-semibold">{{ t(request, 'health_recommendation_label') }}:</span> {{ t(request, finding.recommendation_key) }}</p>{% endif %}
     </div>
     <span class="shrink-0 inline-flex min-w-8 justify-center px-2 py-1 text-xs font-semibold rounded-sm
       {% if finding.severity == 'critical' %}bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400
@@ -43,6 +44,13 @@
     <a href="/" target="_blank" rel="noopener" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'go_to_site') }}</a>
   </header>
 
+  {% if site_health.critical_count or site_health.warning_count %}
+  <div role="alert" class="flex flex-wrap items-center justify-between gap-3 rounded-sm border px-4 py-3 {% if site_health.critical_count %}border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300{% else %}border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300{% endif %}">
+    <div class="flex items-start gap-2 text-sm"><i data-lucide="{% if site_health.critical_count %}triangle-alert{% else %}info{% endif %}" class="mt-0.5 w-4 h-4 shrink-0" aria-hidden="true"></i><p>{{ tf(request, 'site_health_action_required', count=site_health.critical_count + site_health.warning_count) }}</p></div>
+    <a href="{{ site_health.action_target }}" class="text-xs font-semibold underline underline-offset-2">{{ t(request, 'health_review_findings') }}</a>
+  </div>
+  {% endif %}
+
   <section aria-labelledby="site-health-overview-title">
     <div class="flex items-center justify-between gap-3 mb-3">
       <h2 id="site-health-overview-title" class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'site_health_overview') }}</h2>
@@ -77,7 +85,10 @@
   <section aria-labelledby="seo-health-title" class="space-y-3">
     <div>
       <div class="flex items-center gap-2"><i data-lucide="search-check" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i><h2 id="seo-health-title" class="text-base font-semibold text-slate-800 dark:text-slate-200">{{ t(request, 'seo_health') }}</h2></div>
-      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'seo_health_help') }}</p>
+      <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'seo_health_help') }}</p>
+        <a href="/admin/settings/general#seo-settings" class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">{{ t(request, 'seo_edit_settings') }} <i data-lucide="arrow-right" class="w-3 h-3" aria-hidden="true"></i></a>
+      </div>
     </div>
     {% if site_health.seo_findings %}
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">{% for finding in site_health.seo_findings %}{{ finding_card(finding) }}{% endfor %}</div>
@@ -95,6 +106,7 @@
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="text-sm font-medium text-slate-800 dark:text-slate-200">{{ t(request, 'health_check_' ~ check.key) }}</h3><span class="text-[11px] font-medium {% if check.status == 'ok' %}text-green-700 dark:text-green-400{% elif check.status == 'error' %}text-red-700 dark:text-red-400{% elif check.status == 'warning' %}text-amber-700 dark:text-amber-400{% else %}text-blue-700 dark:text-blue-400{% endif %}">{{ t(request, 'health_status_' ~ check.status) }}</span></div>
           <p class="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{{ t(request, 'health_detail_' ~ (check.detail or check.key)) }}</p>
+          {% if check.recommendation_key %}<p class="mt-2 text-xs leading-relaxed text-blue-700 dark:text-blue-300"><span class="font-semibold">{{ t(request, 'health_recommendation_label') }}:</span> {{ t(request, check.recommendation_key) }}</p>{% endif %}
           {% if check.href %}<a href="{{ check.href }}" {% if check.href in ['/sitemap.xml', '/robots.txt'] %}target="_blank" rel="noopener"{% endif %} class="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">{{ check.href }} <i data-lucide="arrow-up-right" class="w-3 h-3" aria-hidden="true"></i></a>{% endif %}
         </div>
       </li>

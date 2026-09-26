@@ -312,10 +312,46 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             ],
         ))
 
-    site_name = (
-        await session.scalar(select(SiteSettings.site_name).limit(1))
-        or settings.app_name
+    site_settings = await session.scalar(select(SiteSettings).limit(1))
+    site_name = site_settings.site_name if site_settings else settings.app_name
+    missing_home_metadata = sum(
+        not value
+        for value in (
+            (site_settings.seo_home_title or "").strip() if site_settings else "",
+            (site_settings.seo_meta_description or "").strip() if site_settings else "",
+        )
     )
+    if missing_home_metadata:
+        seo.append(HealthFinding(
+            key="seo_home_metadata_missing",
+            severity="info",
+            count=missing_home_metadata,
+            href="/admin/settings/general#seo-settings",
+            recommendation_key="health_recommendation_seo_home_missing",
+        ))
+
+    if site_settings and site_settings.seo_home_title:
+        title_length = len(site_settings.seo_home_title.strip())
+        if title_length > 60:
+            seo.append(HealthFinding(
+                key="seo_home_title_long",
+                severity="info",
+                count=1,
+                href="/admin/settings/general#seo-settings",
+                recommendation_key="health_recommendation_seo_home_title",
+            ))
+
+    if site_settings and site_settings.seo_meta_description:
+        description_length = len(site_settings.seo_meta_description.strip())
+        if description_length > 160:
+            seo.append(HealthFinding(
+                key="seo_home_description_long",
+                severity="info",
+                count=1,
+                href="/admin/settings/general#seo-settings",
+                recommendation_key="health_recommendation_seo_home_description",
+            ))
+
     long_title_rows = [
         row
         for row in public_downloads
@@ -389,8 +425,18 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
     _, base_status, base_detail = inspect_public_base_url()
     public_url_status = "ok" if base_status == "info" else base_status
     url_detail = base_detail if public_url_status != "ok" else None
+    base_url_recommendations = {
+        "base_url_invalid": "health_recommendation_base_url_invalid",
+        "base_url_development": "health_recommendation_base_url_development",
+        "base_url_http": "health_recommendation_base_url_http",
+    }
     checks = [
-        HealthCheck(key="metadata", status="ok", href="/"),
+        HealthCheck(
+            key="metadata",
+            status="ok" if not missing_home_metadata else "info",
+            detail="homepage_metadata_customized" if not missing_home_metadata else "homepage_metadata_defaults",
+            href="/",
+        ),
         HealthCheck(
             key="canonical", status=public_url_status, detail=url_detail, href="/"
         ),
@@ -400,7 +446,12 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
         HealthCheck(
             key="robots", status=public_url_status, detail=url_detail, href="/robots.txt"
         ),
-        HealthCheck(key="base_url", status=base_status, detail=base_detail),
+        HealthCheck(
+            key="base_url",
+            status=base_status,
+            detail=base_detail,
+            recommendation_key=base_url_recommendations.get(base_detail or ""),
+        ),
     ]
     return AdminSiteHealth(
         summary=summary,

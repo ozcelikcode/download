@@ -9,12 +9,14 @@ Kullanıcıların bir uygulama/dosya için "indirme sayfası" arayışında kar�
 - Kaynak şeffaflığı: dış linkse hangi domainden geldiğini (örn. `github.com`) açıkça belirtmek.
 - Basit spam/kötüye kullanım önleme (rate limiting) — karmaşık auth olmadan.
 - Site sahibine içerik/depo sorunlarını ve arama görünürlüğü için SEO eksiklerini tek admin sağlık ekranında gösterme.
+- Site sahibine ana sayfanın SEO başlığı ve açıklamasını yönetme, somut iyileştirme önerisi alma ve kritik sorunları görünür uyarıyla fark etme imkânı sağlama.
 
 ## How it should work
 - Ziyaretçi anasayfada arama + kategori/etiket filtreleriyle dosya bulur.
 - Detay sayfasında: boyut, sürüm, açıklama, ikon, kaynak domain, breadcrumb (`Anasayfa > Kategori > Dosya`), eski sürümler listesi.
 - `/dl/{slug}` indirmeyi tetikler, sayaç artar, log/rate-limit kaydı düşer.
 - Admin `/admin/login` ile giriş yapar, `/admin` panelinden dosya/kategori/etiket yönetir.
+- Genel Ayarlar'dan ana sayfa SEO metinlerini düzenler; Site Sağlığı hata/uyarıları, APP_BASE_URL gibi yapılandırmalar için çözüm adımları ve önerilen düzeltme bağlantılarını gösterir. Opsiyonel SEO metinleri girilmezse geçerli varsayılanlar kullanılmaya devam eder.
 
 ## UX goals
 - "Tıkla ve indir" — az tıklamayla hedefe ulaşmak, gereksiz adım yok.

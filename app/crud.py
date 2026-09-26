@@ -42,6 +42,7 @@ from app.schemas import (
     MenuItemCreate,
     MenuItemUpdate,
     SiteSettingsUpdate,
+    SeoSettingsUpdate,
     TagCreate,
 )
 
@@ -376,6 +377,18 @@ async def update_site_settings(
     await session.refresh(settings_row)
     logger.info("Site kimliği güncellendi: name=%r icon=%r color=%r",
                 settings_row.site_name, settings_row.site_icon, settings_row.site_icon_color)
+    return settings_row
+
+
+async def update_seo_settings(
+    session: AsyncSession, data: SeoSettingsUpdate
+) -> SiteSettings:
+    settings_row = await get_site_settings(session)
+    settings_row.seo_home_title = data.seo_home_title
+    settings_row.seo_meta_description = data.seo_meta_description
+    await session.commit()
+    await session.refresh(settings_row)
+    logger.info("SEO ana sayfa metaverileri güncellendi")
     return settings_row
 
 

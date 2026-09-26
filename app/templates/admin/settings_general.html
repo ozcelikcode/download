@@ -42,6 +42,30 @@
   </form>
 </div>
 
+<div id="seo-settings" class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+    <i data-lucide="search-check" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    {{ t(request, 'seo_settings') }}
+  </h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'seo_settings_help') }}</p>
+  <form method="post" action="/admin/settings/seo" class="space-y-4 max-w-2xl">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div>
+      <label for="seo-home-title" class="form-label">{{ t(request, 'seo_home_title') }}</label>
+      <input id="seo-home-title" name="seo_home_title" type="text" maxlength="100" value="{{ site_settings.seo_home_title or '' }}" class="form-input">
+      <p class="form-hint">{{ t(request, 'seo_home_title_help') }}</p>
+    </div>
+    <div>
+      <label for="seo-meta-description" class="form-label">{{ t(request, 'seo_meta_description') }}</label>
+      <textarea id="seo-meta-description" name="seo_meta_description" maxlength="320" rows="3" class="form-input">{{ site_settings.seo_meta_description or '' }}</textarea>
+      <p class="form-hint">{{ t(request, 'seo_meta_description_help') }}</p>
+    </div>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm">
+      <i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save_seo_settings') }}
+    </button>
+  </form>
+</div>
+
 <div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
     <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
