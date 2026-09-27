@@ -6,7 +6,7 @@
 <div class="flex items-center justify-between mb-6">
   <div>
     <div class="breadcrumb mb-1">
-      <a href="/admin">Admin</a>
+      <a href="/admin">{{ t(request, 'management') }}</a>
       <span class="breadcrumb-sep">›</span>
       <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'settings') }}</span>
     </div>
@@ -35,12 +35,12 @@
     <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="category">
       <label><span class="form-label">{{ t(request, 'category') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'select_category') }}</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></label>
-      <div class="flex gap-2"><select name="location" class="form-input w-28"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="folder-plus" class="w-4 h-4"></i>{{ t(request, 'import_category') }}</button></div>
+      <div class="flex gap-2"><select name="location" class="form-input w-auto"><option value="navbar">{{ t(request, 'top_menu') }}</option><option value="footer">{{ t(request, 'footer_menu') }}</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="folder-plus" class="w-4 h-4"></i>{{ t(request, 'import_category') }}</button></div>
     </form>
     <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="tag">
       <label><span class="form-label">{{ t(request, 'tags') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'tags') }}</option>{% for tag in tags %}<option value="{{ tag.id }}">#{{ tag.name }}</option>{% endfor %}</select></label>
-      <div class="flex gap-2"><select name="location" class="form-input w-28"><option value="navbar">Navbar</option><option value="footer">Footer</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>{{ t(request, 'import_tag') }}</button></div>
+      <div class="flex gap-2"><select name="location" class="form-input w-auto"><option value="navbar">{{ t(request, 'top_menu') }}</option><option value="footer">{{ t(request, 'footer_menu') }}</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>{{ t(request, 'import_tag') }}</button></div>
     </form>
   </div>
 </div>
@@ -286,12 +286,12 @@
       </div>
       <div>
         <label class="form-label">{{ t(request, 'label_en') }}</label>
-        <input id="menu-item-label-en" type="text" class="form-input" placeholder="Example: Blog">
+        <input id="menu-item-label-en" type="text" class="form-input" placeholder="{{ t(request, 'example') }}: Blog">
         <p class="form-hint">{{ t(request, 'english_label_fallback') }}</p>
       </div>
       <div>
         <label class="form-label">{{ t(request, 'link') }} <span class="text-red-500">*</span></label>
-        <input id="menu-item-url" type="text" required class="form-input" placeholder="/category/oyunlar veya https://…">
+        <input id="menu-item-url" type="text" required class="form-input" placeholder="{{ t(request, 'menu_url_placeholder') }}">
       </div>
       <div>
         <label class="form-label">{{ t(request, 'icon') }}</label>

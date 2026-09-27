@@ -73,12 +73,28 @@
   {% endif %}
 </div>
 
+{% if is_preview | default(false) %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 mb-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-sm" role="status">
+  <div class="flex items-start gap-2">
+    <i data-lucide="eye" class="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0"></i>
+    <div>
+      <p class="text-sm font-semibold text-blue-800 dark:text-blue-300">{{ t(request, 'draft_preview_title') }}</p>
+      <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">{{ t(request, 'draft_preview_body') }}</p>
+    </div>
+  </div>
+  <a href="/admin/downloads/{{ download.id }}/edit" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 rounded-sm hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors shrink-0">
+    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+    {{ t(request, 'back_to_edit') }}
+  </a>
+</div>
+{% endif %}
+
 {# Eski sürüm uyarısı #}
 {% if download.parent %}
 <div class="flex items-start gap-2 px-3 py-2.5 mb-5 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-sm text-sm text-amber-700 dark:text-amber-400">
   <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5 text-amber-500 dark:text-amber-400"></i>
   <span>
-    Bu, <a href="/download/{{ download.parent.slug }}" class="font-medium underline underline-offset-2">{{ download.parent.title }}</a>
+    {{ t(request, 'old_version_intro') }} <a href="/download/{{ download.parent.slug }}" class="font-medium underline underline-offset-2">{{ download.parent.title }}</a>
     {{ t(request, 'old_version') }}
     <a href="/download/{{ download.parent.slug }}" class="font-medium underline underline-offset-2">{{ t(request, 'latest_version') }}</a>
   </span>
@@ -90,11 +106,6 @@
    ================================================================ #}
 <div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
 
-  {# İndirme sayacı — kartın sağ üst köşesi #}
-  <span class="absolute top-3 right-4 text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
-    <i data-lucide="download" class="w-3 h-3"></i>
-    {{ download.download_count | thousands }} {{ t(request, 'downloaded_times') }}
-  </span>
 
   <div class="flex items-start gap-4">
 
@@ -114,9 +125,6 @@
         <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
           {{ download.title }}
         </h1>
-        {% if download.is_latest_version or download.version %}
-        <span class="version-badge text-sm">{{ t(request, 'latest_release') if download.is_latest_version else download.version }}</span>
-        {% endif %}
       </div>
 
       {# Kategori + etiketler #}
@@ -152,6 +160,12 @@
       <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
         {{ t(request, 'external_destination') if download.file_type.value == 'external' else t(request, 'direct_download') }}
       </p>
+      {% if is_preview | default(false) %}
+      <button type="button" disabled aria-disabled="true" class="btn-download py-2.5 px-6 text-base font-semibold opacity-70 cursor-not-allowed">
+        {% if download.file_type.value == 'external' %}<i data-lucide="external-link" class="w-4.5 h-4.5"></i>{{ t(request, 'open_link') }}{% else %}<i data-lucide="download" class="w-4.5 h-4.5"></i>{{ t(request, 'download_now') }}{% endif %}
+      </button>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{{ t(request, 'draft_download_disabled') }}</p>
+      {% else %}
       <a href="/dl/{{ download.slug }}"
         id="download-btn-main"
         {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
@@ -164,72 +178,14 @@
         {{ t(request, 'download_now') }}
         {% endif %}
       </a>
+      {% endif %}
     </div>
 
-    <div class="flex flex-col gap-1 text-sm min-w-0">
-    {% if download.file_type.value == 'external' and download.source_domain %}
-    <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-      <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      {{ t(request, 'source') }}:
-      <a href="{{ download.source_root_url }}" target="_blank" rel="noopener noreferrer"
-        class="text-blue-600 dark:text-blue-400 hover:underline underline-offset-2 font-medium">
-        {{ download.source_domain }}
-      </a>
-    </span>
-    {% endif %}
-
-    {% if download_filename %}
-    <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 min-w-0">
-      <i data-lucide="file-archive" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0"></i>
-      {{ t(request, 'filename') }}:
-      <strong class="text-slate-700 dark:text-slate-300 truncate" title="{{ download_filename }}">{{ download_filename }}</strong>
-    </span>
-    {% endif %}
-
-    {% if download.file_size_human %}
-    <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-      <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-      {{ t(request, 'file_size') }}: <strong class="text-slate-700 dark:text-slate-300">{{ download.file_size_human }}</strong>
-    </span>
-    {% endif %}
-    <span class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+    <p class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
       <i data-lucide="{{ 'external-link' if download.file_type.value == 'external' else 'server' }}" class="w-3.5 h-3.5"></i>
       {{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}
-    </span>
-    </div>
-
-    <div class="flex-1"></div>
-
-  {# Kaynak güvenilirlik göstergesi #}
-  {% if download.file_type.value == 'external' %}
-    {% if download.is_official_source %}
-    <span class="text-xs flex items-center gap-1 px-2 py-1 rounded-sm bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 text-green-700 dark:text-green-400">
-      <i data-lucide="badge-check" class="w-3.5 h-3.5"></i>
-      {{ t(request, 'official_site') }}
-    </span>
-    {% else %}
-    <span class="text-xs flex items-center gap-1 px-2 py-1 rounded-sm bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
-      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
-      {{ t(request, 'third_party') }}
-    </span>
-    {% endif %}
-  {% else %}
-  <span class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
-    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500 dark:text-green-400"></i>
-    {{ t(request, 'safe_download') }}
-  </span>
-    {% endif %}
+    </p>
   </div>
-
-  {% if download.os_compatibility %}
-  {% set cta_os_labels = {'windows':'Windows','macos':'macOS','linux':'Linux','android':'Android','ios':'iOS','web':'Web'} %}
-  <div class="flex items-center flex-wrap gap-1.5 mt-3 pt-3 border-t border-blue-100 dark:border-blue-500/20">
-    <span class="text-xs text-slate-400 dark:text-slate-500 mr-1">{{ t(request, 'compatibility') }}</span>
-    {% for os_name in download.os_compatibility.split(',') %}
-    <span class="inline-flex items-center px-2 py-0.5 text-xs rounded-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">{{ cta_os_labels.get(os_name|trim, os_name|trim) }}</span>
-    {% endfor %}
-  </div>
-  {% endif %}
 </div>
 
 {# ================================================================
@@ -242,6 +198,13 @@
   </h2>
 
   <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+
+    {% if download_filename %}
+    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800 sm:col-span-2">
+      <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'filename') }}</dt>
+      <dd class="font-medium text-slate-700 dark:text-slate-300 truncate" title="{{ download_filename }}">{{ download_filename }}</dd>
+    </div>
+    {% endif %}
 
     {% if download.is_latest_version or download.version %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
@@ -434,6 +397,14 @@
 {% endif %}
 
 <div class="h-16 sm:hidden" aria-hidden="true"></div>
+{% if is_preview | default(false) %}
+<div class="sm:hidden fixed inset-x-0 bottom-0 z-30 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+  <button type="button" disabled aria-disabled="true" class="btn-download w-full justify-center py-2.5 text-sm font-semibold opacity-70 cursor-not-allowed">
+    <i data-lucide="eye" class="w-4 h-4"></i>
+    {{ t(request, 'draft_download_disabled') }}
+  </button>
+</div>
+{% else %}
 <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 p-3 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
   <a href="/dl/{{ download.slug }}" {% if download.file_type.value == 'external' %}target="_blank" rel="noopener noreferrer"{% endif %}
     class="btn-download w-full justify-center py-2.5 text-sm font-semibold">
@@ -442,6 +413,7 @@
     {% if download.file_size_human %}<span class="font-normal opacity-80">· {{ download.file_size_human }}</span>{% endif %}
   </a>
 </div>
+{% endif %}
 
 {% endblock %}
 

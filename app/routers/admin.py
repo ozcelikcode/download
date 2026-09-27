@@ -52,7 +52,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -63,7 +63,7 @@ from app.content_security import normalize_navigation_url
 from app.database import AsyncSessionLocal
 from app.health import get_admin_site_health
 from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
-from app.i18n import translate
+from app.i18n import translate, system_message
 from app.link_checks import resolve_public_url
 from app.dependencies import (
     create_admin_session_token,
@@ -77,6 +77,7 @@ from app.dependencies import (
 )
 from app.models import FileType, IconType
 from app.media import ensure_unused, media_path, media_usage
+from app.routers.public import build_download_detail_context
 from app.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -120,6 +121,31 @@ _REMOTE_IMAGE_TYPES = {
 
 def _redirect(path: str) -> RedirectResponse:
     return RedirectResponse(url=path, status_code=status.HTTP_302_FOUND)
+
+
+def _download_form_error(request: Request, exc: Exception) -> str:
+    """Doğrulama ayrıntılarını ve gönderilen veriyi kullanıcı mesajından çıkar."""
+    if isinstance(exc, ValidationError):
+        labels = {
+            "title": "title", "version": "version",
+            "external_url": "external_url", "icon_image_url": "image_url",
+            "short_description": "short_description",
+        }
+        messages = []
+        for error in exc.errors(include_url=False, include_input=False):
+            message = system_message(request, error["msg"].removeprefix("Value error, "))
+            if error["type"] in {"string_too_long", "string_too_short"}:
+                limit_key = "max_length" if error["type"] == "string_too_long" else "min_length"
+                message = translate(request, error["type"]).format(limit=error["ctx"][limit_key])
+            field = str(error["loc"][0]) if error["loc"] else ""
+            if field in labels:
+                message = f"{translate(request, labels[field])}: {message}"
+            if message not in messages:
+                messages.append(message)
+        return " ".join(messages)
+    if isinstance(exc, ValueError):
+        return system_message(request, str(exc))
+    return translate(request, "content_save_failed")
 
 
 def _same_admin_page(request: Request, fallback: str) -> str:
@@ -393,9 +419,9 @@ _TYPE_CATEGORIES: dict[str, set] = {
     "audio": {"mp3", "wav"},
 }
 _TYPE_CATEGORY_LABELS: dict[str, str] = {
-    "archive": "Arşiv", "document": "Belge", "executable": "Windows (EXE)",
+    "archive": "archive", "document": "document", "executable": "Windows (EXE)",
     "apk": "Android (APK)", "mac": "macOS", "linux": "Linux",
-    "video": "Video", "audio": "Ses", "other": "Diğer",
+    "video": "video", "audio": "audio", "other": "other",
 }
 _MEDIA_PAGE_SIZES = [12, 24, 48, 96]
 
@@ -585,7 +611,7 @@ async def media_view(
             "files_total_all": len(files),
             "active_tab": active_tab,
             "page_sizes": _MEDIA_PAGE_SIZES,
-            "type_categories": _TYPE_CATEGORY_LABELS,
+            "type_categories": {key: translate(request, label) for key, label in _TYPE_CATEGORY_LABELS.items()},
             "files_type": files_type,
             "files_os": files_os,
             "current_params": current_params,
@@ -738,13 +764,13 @@ async def upload_icon_image_url(
 
 
 @router.get("/upload/progress/{token}", name="admin_upload_progress")
-async def upload_progress(token: str, _admin: str = Depends(require_admin)):
+async def upload_progress(token: str, request: Request, _admin: str = Depends(require_admin)):
     data = _icon_fetch_progress.get(token)
     if not data:
         raise HTTPException(status_code=404, detail="Bilinmeyen işlem.")
     if data.get("done"):
         _icon_fetch_progress.pop(token, None)
-    return data
+    return {**data, "error": system_message(request, data["error"]) if data.get("error") else None}
 
 
 @router.post("/upload/icon-image-delete", name="admin_upload_icon_image_delete")
@@ -1042,7 +1068,7 @@ async def download_bulk(
     try:
         count = await crud.bulk_update_downloads(session, download_ids, action)
     except ValueError as exc:
-        request.session["flash_message"] = str(exc)
+        request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_message"] = translate(request, "bulk_completed").format(count=count)
     return _redirect(_same_admin_page(request, "/admin/downloads"))
@@ -1081,6 +1107,27 @@ async def download_new_get(
     )
 
 
+@router.get("/downloads/{download_id}/preview", name="admin_download_preview")
+async def download_preview(
+    download_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    """Render a saved draft in the public detail layout, for admins only."""
+    download = await crud.get_download_detail_by_id(session, download_id)
+    if not download or not download.is_draft:
+        raise HTTPException(status_code=404, detail="Taslak bulunamadı.")
+
+    context = await build_download_detail_context(
+        request, session, download, is_preview=True
+    )
+    context["page_title"] = f"{download.title} — {translate(request, 'draft_preview_title')}"
+    return templates.TemplateResponse(
+        request=request, name="detail.html", context=context
+    )
+
+
 @router.post("/downloads/new", name="admin_download_new_post")
 async def download_new_post(
     request: Request,
@@ -1113,7 +1160,7 @@ async def download_new_post(
 ):
     if submission_intent != "publish":
         return JSONResponse(
-            {"ok": False, "message": "Yayınlamak için Yayınla düğmesini kullanın."},
+            {"ok": False, "message": translate(request, "publish_explicit")},
             status_code=409,
         )
 
@@ -1165,13 +1212,14 @@ async def download_new_post(
     except Exception as exc:
         await session.rollback()
         logger.error("Download oluşturma hatası: %s", exc)
+        error_message = _download_form_error(request, exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
         all_dl, _ = await crud.get_downloads_paginated(
             session, page=1, page_size=200, include_inactive=True
         )
         if _wants_json(request):
-            return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
+            return JSONResponse({"ok": False, "message": error_message}, status_code=422)
         return templates.TemplateResponse(
             request=request, name="admin/file_form.html",
             context={
@@ -1184,7 +1232,7 @@ async def download_new_post(
                 "draft_token": secrets.token_urlsafe(24),
                 "file_size_val": file_size_value,
                 "file_size_unit": file_size_unit,
-                "error": str(exc),
+                "error": error_message,
                 "admin_user": _admin,
             },
             status_code=422,
@@ -1193,7 +1241,7 @@ async def download_new_post(
     request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
     if _wants_json(request):
         return JSONResponse(
-            {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
+            {"ok": True, "message": translate(request, "saved_response"), "redirect_url": "/admin/downloads"}
         )
     return _redirect("/admin/downloads")
 
@@ -1208,7 +1256,7 @@ async def download_draft_autosave(
     draft_token = str(form.get("draft_token") or "").strip()
     if not draft_token or len(draft_token) > 64:
         return JSONResponse(
-            {"ok": False, "message": "Taslak anahtarı geçersiz."}, status_code=422
+            {"ok": False, "message": translate(request, "draft_key_invalid")}, status_code=422
         )
 
     draft = None
@@ -1217,7 +1265,7 @@ async def download_draft_autosave(
         draft = await crud.get_download_by_id(session, draft_id)
         if draft is not None and not draft.is_draft:
             return JSONResponse(
-                {"ok": False, "message": "Yayınlanmış içerik taslak olarak değiştirilemez."},
+                {"ok": False, "message": translate(request, "draft_published")},
                 status_code=409,
             )
     if draft is None:
@@ -1276,12 +1324,12 @@ async def download_draft_autosave(
         draft = await crud.update_download(session, draft, data)
     except (TypeError, ValueError) as exc:
         await session.rollback()
-        return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
+        return JSONResponse({"ok": False, "message": _download_form_error(request, exc)}, status_code=422)
     except Exception:
         await session.rollback()
         logger.exception("Taslak otomatik kaydedilemedi")
         return JSONResponse(
-            {"ok": False, "message": "Taslak kaydedilemedi."}, status_code=500
+            {"ok": False, "message": translate(request, "draft_failed")}, status_code=500
         )
     finally:
         session.info.pop("audit_suppressed", None)
@@ -1435,13 +1483,14 @@ async def download_edit_post(
     except Exception as exc:
         await session.rollback()
         logger.error("Download güncelleme hatası: %s", exc)
+        error_message = _download_form_error(request, exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
         all_dl, _ = await crud.get_downloads_paginated(
             session, page=1, page_size=200, include_inactive=True
         )
         if _wants_json(request):
-            return JSONResponse({"ok": False, "message": str(exc)}, status_code=422)
+            return JSONResponse({"ok": False, "message": error_message}, status_code=422)
         return templates.TemplateResponse(
             request=request, name="admin/file_form.html",
             context={
@@ -1454,7 +1503,7 @@ async def download_edit_post(
                 "draft_token": download.draft_token or secrets.token_urlsafe(24),
                 "file_size_val": file_size_value,
                 "file_size_unit": file_size_unit,
-                "error": str(exc),
+                "error": error_message,
                 "admin_user": _admin,
             },
             status_code=422,
@@ -1476,7 +1525,7 @@ async def download_edit_post(
         request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
         if _wants_json(request):
             return JSONResponse(
-                {"ok": True, "message": "Kaydedildi", "redirect_url": "/admin/downloads"}
+                {"ok": True, "message": translate(request, "saved_response"), "redirect_url": "/admin/downloads"}
             )
         return _redirect("/admin/downloads")
     request.session["flash_message"] = translate(request, "changes_saved")
@@ -1484,7 +1533,7 @@ async def download_edit_post(
         return JSONResponse(
             {
                 "ok": True,
-                "message": "Kaydedildi",
+                "message": translate(request, "saved_response"),
                 "redirect_url": f"/admin/downloads/{download_id}/edit",
             }
         )
@@ -1507,7 +1556,7 @@ async def download_delete(
         raise HTTPException(status_code=404, detail="Download bulunamadı.")
 
     await crud.delete_download(session, download)
-    request.session["flash_message"] = f'"{download.title}" silindi.'
+    request.session["flash_message"] = translate(request, "content_deleted").format(title=download.title)
     return _redirect(_same_admin_page(request, "/admin/downloads"))
 
 
@@ -1658,7 +1707,7 @@ async def category_delete(
         moved = await crud.transfer_and_delete_categories(session, [category.id], target_category_id)
     except ValueError as exc:
         request.session["flash_type"] = "error"
-        request.session["flash_message"] = str(exc)
+        request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "category_deleted_transferred").format(count=moved)
@@ -1677,7 +1726,7 @@ async def category_bulk_delete(
         moved = await crud.transfer_and_delete_categories(session, category_ids, target_category_id)
     except ValueError as exc:
         request.session["flash_type"] = "error"
-        request.session["flash_message"] = str(exc)
+        request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "categories_deleted_transferred").format(count=moved)
@@ -1792,7 +1841,7 @@ async def tag_bulk_delete(
         count = await crud.bulk_delete_tags(session, tag_ids)
     except ValueError as exc:
         request.session["flash_type"] = "error"
-        request.session["flash_message"] = str(exc)
+        request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "tags_deleted").format(
@@ -2079,7 +2128,7 @@ async def settings_audit_log_limit_update(
     try:
         await crud.update_audit_log_max_records(session, max_records)
     except ValueError as exc:
-        request.session["flash_message"] = str(exc)
+        request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_message"] = translate(request, "audit_limit_updated")
     return _redirect("/admin/settings/general")

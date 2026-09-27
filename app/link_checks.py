@@ -1,18 +1,79 @@
 """Dış indirme bağlantılarını dosyayı indirmeden ve özel ağlara erişmeden kontrol eder."""
 
 import ipaddress
+import logging
 import socket
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 import anyio
 import httpx
 from pydantic import BaseModel
+from sqlalchemy import literal, select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import AsyncSessionLocal
+from app.models import Download, FileType, LinkCheck
+
+logger = logging.getLogger(__name__)
+_click_checks_in_flight: set[int] = set()
+CLICK_CHECK_INTERVAL = timedelta(hours=1)
+MAX_CLICK_CHECKS = 4
 
 
 class LinkResult(BaseModel):
     status: str
     http_status: int | None = None
     message: str
+
+
+async def save_link_result(
+    session: AsyncSession, download_id: int, url: str,
+    result: LinkResult, started_at: datetime,
+) -> None:
+    """Silinen/değiştirilen bağlantıyı ve daha yeni kontrolü atomik olarak koru."""
+    values = {"url": url, **result.model_dump(), "checked_at": datetime.now(timezone.utc)}
+    source = select(literal(download_id), *(literal(value) for value in values.values())).where(
+        select(Download.id).where(
+            Download.id == download_id, Download.external_url == url,
+            Download.file_type == FileType.external,
+        ).exists()
+    )
+    statement = insert(LinkCheck).from_select(["download_id", *values], source)
+    await session.execute(statement.on_conflict_do_update(
+        index_elements=[LinkCheck.download_id], set_=values,
+        where=LinkCheck.checked_at <= started_at,
+    ))
+
+
+async def check_clicked_link(download_id: int, url: str) -> None:
+    """Yönlendirme gönderildikten sonra sınırlı, tekrarsız kontrol çalıştır."""
+    if download_id in _click_checks_in_flight or len(_click_checks_in_flight) >= MAX_CLICK_CHECKS:
+        return
+    _click_checks_in_flight.add(download_id)
+    try:
+        started_at = datetime.now(timezone.utc)
+        async with AsyncSessionLocal() as session:
+            current = await session.scalar(select(Download.external_url).where(
+                Download.id == download_id, Download.file_type == FileType.external,
+                Download.is_active.is_(True), Download.is_draft.is_(False),
+            ))
+            if current != url:
+                return
+            previous = await session.get(LinkCheck, download_id)
+            if previous and previous.url == url:
+                checked_at = previous.checked_at.replace(tzinfo=timezone.utc)
+                if started_at - checked_at < CLICK_CHECK_INTERVAL:
+                    return
+        result = await check_link(url)
+        async with AsyncSessionLocal() as session:
+            await save_link_result(session, download_id, url, result, started_at)
+            await session.commit()
+    except Exception:
+        logger.exception("Tıklama sonrası bağlantı kontrolü başarısız: download_id=%d", download_id)
+    finally:
+        _click_checks_in_flight.discard(download_id)
 
 
 async def resolve_public_url(url: httpx.URL) -> str:

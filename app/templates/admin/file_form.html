@@ -79,7 +79,7 @@
 <div class="flex items-center justify-between mb-6">
   <div>
     <div class="breadcrumb mb-1">
-      <a href="/admin">Admin</a>
+      <a href="/admin">{{ t(request, 'management') }}</a>
       <span class="breadcrumb-sep">›</span>
       <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}{{ t(request, 'edit') }}{% else %}{{ t(request, 'new_file') }}{% endif %}</span>
     </div>
@@ -137,7 +137,7 @@
       <div>
         <label for="f-version" class="form-label">{{ t(request, 'version') }}</label>
         <input id="f-version" name="version" type="text"
-          value="{{ download.version if download else '' }}"
+          value="{{ download.version if download and download.version and download.version != 'None' else '' }}"
           placeholder="{{ t(request, 'example') }}: v2.1.0"
           class="form-input" {% if download and download.is_latest_version %}disabled{% endif %}>
         <label id="latest-version-option" class="choice-card flex items-center gap-2 mt-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
@@ -189,9 +189,9 @@
 
         {# Görsel önizleme + Sil / Düzenle #}
         <div id="icon-preview-wrap"
-          class="flex items-center gap-3 {% if not (download and (download.icon_image_path or download.icon_image_url)) %}hidden{% endif %}">
+          class="flex items-center gap-3 {% if not (download and (download.icon_image_path or (download.icon_image_url | safe_http_url))) %}hidden{% endif %}">
           <img id="icon-preview-img"
-            src="{{ (download.icon_image_path or download.icon_image_url) if download else '' }}"
+            src="{{ (download.icon_image_path or (download.icon_image_url | safe_http_url)) if download else '' }}"
             alt="{{ t(request, 'image_preview') }}" class="w-16 h-16 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-1">
           <div class="min-w-0">
             <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'image_uploaded') }}</p>
@@ -218,7 +218,7 @@
 
         {# Görsel seçim alanı (dosya veya URL — her ikisi de sisteme yüklenir) #}
         <div id="icon-input-wrap"
-          class="space-y-3 {% if download and (download.icon_image_path or download.icon_image_url) %}hidden{% endif %}">
+          class="space-y-3 {% if download and (download.icon_image_path or (download.icon_image_url | safe_http_url)) %}hidden{% endif %}">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {# Görsel Dosyası Yükleme #}
             <div>
@@ -246,7 +246,7 @@
         <input type="hidden" id="f-icon-image-final-path" name="icon_image_final_path"
           value="{{ download.icon_image_path if download and download.icon_image_path else '' }}">
         <input type="hidden" id="f-icon-image-url-hidden" name="icon_image_url"
-          value="{{ download.icon_image_url if download and not download.icon_image_path else '' }}">
+          value="{{ download.icon_image_url if download and not download.icon_image_path and download.icon_image_url and download.icon_image_url != 'None' else '' }}">
         <input type="hidden" id="f-icon-image-cleared" name="icon_image_cleared" value="">
       </div>
 
@@ -353,8 +353,16 @@
       </div>
     </div>
     {% if not edit_mode or download.is_draft %}
+    <button id="application-preview-button" type="button" {% if not (edit_mode and download and download.is_draft) %}disabled{% endif %}
+      class="inline-flex items-center gap-2 w-full justify-center mt-4 py-2 px-5 border border-blue-200 dark:border-blue-500/30 rounded-sm text-blue-700 dark:text-blue-300 font-medium hover:bg-blue-50 dark:hover:bg-blue-500/10 disabled:border-slate-200 dark:disabled:border-slate-800 disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+      <i data-lucide="eye" class="w-4 h-4"></i>
+      {{ t(request, 'preview_draft') }}
+    </button>
+    <p id="application-preview-hint" class="text-[11px] text-slate-400 dark:text-slate-500 mt-1 text-center" {% if edit_mode and download and download.is_draft %}hidden{% endif %}>
+      {{ t(request, 'preview_save_first') }}
+    </p>
     <button id="application-publish-button" type="button"
-      class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium py-2 px-5 w-full justify-center mt-4 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+      class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium py-2 px-5 w-full justify-center mt-3 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
       <i data-lucide="send" class="w-4 h-4"></i>
       <span>{{ t(request, 'publish') }}</span>
     </button>
@@ -386,7 +394,7 @@
           class="choice-input">
         <div>
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'external_link') }}</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500">GitHub, resmi site vb.</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'source_examples') }}</p>
         </div>
       </label>
       <label id="type-local-label"
@@ -407,7 +415,7 @@
       <div>
         <label for="f-external-url" class="form-label">{{ t(request, 'external_url') }}</label>
         <input id="f-external-url" name="external_url" type="url"
-          value="{{ download.external_url if download else '' }}"
+          value="{{ download.external_url if download and download.external_url and download.external_url != 'None' else '' }}"
           placeholder="https://example.com/download.exe"
           class="form-input">
         <p class="form-hint">{{ t(request, 'source_url_help') }}</p>
@@ -478,7 +486,7 @@
           value="{{ file_size_val if file_size_val is defined and file_size_val is not none else '' }}"
           placeholder="{{ t(request, 'example') }}: 50"
           class="form-input min-w-0 w-full">
-        <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 w-full" title="Birim">
+        <select id="f-size-unit" name="file_size_unit" class="form-input min-w-0 w-full" title="{{ t(request, 'unit') }}">
           <option value="MB" {% if file_size_unit is defined and file_size_unit == 'MB' %}selected{% endif %}>MB</option>
           <option value="KB" {% if file_size_unit is defined and file_size_unit == 'KB' %}selected{% endif %}>KB</option>
           <option value="GB" {% if file_size_unit is defined and file_size_unit == 'GB' %}selected{% endif %}>GB</option>
@@ -672,6 +680,8 @@
     const form = document.getElementById('application-form');
     const saveButton = document.getElementById('application-save-button');
     const publishButton = document.getElementById('application-publish-button');
+    const previewButton = document.getElementById('application-preview-button');
+    const previewHint = document.getElementById('application-preview-hint');
     const saveLabel = document.getElementById('application-save-label');
     const submissionIntent = document.getElementById('submission-intent');
     const statusText = document.getElementById('save-status');
@@ -689,6 +699,25 @@
     let manualSaving = false;
 
     if (!form || !saveButton) return;
+
+    function syncPreviewControl() {
+      if (!previewButton) return;
+      const canPreview = Boolean(draftId.value) && !dirty;
+      previewButton.disabled = !canPreview;
+      if (previewHint) previewHint.hidden = canPreview;
+    }
+
+    syncPreviewControl();
+    if (previewButton) {
+      previewButton.addEventListener('click', function () {
+        if (previewButton.disabled || !draftId.value) return;
+        window.open(
+          '/admin/downloads/' + encodeURIComponent(draftId.value) + '/preview',
+          '_blank',
+          'noopener,noreferrer'
+        );
+      });
+    }
 
     if (publishButton) {
       publishButton.addEventListener('click', function () {
@@ -747,6 +776,7 @@
         form.action = data.edit_url;
         history.replaceState({}, '', data.edit_url);
         if (revision === startedAtRevision) dirty = false;
+        syncPreviewControl();
         setStatus('saved', window.formMessages.draftSaved, timeLabel(data.saved_at) + ' ' + window.formMessages.autosavedAt);
       }).catch(function (error) {
         setStatus('error', {{ t(request, 'autosave_failed')|tojson }}, error.message || {{ t(request, 'retry_scheduled')|tojson }});
@@ -765,6 +795,7 @@
       if (manualSaving || !autosaveEnabled) return;
       dirty = true;
       revision += 1;
+      syncPreviewControl();
       const isFile = event.target instanceof HTMLInputElement && event.target.type === 'file';
       setStatus(
         'dirty',
@@ -921,7 +952,7 @@
       var ext   = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
       var detected = EXT_ICON[ext];
       if (detected) {
-        fileText.textContent = '"' + fname + '" → ' + (ICON_LABELS[detected] || detected) + ' ikonu otomatik uygulanacak';
+        fileText.textContent = fname + ' → ' + {{ t(request, 'extension_detected')|tojson }}.replace('{extension}', ext).replace('{icon}', ICON_LABELS[detected] || detected);
         fileHint.classList.remove('hidden');
       } else {
         fileHint.classList.add('hidden');

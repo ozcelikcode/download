@@ -126,6 +126,32 @@ async def test_search_keeps_query_while_filtering(
     assert "source=external" in response.text
 
 
+async def test_empty_search_keeps_search_and_offers_contextual_actions(
+    client: AsyncClient,
+):
+    response = await client.get("/search?q=missing+tool&os=linux&source=external")
+
+    assert response.status_code == 200
+    assert 'id="empty-search" name="q" type="search" value="missing tool"' in response.text
+    assert 'name="os" value="linux"' in response.text
+    assert 'name="source" value="external"' in response.text
+    assert 'href="?q=missing%20tool"' in response.text
+    assert "No downloads match this search." not in response.text
+    assert "Bu aramayla eşleşen bir indirme bulunamadı." in response.text
+
+
+async def test_empty_filtered_category_clears_filters_without_leaving_category(
+    client: AsyncClient, db_session: AsyncSession
+):
+    category = await crud.create_category(db_session, CategoryCreate(name="Empty tools"))
+
+    response = await client.get(f"/category/{category.slug}?os=linux&source=local")
+
+    assert response.status_code == 200
+    assert "Bu filtre birleşimiyle eşleşen bir indirme bulunamadı." in response.text
+    assert f'href="/category/{category.slug}"' in response.text
+
+
 async def test_category_and_tag_pages_apply_the_same_filters(
     client: AsyncClient, db_session: AsyncSession
 ):

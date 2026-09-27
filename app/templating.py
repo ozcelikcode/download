@@ -20,13 +20,14 @@ from app.models import FileType, IconType, SiteSettings
 from app.seo import inspect_public_base_url
 
 from app.security import csrf_token
-from app.i18n import set_ui_language, translate, translate_format, ui_language
+from app.i18n import set_ui_language, translate, translate_format, ui_language, system_message
 
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["t"] = translate
 templates.env.globals["tf"] = translate_format
+templates.env.globals["system_message"] = system_message
 templates.env.globals["ui_language"] = ui_language
 templates.env.globals.update({
     "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",

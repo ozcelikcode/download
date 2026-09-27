@@ -1,7 +1,13 @@
+import re
+from html.parser import HTMLParser
+
+import pytest
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
+from app.schemas import DownloadCreate
 
 
 async def test_autosave_creates_and_updates_one_hidden_draft(
@@ -198,6 +204,10 @@ async def test_autosave_preserves_partial_url_but_publish_rejects_it(
     await db_session.refresh(draft)
 
     assert finalized.status_code == 422
+    assert finalized.json()["message"].startswith("Dış URL:")
+    assert "validation error" not in finalized.json()["message"]
+    assert "input_value" not in finalized.json()["message"]
+    assert "errors.pydantic.dev" not in finalized.json()["message"]
     assert draft.is_draft is True
     assert draft.external_url == "jjj"
 
@@ -271,7 +281,136 @@ async def test_draft_form_exposes_live_save_controls(admin_client: AsyncClient) 
     assert "(!autosaveEnabled || shouldPublish) && !form.reportValidity()" in response.text
     assert 'data-autosave="true"' in response.text
     assert "/admin/downloads/drafts/autosave" in response.text
+    preview_button = re.search(r'<button id="application-preview-button"[^>]*>', response.text)
+    assert preview_button is not None and 'type="button" disabled' in preview_button.group(0)
     assert "grid-cols-[minmax(0,1fr)_6rem]" in response.text
     assert ">MB</option>" in response.text
     assert ">KB</option>" in response.text
     assert ">GB</option>" in response.text
+
+
+async def test_saved_draft_can_be_previewed_only_by_admin(
+    admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
+) -> None:
+    autosave = await admin_client.post(
+        "/admin/downloads/drafts/autosave",
+        data={
+            "draft_token": "draft-token-preview",
+            "title": "Önizleme Taslağı",
+            "description": "Yayımlanmadan kontrol edilecek içerik.",
+            "file_type": "external",
+            "external_url": "https://example.com/preview.zip",
+            "icon_type": "auto",
+        },
+    )
+    draft_id = autosave.json()["draft_id"]
+    draft = await crud.get_download_by_id(db_session, draft_id)
+    assert draft is not None
+
+    preview_url = f"/admin/downloads/{draft_id}/preview"
+    anonymous = await client.get(preview_url, follow_redirects=False)
+    assert anonymous.status_code == 302
+    assert anonymous.headers["location"] == "/admin/login"
+
+    preview = await admin_client.get(preview_url)
+    edit_form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")
+    public_detail = await client.get(f"/download/{draft.slug}")
+    preview_button = re.search(
+        r'<button id="application-preview-button"[^>]*>', edit_form.text
+    )
+
+    assert preview.status_code == 200
+    assert preview_button is not None and 'type="button" disabled' not in preview_button.group(0)
+    assert preview.headers["cache-control"] == "no-store"
+    assert '<meta name="robots" content="noindex,nofollow">' in preview.text
+    assert 'rel="canonical"' not in preview.text
+    assert "Taslak önizlemesi" in preview.text
+    assert "Yayımlanmadan kontrol edilecek içerik." in preview.text
+    assert f'href="/admin/downloads/{draft_id}/edit"' in preview.text
+    assert f'href="/dl/{draft.slug}"' not in preview.text
+    assert public_detail.status_code == 404
+
+
+async def test_preview_rejects_published_download(
+    admin_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    published = await crud.create_download(
+        db_session,
+        DownloadCreate(
+            title="Yayımlanmış İçerik",
+            file_type="external",
+            external_url="https://example.com/published.zip",
+        ),
+    )
+
+    response = await admin_client.get(f"/admin/downloads/{published.id}/preview")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("empty_value", [None, "None"])
+async def test_empty_draft_fields_round_trip_without_breaking_publish(
+    admin_client: AsyncClient, db_session: AsyncSession, empty_value: str | None
+) -> None:
+    draft = await crud.create_download_draft(db_session, "empty-fields", "Boş alanlar")
+    draft.version = empty_value
+    draft.external_url = empty_value
+    draft.icon_image_url = empty_value
+    await db_session.commit()
+    draft_id = draft.id
+
+    class Inputs(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.values: dict[str, str | None] = {}
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            attributes = dict(attrs)
+            if tag == "input" and attributes.get("name"):
+                self.values[attributes["name"]] = attributes.get("value", "")
+
+    form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")
+    inputs = Inputs()
+    inputs.feed(form.text)
+    for name in ("version", "external_url", "icon_image_url"):
+        assert inputs.values[name] == ""
+    assert 'src="None"' not in form.text
+
+    published = await admin_client.post(
+        f"/admin/downloads/{draft_id}/edit",
+        data={
+            "title": "Boş alanlar", "file_type": "external", "icon_type": "auto",
+            "external_url": "https://example.com/download.zip",
+            "version": inputs.values["version"],
+            "icon_image_url": inputs.values["icon_image_url"],
+            "submission_intent": "publish", "is_active": "true",
+        },
+        headers={"Accept": "application/json"},
+    )
+    assert published.status_code == 200
+    await db_session.refresh(draft)
+    assert draft.is_draft is False
+    assert draft.version is None
+    assert draft.icon_image_url is None
+
+
+async def test_invalid_icon_url_reports_the_field_without_internal_details(
+    admin_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    draft = await crud.create_download_draft(db_session, "invalid-icon", "Deneme")
+    response = await admin_client.post(
+        f"/admin/downloads/{draft.id}/edit",
+        data={
+            "title": "Deneme", "file_type": "external", "icon_type": "auto",
+            "external_url": "https://example.com/download.zip",
+            "icon_image_url": "invalid-icon-url",
+            "submission_intent": "publish", "is_active": "true",
+        },
+        headers={"Accept": "application/json"},
+    )
+    assert response.status_code == 422
+    assert response.json()["message"] == (
+        "İkon URL: Yalnızca tam HTTP/HTTPS adresleri kullanılabilir."
+    )
+    await db_session.refresh(draft)
+    assert draft.is_draft is True

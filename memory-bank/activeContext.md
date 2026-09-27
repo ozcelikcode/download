@@ -25,6 +25,9 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Site Sağl
 
 ## Next UI work
 
+- Dil kontrolü: bağlantı raporu ve Site Sağlığı'ndaki geçmiş sistem açıklamaları görüntüleme sırasında TR/EN çevrilir; kullanıcı içerikleri korunur. Medya türü/sayfa boyutu filtreleri ve kayıt/yükleme hata mesajları ortak dil ayarını kullanır.
+- Detay ekranında uyumluluk, kaynak, sürüm ve sayaç gibi bilgiler Dosya Bilgileri bölümünde toplandı; ana indirme alanındaki tekrarlar kaldırıldı, mobil işlem düğmesi korundu.
+
 1. Site Sağlığı ekranını canlı ortam verisiyle gözden geçirip gerçek bulguların ve SEO önerilerinin uygunluğunu doğrulamak.
 2. Ancak ihtiyaç kesinleşirse migration gerektiren ekran görüntüsü galerisi ve zengin içerik alanları.
 

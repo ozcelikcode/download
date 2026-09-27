@@ -50,7 +50,7 @@ def isolated_branding_globals():
 
 
 @pytest_asyncio.fixture
-async def db_session(tmp_path) -> AsyncIterator[AsyncSession]:
+async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
     """Sıfırdan oluşturulmuş, izole bir test veritabanı sağlar."""
     db_path = tmp_path / "test.db"
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
@@ -64,6 +64,17 @@ async def db_session(tmp_path) -> AsyncIterator[AsyncSession]:
         await conn.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    from app import link_checks
+    from app.routers import public
+
+    monkeypatch.setattr(link_checks, "AsyncSessionLocal", session_factory)
+
+    async def skip_network_check(download_id: int, url: str) -> None:
+        pass
+
+    # Normal indirme testleri dış ağa çıkmaz; otomatik kontrol testleri
+    # gerçek görev fonksiyonunu kullanıp yalnız HTTP kontrolünü taklit eder.
+    monkeypatch.setattr(public, "check_clicked_link", skip_network_check)
 
     async def _override_get_db() -> AsyncIterator[AsyncSession]:
         async with session_factory() as session:

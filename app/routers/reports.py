@@ -8,12 +8,11 @@ import anyio
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import and_, func, select
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import ACTION_LABELS, ENTITY_LABELS, FIELD_LABELS
 from app.dependencies import get_db, require_admin
-from app.link_checks import check_link
+from app.link_checks import check_link, save_link_result
 from app.i18n import ui_language
 from app.models import AuditLog, Download, FileType, LinkCheck
 from app.security import require_csrf
@@ -51,20 +50,15 @@ async def _check_downloads(session: AsyncSession, items: list[tuple[int, str]]) 
 
     async def run(download_id: int, url: str) -> None:
         async with limiter:
+            started_at = datetime.now(timezone.utc)
             result = await check_link(url)
-            results.append((download_id, url, result))
+            results.append((download_id, url, result, started_at))
 
     async with anyio.create_task_group() as group:
         for download_id, url in items:
             group.start_soon(run, download_id, url)
-    for download_id, url, result in results:
-        # Kontrol sürerken silinen/değiştirilen kayda eski sonuç yazılmaz.
-        current = await session.scalar(select(Download.external_url).where(Download.id == download_id, Download.file_type == FileType.external))
-        if current != url:
-            continue
-        values = {"url": url, **result.model_dump(), "checked_at": datetime.now(timezone.utc)}
-        statement = insert(LinkCheck).values(download_id=download_id, **values)
-        await session.execute(statement.on_conflict_do_update(index_elements=[LinkCheck.download_id], set_=values))
+    for download_id, url, result, started_at in results:
+        await save_link_result(session, download_id, url, result, started_at)
     await session.commit()
 
 

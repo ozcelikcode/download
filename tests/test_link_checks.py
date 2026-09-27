@@ -9,6 +9,94 @@ from app.models import LinkCheck
 from app.schemas import DownloadCreate
 
 
+@pytest.mark.parametrize("status,code", [("ok", 200), ("broken", 404), ("restricted", 403)])
+async def test_click_updates_report_and_repeated_click_reuses_result(
+    client, admin_client, db_session, monkeypatch, status, code
+):
+    from app.routers import public
+    download = await crud.create_download(db_session, DownloadCreate(
+        title="Clicked link", external_url="https://example.com/download"
+    ))
+    calls = []
+
+    async def check(url):
+        calls.append(url)
+        return link_checks.LinkResult(status=status, http_status=code, message="Checked")
+
+    monkeypatch.setattr(public, "check_clicked_link", link_checks.check_clicked_link)
+    monkeypatch.setattr(link_checks, "check_link", check)
+    for _ in range(2):
+        response = await client.get(f"/dl/{download.slug}")
+        assert response.status_code == 302
+        assert response.headers["location"] == download.external_url
+    assert calls == [download.external_url]
+    result = await db_session.get(LinkCheck, download.id)
+    assert result.status == status
+    assert result.http_status == code
+    assert "Clicked link" in (await admin_client.get(f"/admin/links?state={status}")).text
+
+
+async def test_click_rechecks_expired_result_and_discards_changed_url(
+    db_session, monkeypatch
+):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import update
+    from app.models import Download
+
+    download = await crud.create_download(db_session, DownloadCreate(
+        title="Changed link", external_url="https://example.com/old"
+    ))
+    download_id = download.id
+    db_session.add(LinkCheck(
+        download_id=download_id, url=download.external_url, status="ok",
+        message="Old check", checked_at=datetime.now(timezone.utc) - timedelta(hours=2),
+    ))
+    await db_session.commit()
+    calls = []
+
+    async def check(url):
+        calls.append(url)
+        await db_session.execute(update(Download).where(Download.id == download_id).values(
+            external_url="https://example.com/new"
+        ))
+        await db_session.commit()
+        return link_checks.LinkResult(status="broken", http_status=404, message="Stale")
+
+    monkeypatch.setattr(link_checks, "check_link", check)
+    await link_checks.check_clicked_link(download_id, "https://example.com/old")
+    assert calls == ["https://example.com/old"]
+    result = await db_session.get(LinkCheck, download_id)
+    assert result.message == "Old check"
+
+
+async def test_concurrent_clicks_share_one_check_and_failures_release_slot(db_session, monkeypatch):
+    import asyncio
+
+    download = await crud.create_download(db_session, DownloadCreate(
+        title="Concurrent link", external_url="https://example.com/concurrent"
+    ))
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    calls = []
+
+    async def check(url):
+        calls.append(url)
+        entered.set()
+        await release.wait()
+        raise RuntimeError("Unexpected check failure")
+
+    monkeypatch.setattr(link_checks, "check_link", check)
+    first = asyncio.create_task(link_checks.check_clicked_link(download.id, download.external_url))
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=2)
+        await link_checks.check_clicked_link(download.id, download.external_url)
+        assert len(calls) == 1
+    finally:
+        release.set()
+        await first
+    assert download.id not in link_checks._click_checks_in_flight
+
+
 @pytest.mark.parametrize("address", ["127.0.0.1", "10.0.0.1", "169.254.169.254", "::1", "192.168.1.2"])
 async def test_private_network_destinations_are_blocked(monkeypatch, address):
     monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **kw: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 80))])

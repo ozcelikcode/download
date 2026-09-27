@@ -194,7 +194,7 @@
         <input type="text" name="images_q" value="{{ images.q }}" placeholder="{{ t(request, 'search_image_name') }}" class="form-input form-input-icon py-1.5 text-sm">
       </div>
 
-      <select name="images_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
+      <select name="images_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm w-auto">
         {% for size in page_sizes %}
         <option value="{{ size }}" {% if images.page_size == size %}selected{% endif %}>{{ size }} / {{ t(request, 'per_page') }}</option>
         {% endfor %}
@@ -369,23 +369,23 @@
         <input type="text" name="files_q" value="{{ files.q }}" placeholder="{{ t(request, 'search_file_name') }}" class="form-input form-input-icon py-1.5 text-sm">
       </div>
 
-      <select name="files_type" class="form-input py-1.5 text-sm flex-[0_0_140px] min-w-0">
+      <select name="files_type" class="form-input py-1.5 text-sm w-auto">
         <option value="">— {{ t(request, 'type') }} —</option>
         {% for key, label in type_categories.items() %}
         <option value="{{ key }}" {% if files_type == key %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
 
-      <select name="files_os" class="form-input py-1.5 text-sm flex-[0_0_130px] min-w-0">
+      <select name="files_os" class="form-input py-1.5 text-sm w-auto">
         <option value="">— {{ t(request, 'operating_system') }} —</option>
         {% for os_val, os_label in [('windows','Windows'), ('macos','macOS'), ('linux','Linux'), ('android','Android'), ('ios','iOS'), ('web','Web')] %}
         <option value="{{ os_val }}" {% if files_os == os_val %}selected{% endif %}>{{ os_label }}</option>
         {% endfor %}
       </select>
 
-      <select name="files_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm flex-[0_0_110px] min-w-0">
+      <select name="files_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm w-auto">
         {% for size in page_sizes %}
-        <option value="{{ size }}" {% if files.page_size == size %}selected{% endif %}>{{ size }} / sayfa</option>
+        <option value="{{ size }}" {% if files.page_size == size %}selected{% endif %}>{{ size }} / {{ t(request, 'per_page') }}</option>
         {% endfor %}
       </select>
 
@@ -393,7 +393,7 @@
         <i data-lucide="filter" class="w-3.5 h-3.5"></i> {{ t(request, 'filter') }}
       </button>
       {% if files.q or files_type or files_os %}
-      <a href="{{ qs_override(current_params, tab='files', files_q='', files_type='', files_os='') }}" title="Filtreleri temizle"
+      <a href="{{ qs_override(current_params, tab='files', files_q='', files_type='', files_os='') }}" title="{{ t(request, 'clear_all_filters') }}"
         class="shrink-0 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
         <i data-lucide="x" class="w-4 h-4"></i>
       </a>

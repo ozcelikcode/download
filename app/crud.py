@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
 
 from slugify import slugify
-from sqlalchemy import case, delete, func, literal, or_, select, text, update
+from sqlalchemy import Select, case, delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -794,11 +794,9 @@ async def get_recent_audit_logs(
     return list((await session.scalars(stmt)).all())
 
 
-async def get_download_by_slug(
-    session: AsyncSession, slug: str
-) -> Optional[Download]:
-    """Detay sayfası için — sürümler de yüklenir."""
-    stmt = (
+def _download_detail_query() -> Select[tuple[Download]]:
+    """Detay ve taslak önizlemesinde ihtiyaç duyulan ilişkileri birlikte yükle."""
+    return (
         select(Download)
         .options(
             selectinload(Download.category),
@@ -811,9 +809,27 @@ async def get_download_by_slug(
             ),
             selectinload(Download.version_history),
         )
-        .where(Download.slug == slug, Download.is_active == True)  # noqa: E712
+    )
+
+
+async def get_download_by_slug(
+    session: AsyncSession, slug: str
+) -> Optional[Download]:
+    """Yayımlanmış detay sayfası için içerik ve sürüm ilişkilerini yükle."""
+    stmt = _download_detail_query().where(
+        Download.slug == slug, Download.is_active == True  # noqa: E712
     )
     result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_download_detail_by_id(
+    session: AsyncSession, download_id: int
+) -> Optional[Download]:
+    """Yönetici önizlemesi için taslak dahil detay ilişkilerini yükle."""
+    result = await session.execute(
+        _download_detail_query().where(Download.id == download_id)
+    )
     return result.scalar_one_or_none()
 
 

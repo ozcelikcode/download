@@ -399,8 +399,11 @@ class DownloadUpdate(BaseModel):
         # yayınlanmış içerik oluşturulurken aynı sıkı doğrulama uygulanır.
         if self.is_draft is True:
             return self
-        self.external_url = normalize_http_url(self.external_url)
-        self.icon_image_url = normalize_http_url(self.icon_image_url)
+        for field, label in (("external_url", "Dış URL"), ("icon_image_url", "İkon URL")):
+            try:
+                setattr(self, field, normalize_http_url(getattr(self, field)))
+            except ValueError as exc:
+                raise ValueError(f"{label}: {exc}") from exc
         return self
 
 

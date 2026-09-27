@@ -13,6 +13,17 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_results": "Sonuç bulunamadı", "downloads": "indirme", "page": "Sayfa", "all_downloads": "Tüm İndirmeler",
         "featured": "Öne Çıkanlar", "download": "İndir", "results": "sonuç", "previous_page": "Önceki sayfa",
         "next_page": "Sonraki sayfa", "try_another_search": "Farklı bir arama terimi deneyin veya kategorilere göz atın.",
+        "no_search_matches": "Bu aramayla eşleşen bir indirme bulunamadı.", "no_filter_matches": "Bu filtre birleşimiyle eşleşen bir indirme bulunamadı.",
+        "no_section_downloads": "Bu bölümde henüz indirilebilir içerik yok.", "clear_all_filters": "Tüm filtreleri temizle",
+        "change_search": "Arama terimini değiştir", "browse_downloads": "Tüm indirmelere göz at",
+        "preview_draft": "Taslağı önizle", "preview_save_first": "Önizleme, taslak kaydedildikten sonra kullanılabilir.",
+        "image_url": "Görsel URL",
+        "unit": "Birim", "source_examples": "GitHub, resmî site vb.",
+        "menu_url_placeholder": "/category/oyunlar veya https://…",
+        "document": "Belge", "video": "Video", "audio": "Ses", "other": "Diğer",
+        "old_version_intro": "Bu,", "content_deleted": "\"{title}\" silindi.",
+        "draft_preview_title": "Taslak önizlemesi", "draft_preview_body": "Bu sayfa yalnızca yönetici oturumunda görünür. Taslak henüz yayımlanmadı.",
+        "back_to_edit": "Düzenlemeye dön", "draft_download_disabled": "İndirme bağlantısı yayınlandıktan sonra etkinleşir.",
         "home_return": "Ana Sayfaya Dön", "home": "Anasayfa", "actions": "Aksiyonlar", "edit_content": "İçeriği Düzenle",
         "delete_content": "İçeriği Sil", "delete_title": "İçeriği sil", "delete_warning": "kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misiniz?",
         "cancel": "Vazgeç", "yes_delete": "Evet, Sil", "old_version": "uygulamasının eski bir sürümüdür.",
@@ -49,9 +60,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_results": "No results found", "downloads": "downloads", "page": "Page", "all_downloads": "All Downloads",
         "featured": "Featured", "download": "Download", "results": "results", "previous_page": "Previous page",
         "next_page": "Next page", "try_another_search": "Try another search term or browse the categories.",
+        "no_search_matches": "No downloads match this search.", "no_filter_matches": "No downloads match this combination of filters.",
+        "no_section_downloads": "There are no downloads in this section yet.", "clear_all_filters": "Clear all filters",
+        "change_search": "Change search term", "browse_downloads": "Browse all downloads",
+        "preview_draft": "Preview draft", "preview_save_first": "Preview is available after the draft has been saved.",
+        "image_url": "Image URL",
+        "unit": "Unit", "source_examples": "GitHub, official website, etc.",
+        "menu_url_placeholder": "/category/games or https://…",
+        "document": "Document", "video": "Video", "audio": "Audio", "other": "Other",
+        "old_version_intro": "This is an older release of", "content_deleted": "\"{title}\" was deleted.",
+        "draft_preview_title": "Draft preview", "draft_preview_body": "This page is visible only to an administrator. The draft has not been published.",
+        "back_to_edit": "Back to editing", "draft_download_disabled": "The download link will be enabled after publishing.",
         "home_return": "Return to Home", "home": "Home", "actions": "Actions", "edit_content": "Edit Content",
         "delete_content": "Delete Content", "delete_title": "Delete content", "delete_warning": "will be permanently deleted. This action cannot be undone. Are you sure?",
-        "cancel": "Cancel", "yes_delete": "Yes, Delete", "old_version": "is an older version of this application.",
+        "cancel": "Cancel", "yes_delete": "Yes, Delete", "old_version": ".",
         "latest_version": "Go to latest version →", "downloaded_times": "downloads", "open_link": "Open Link",
         "download_now": "Download Now", "source": "Source", "file_size": "File size", "official_site": "Official Site",
         "third_party": "Third-party Site", "safe_download": "Safe download", "file_info": "File Information",
@@ -83,7 +105,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
     "tr": {
         "admin_title": "Admin Paneli", "go_to_site": "Siteye Git", "sign_out": "Çıkış",
-        "menu": "Menü", "management": "Yönetim", "dashboard": "Dashboard",
+        "menu": "Menü", "management": "Yönetim", "dashboard": "Genel Bakış",
         "contents": "İçerikler", "new_file": "Yeni Dosya", "media_archive": "Medya Arşivi",
         "link_report": "Bağlantı Raporu", "audit_history": "İşlem Geçmişi", "settings": "Ayarlar",
         "confirm_action": "İşlemi onayla", "continue": "Devam et", "notice": "Bilgi", "ok": "Tamam",
@@ -190,7 +212,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "successful_action": "Başarılı işlem", "error": "Hata", "critical": "Kritik", "show_changes": "Değişiklikleri göster",
         "field": "Alan", "before": "Önce", "after": "Sonra", "no_audit": "Henüz işlem kaydı yok. Yeni değişiklikler burada görünecek.",
         "previous": "Önceki", "next": "Sonraki", "audit_page_help": "Yönetim panelindeki değişiklikler ve hatalar. {count} kayıt. Parolalar ve gizli değerler saklanmaz.",
-        "link_report_help": "Dış indirme adreslerinin son kontrol sonuçları. {count} kayıt.", "check_page_links": "Bu sayfadaki bağlantıları kontrol et",
+        "link_report_help": "Dış indirme adreslerinin son kontrol sonuçları. {count} kayıt. Kullanıcı tıklamaları arka planda kontrol başlatır; aynı adres saatte en fazla bir kez yeniden kontrol edilir. Sonuçlar sunucunun erişim kontrolünü gösterir.", "check_page_links": "Bu sayfadaki bağlantıları kontrol et",
         "checking": "Kontrol ediliyor…", "link_check_help": "Dosyalar indirilmez. Erişim sınırlaması, bağlantının bozuk olduğu anlamına gelmez. En fazla 20 adres kontrol edilir; işlem yaklaşık iki dakika sürebilir.",
         "last_check": "Son kontrol (UTC)", "missing_address": "Adres eksik", "check": "Kontrol et", "no_links": "Bu filtreye uygun bağlantı yok.",
         "admin_account": "Admin Hesabı", "account_help": "Profil ikonu, oturum açma bilgileri ve oturum süresi.", "profile_icon": "Profil İkonu",
@@ -395,7 +417,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "successful_action": "Successful action", "error": "Error", "critical": "Critical", "show_changes": "Show changes",
         "field": "Field", "before": "Before", "after": "After", "no_audit": "No activity has been recorded yet. New changes will appear here.",
         "previous": "Previous", "next": "Next", "audit_page_help": "Admin changes and errors. {count} records. Passwords and secret values are not stored.",
-        "link_report_help": "Latest check results for external download URLs. {count} records.", "check_page_links": "Check links on this page",
+        "link_report_help": "Latest check results for external download URLs. {count} records. User clicks trigger background checks, at most once per hour for the same URL. Results reflect server-side accessibility checks.", "check_page_links": "Check links on this page",
         "checking": "Checking…", "link_check_help": "Files are not downloaded. Restricted access does not necessarily mean a link is broken. Up to 20 URLs are checked and the process may take about two minutes.",
         "last_check": "Last check (UTC)", "missing_address": "Missing URL", "check": "Check", "no_links": "No links match this filter.",
         "admin_account": "Admin Account", "account_help": "Profile icon, sign-in credentials, and session duration.", "profile_icon": "Profile Icon",
@@ -513,3 +535,87 @@ def translate(request: Request | None, key: str) -> str:
 
 def translate_format(request: Request | None, key: str, **values: object) -> str:
     return translate(request, key).format(**values)
+
+
+# Kalıcı raporlar ve alt katmanlardan gelen tanımlı sistem mesajları.
+# Kullanıcı içeriğine uygulanmaz; eski kayıtlar da dil değişimini izler.
+SYSTEM_MESSAGES: dict[str, tuple[str, str]] = {
+    "media_in_use": ("Dosya kullanıldığı için silinemedi. Önce ilgili içeriklerdeki bağlantıyı kaldırın.", "The file is in use. Remove its links from the related content before deleting it."),
+    "external_create_required": ("file_type='external' seçildiğinde external_url zorunludur.", "An external URL is required for external downloads."),
+    "local_create_required": ("file_type='local' seçildiğinde file_path zorunludur.", "A local file is required for local downloads."),
+    "latest_external_only": ("Güncel sürüm seçeneği yalnızca dış bağlantılarda kullanılabilir.", "The latest version option is only available for external links."),
+    "remote_image_type": ("Bağlantı bir görsel dosyası döndürmüyor.", "The URL does not return an image file."),
+    "public_url_only": ("Yalnızca standart HTTP/HTTPS adresleri kontrol edilebilir.", "Only standard HTTP/HTTPS URLs can be checked."),
+    "private_url_blocked": ("Yerel veya özel ağ adreslerine erişim engellendi.", "Access to local or private network addresses was blocked."),
+    "version_empty": ("Sürüm boş olamaz.", "Version cannot be empty."),
+    "link_ok": ("Bağlantı erişilebilir.", "Link is accessible."),
+    "link_loop": ("Yönlendirme döngüsü tespit edildi.", "A redirect loop was detected."),
+    "link_redirect_missing": ("Yönlendirme adresi eksik.", "The redirect destination is missing."),
+    "link_restricted": ("Hedef erişimi sınırlıyor; bağlantı tarayıcıda çalışabilir.", "The destination restricts access; the link may work in a browser."),
+    "link_missing": ("Hedef dosya veya sayfa bulunamadı.", "The destination file or page was not found."),
+    "link_unexpected": ("Hedef beklenmeyen bir yanıt verdi.", "The destination returned an unexpected response."),
+    "link_redirect_limit": ("Çok fazla yönlendirme.", "Too many redirects."),
+    "link_blocked": ("Adres geçersiz veya özel ağa erişim engellendi.", "The URL is invalid or access to a private network was blocked."),
+    "link_timeout": ("Bağlantı kontrolü zaman aşımına uğradı.", "The link check timed out."),
+    "link_network": ("DNS, TLS veya bağlantı hatası; daha sonra tekrar deneyin.", "DNS, TLS or connection error; please try again later."),
+    "url_characters": ("Adres boşluk, ters eğik çizgi veya kontrol karakteri içeremez.", "The URL cannot contain spaces, backslashes or control characters."),
+    "url_port": ("Geçersiz port numarası.", "Invalid port number."),
+    "url_http": ("Yalnızca tam HTTP/HTTPS adresleri kullanılabilir.", "Enter a complete HTTP or HTTPS URL."),
+    "url_credentials": ("Adres içinde kullanıcı bilgisi kullanılamaz.", "The URL cannot contain credentials."),
+    "menu_url_empty": ("Menü adresi boş olamaz.", "The menu URL cannot be empty."),
+    "menu_url_invalid": ("Geçersiz menü adresi.", "Invalid menu URL."),
+    "publish_explicit": ("Yayınlamak için Yayınla düğmesini kullanın.", "Use the Publish button to publish."),
+    "draft_key_invalid": ("Taslak anahtarı geçersiz.", "The draft key is invalid."),
+    "draft_published": ("Yayınlanmış içerik taslak olarak değiştirilemez.", "Published content cannot be changed into a draft."),
+    "draft_failed": ("Taslak kaydedilemedi.", "The draft could not be saved."),
+    "title_required": ("Başlık zorunludur.", "A title is required."),
+    "external_required": ("Dış bağlantı zorunludur.", "An external URL is required."),
+    "local_required": ("Lokal dosya zorunludur.", "A local file is required."),
+    "required_category": ("Zorunlu kategori silinemez.", "The required category cannot be deleted."),
+    "category_target_same": ("Silinecek kategori ve aktarım hedefi farklı olmalıdır.", "The deleted category and transfer destination must be different."),
+    "category_target_missing": ("Aktarım hedefi bulunamadı.", "The transfer destination was not found."),
+    "category_delete_missing": ("Silinecek kategorilerden biri bulunamadı.", "One of the categories to delete was not found."),
+    "select_tag": ("En az bir etiket seçin.", "Select at least one tag."),
+    "select_content": ("En az bir içerik seçin.", "Select at least one item."),
+    "incomplete_draft": ("Eksik taslaklar düzenlenmeden yayınlanamaz.", "Complete the draft before publishing."),
+    "invalid_bulk": ("Geçersiz toplu işlem.", "Invalid bulk action."),
+    "invalid_audit_limit": ("Geçersiz günlük kayıt sınırı.", "Invalid activity log retention limit."),
+    "upload_size": ("Dosya yükleme boyutu sınırını aşıyor.", "The file exceeds the upload size limit."),
+    "image_format": ("Desteklenmeyen görsel biçimi.", "Unsupported image format."),
+    "image_dimensions": ("Görsel boyutları güvenli sınırı aşıyor.", "The image dimensions exceed the safe limit."),
+    "image_invalid": ("Dosya geçerli bir raster görsel değil.", "The file is not a valid raster image."),
+    "media_path": ("Geçersiz medya yolu.", "Invalid media path."),
+    "invalid_path": ("Geçersiz yol.", "Invalid path."),
+    "image_only": ("Sadece görsel dosyaları yüklenebilir.", "Only image files can be uploaded."),
+    "image_process": ("Görsel işlenemedi.", "The image could not be processed."),
+    "image_delete": ("Görsel silinemedi.", "The image could not be deleted."),
+    "image_missing": ("Kaynak görsel bulunamadı.", "The source image was not found."),
+    "file_missing": ("Dosya bulunamadı.", "The file was not found."),
+    "source_file_missing": ("Kaynak dosya bulunamadı.", "The source file was not found."),
+    "unknown_action": ("Bilinmeyen işlem.", "Unknown action."),
+    "unsafe_upload": ("Tarayıcıda çalışabilen HTML, SVG, JavaScript ve CSS dosyaları yüklenemez.", "Executable browser content (HTML, SVG, JavaScript and CSS) cannot be uploaded."),
+    "unsafe_image": ("Güvensiz görsel uzantısı yerinde güncellenemez.", "An unsafe image file type cannot be replaced in place."),
+    "invalid_menu_location": ("Geçersiz menü konumu.", "Invalid menu location."),
+    "saved_response": ("Kaydedildi", "Saved"),
+    "failed_login": ("Başarısız yönetici giriş denemesi", "Failed administrator login attempt"),
+    "string_too_long": ("En fazla {limit} karakter girin.", "Enter at most {limit} characters."),
+    "string_too_short": ("En az {limit} karakter girin.", "Enter at least {limit} characters."),
+}
+_SYSTEM_MESSAGE_KEYS = {
+    text: key for key, texts in SYSTEM_MESSAGES.items() for text in texts
+}
+for key, (turkish, english) in SYSTEM_MESSAGES.items():
+    TRANSLATIONS["tr"][key] = turkish
+    TRANSLATIONS["en"][key] = english
+
+
+def system_message(request: Request | None, message: str) -> str:
+    """Yalnızca tanımlı sistem metinlerini geçerli arayüz dilinde göster."""
+    key = _SYSTEM_MESSAGE_KEYS.get(message)
+    if key:
+        return translate(request, key)
+    for prefix, label_key in (("Dış URL: ", "external_url"), ("İkon URL: ", "image_url")):
+        if message.startswith(prefix):
+            label = prefix[:-2] if ui_language(request) == "tr" else translate(request, label_key)
+            return f"{label}: {system_message(request, message[len(prefix):])}"
+    return message

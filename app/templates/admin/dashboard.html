@@ -6,7 +6,7 @@
 {# Sayfa başlığı + Yeni dosya butonu #}
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'dashboard') }}</h1>
     <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ t(request, 'dashboard_help') }}</p>
   </div>
   <a href="/admin/downloads/new" class="btn-primary">
@@ -269,7 +269,7 @@
       </span>
       <div class="min-w-0 flex-1">
         <p class="text-sm text-slate-700 dark:text-slate-300 break-words">
-          <span class="font-medium">{{ row.label }}</span>
+          <span class="font-medium">{{ system_message(request, row.label) if row.entity == 'login' else row.label }}</span>
           <span class="text-slate-500 dark:text-slate-400">{{ t(request, 'activity_' ~ row.action) }}</span>
         </p>
         <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">

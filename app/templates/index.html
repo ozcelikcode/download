@@ -290,11 +290,48 @@
     <i data-lucide="search-x" class="w-6 h-6 text-slate-400 dark:text-slate-500"></i>
   </div>
   <h3 class="font-medium text-slate-700 dark:text-slate-300 mb-1">{{ t(request, 'no_results') }}</h3>
+  {% if current_search %}
+  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ t(request, 'no_search_matches') }}</p>
+  <form action="/search" method="get" class="w-full max-w-md mb-4">
+    <label class="sr-only" for="empty-search">{{ t(request, 'search') }}</label>
+    <div class="flex gap-2">
+      <input id="empty-search" name="q" type="search" value="{{ current_search }}" class="form-input min-w-0 flex-1" autofocus>
+      {% if filters.sort != 'newest' %}<input type="hidden" name="sort" value="{{ filters.sort }}">{% endif %}
+      {% if filters.os %}<input type="hidden" name="os" value="{{ filters.os }}">{% endif %}
+      {% if filters.source %}<input type="hidden" name="source" value="{{ filters.source }}">{% endif %}
+      {% if filters.trust %}<input type="hidden" name="trust" value="{{ filters.trust }}">{% endif %}
+      <button type="submit" class="btn-primary px-4 shrink-0">{{ t(request, 'change_search') }}</button>
+    </div>
+  </form>
+  {% if has_filters %}
+  <div class="flex items-center justify-center flex-wrap gap-3 mt-2">
+    <a href="{{ qs_override(filter_params, sort='', os='', source='', trust='', page='') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline underline-offset-2">
+      {{ t(request, 'clear_all_filters') }}
+    </a>
+    <a href="/" class="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">{{ t(request, 'browse_downloads') }}</a>
+  </div>
+  {% else %}
+  <a href="/" class="text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">{{ t(request, 'browse_downloads') }}</a>
+  {% endif %}
+  {% elif has_filters %}
+  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ t(request, 'no_filter_matches') }}</p>
+  <a href="{{ qs_override(filter_params, sort='', os='', source='', trust='', page='') }}" class="btn-primary">
+    <i data-lucide="filter-x" class="w-3.5 h-3.5"></i>
+    {{ t(request, 'clear_all_filters') }}
+  </a>
+  {% elif current_category or (current_tag is defined and current_tag) %}
+  <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ t(request, 'no_section_downloads') }}</p>
+  <a href="/" class="btn-download">
+    <i data-lucide="grid-2x2" class="w-3.5 h-3.5"></i>
+    {{ t(request, 'browse_downloads') }}
+  </a>
+  {% else %}
   <p class="text-sm text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'try_another_search') }}</p>
   <a href="/" class="btn-download">
     <i data-lucide="home" class="w-3.5 h-3.5"></i>
     {{ t(request, 'home_return') }}
   </a>
+  {% endif %}
 </div>
 {% endif %}
 

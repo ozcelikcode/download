@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 
 from fastapi import FastAPI, Request, status
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -17,7 +19,7 @@ from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.dependencies import refresh_session_max_age
-from app.i18n import translate
+from app.i18n import translate, system_message
 from app.routers import admin, public, reports
 from app.storage import migrate_legacy_local_downloads
 from app.templating import refresh_site_branding_globals, templates
@@ -114,6 +116,18 @@ app.include_router(reports.router)
 # ---------------------------------------------------------------------------
 # Hata işleyicileri
 # ---------------------------------------------------------------------------
+@app.exception_handler(HTTPException)
+async def localized_http_error(request: Request, exc: HTTPException):
+    detail = exc.detail
+    if isinstance(detail, str):
+        detail = system_message(request, detail)
+    elif isinstance(detail, dict) and isinstance(detail.get("message"), str):
+        detail = {**detail, "message": system_message(request, detail["message"])}
+    return await http_exception_handler(
+        request, HTTPException(exc.status_code, detail=detail, headers=exc.headers)
+    )
+
+
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
     return templates.TemplateResponse(

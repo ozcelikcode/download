@@ -16,12 +16,14 @@ import json
 import math
 import mimetypes
 from datetime import datetime
+from typing import Any
 from urllib.parse import quote
 from xml.etree import ElementTree
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.background import BackgroundTask
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +33,7 @@ from app.checksums import file_checksum
 from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
+from app.link_checks import check_clicked_link
 from app.models import Category, Download, DownloadTag, FileType, SiteSettings, Tag
 from app.seo import inspect_public_base_url
 from app.schemas import PublicDownloadFilters
@@ -161,7 +164,7 @@ async def _sidebar_context(
     request: Request,
     session: AsyncSession,
     site_settings: SiteSettings | None = None,
-) -> dict:
+) -> dict[str, Any]:
     categories = await crud.get_categories_ordered(session)
     tags = await crud.get_tags_ordered(session)
     counts = await crud.get_category_download_counts(session)
@@ -397,6 +400,18 @@ async def detail(
     if not download:
         raise HTTPException(status_code=404, detail="İndirme bulunamadı.")
 
+    ctx = await build_download_detail_context(request, session, download)
+    return templates.TemplateResponse(request=request, name="detail.html", context=ctx)
+
+
+async def build_download_detail_context(
+    request: Request,
+    session: AsyncSession,
+    download: Download,
+    *,
+    is_preview: bool = False,
+) -> dict:
+    """Yayımlanmış detay ve admin taslak önizlemesi için ortak sayfa bağlamı."""
     local_file = (
         _private_download_file(download.file_path)
         if download.file_type == FileType.local
@@ -418,6 +433,7 @@ async def detail(
         "version_timeline": _build_version_timeline(download),
         "related_downloads": related_downloads,
         "download_filename": local_file.name if local_file else None,
+        "is_preview": is_preview,
         "sha256": (
             await file_checksum(session, str(local_file))
             if local_file
@@ -425,8 +441,13 @@ async def detail(
         ),
     }
     ctx.update(await _sidebar_context(request, session))
-
-    return templates.TemplateResponse(request=request, name="detail.html", context=ctx)
+    if is_preview:
+        ctx.update(
+            noindex=True,
+            robots_directive="noindex,nofollow",
+            suppress_canonical=True,
+        )
+    return ctx
 
 
 def _build_version_timeline(download) -> list:
@@ -544,6 +565,7 @@ async def do_download(
         return RedirectResponse(
             url=external_url,
             status_code=status.HTTP_302_FOUND,
+            background=BackgroundTask(check_clicked_link, download_id, external_url),
         )
 
     # Lokal dosya akışı
