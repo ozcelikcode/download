@@ -56,6 +56,19 @@ async def test_delete_rejects_outside_path(admin_client):
     assert response.status_code == 400
 
 
+async def test_admin_media_file_does_not_follow_symlink_outside_storage(
+    admin_client, tmp_path
+):
+    outside = tmp_path / "private.txt"
+    outside.write_text("private content")
+    settings.download_path.mkdir(parents=True, exist_ok=True)
+    (settings.download_path / "linked.txt").symlink_to(outside)
+
+    response = await admin_client.get("/admin/media/files/linked.txt")
+    assert response.status_code == 404
+    assert "private content" not in response.text
+
+
 async def test_absolute_current_origin_reference_is_protected(admin_client, db_session):
     file = settings.upload_path / "used.png"
     file.write_bytes(b"image")

@@ -53,7 +53,7 @@
       {% if tags %}
       <ul class="divide-y divide-slate-50 dark:divide-slate-800">
         {% for tag in tags %}
-        <li class="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
+        <li class="px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer select-none">
 
           {# Normal görünüm #}
           <div id="tag-view-{{ tag.id }}" class="flex items-center gap-3">
@@ -134,8 +134,31 @@ function toggleTagEdit(id) {
   }
 }
 (function () {
-  var boxes = document.querySelectorAll('.tag-select'); var button = document.getElementById('tag-bulk-delete');
-  boxes.forEach(function (box) { box.addEventListener('change', function () { button.classList.toggle('hidden', !Array.prototype.some.call(boxes, function (item) { return item.checked; })); }); });
+  var boxes = Array.from(document.querySelectorAll('.tag-select'));
+  var button = document.getElementById('tag-bulk-delete');
+  var anchor = null;
+  function update() { button.classList.toggle('hidden', !boxes.some(function (item) { return item.checked; })); }
+  boxes.forEach(function (box, index) {
+    box.addEventListener('click', function (event) {
+      if (event.shiftKey && anchor !== null) {
+        for (var i = Math.min(anchor, index); i <= Math.max(anchor, index); i++) boxes[i].checked = box.checked;
+      }
+      anchor = index;
+      update();
+      event.stopPropagation();
+    });
+    box.closest('li').addEventListener('click', function (event) {
+      if (event.target.closest('a,button,input,label,form,select,textarea')) return;
+      if (event.shiftKey && anchor !== null) {
+        for (var i = Math.min(anchor, index); i <= Math.max(anchor, index); i++) boxes[i].checked = true;
+      } else {
+        if (!event.metaKey && !event.ctrlKey) boxes.forEach(function (item) { item.checked = false; });
+        box.checked = event.metaKey || event.ctrlKey ? !box.checked : true;
+      }
+      anchor = index;
+      update();
+    });
+  });
 })();
 </script>
 {% endblock %}

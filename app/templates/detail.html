@@ -43,7 +43,7 @@
       </a>
       <button type="button" id="admin-delete-btn" role="menuitem"
         class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'delete_content') }}
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'move_to_trash') }}
       </button>
     </div>
   </div>
@@ -53,10 +53,10 @@
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm w-full max-w-sm p-5">
       <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1.5">
         <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500 dark:text-red-400"></i>
-        {{ t(request, 'delete_title') }}
+        {{ t(request, 'move_to_trash') }}
       </h3>
       <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-        <strong class="text-slate-700 dark:text-slate-300">{{ download.title }}</strong> {{ t(request, 'delete_warning') }}
+        <strong class="text-slate-700 dark:text-slate-300">{{ download.title }}</strong> {{ t(request, 'trash_confirm') }}
       </p>
       <div class="flex items-center justify-end gap-2">
         <button type="button" id="admin-delete-cancel" data-dialog-close
@@ -65,7 +65,7 @@
           {{ t(request, 'cancel') }}
         </button>
         <button type="button" id="admin-delete-confirm" data-dialog-initial-focus class="btn-danger py-1.5 px-3 text-sm">
-          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'yes_delete') }}
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> {{ t(request, 'move_to_trash') }}
         </button>
       </div>
     </div>
@@ -155,8 +155,8 @@
    İNDİRME CTA KARTI
    ================================================================ #}
 <div class="detail-cta bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-sm p-4 mb-4">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <div class="shrink-0">
+  <div class="detail-cta-layout">
+    <div>
       <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
         {{ t(request, 'external_destination') if download.file_type.value == 'external' else t(request, 'direct_download') }}
       </p>
@@ -181,10 +181,37 @@
       {% endif %}
     </div>
 
-    <p class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-      <i data-lucide="{{ 'external-link' if download.file_type.value == 'external' else 'server' }}" class="w-3.5 h-3.5"></i>
-      {{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}
-    </p>
+    <div class="detail-cta-meta">
+      <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
+        {{ t(request, 'source') if download.file_type.value == 'external' else t(request, 'filename') }}
+      </p>
+      <p class="detail-cta-value text-sm font-medium text-slate-700 dark:text-slate-300">
+        {% if download.file_type.value == 'external' %}
+          {% set source_url = download.source_root_url | safe_http_url %}
+          {% if source_url %}
+          <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+            {{ download.source_domain }}<i data-lucide="external-link" class="inline-block ml-1 w-3 h-3"></i>
+          </a>
+          {% else %}{{ download.source_domain or t(request, 'not_specified') }}{% endif %}
+        {% else %}
+          {{ download_filename or t(request, 'not_specified') }}
+        {% endif %}
+      </p>
+      <div class="detail-cta-details flex flex-wrap items-center mt-2 text-xs text-slate-500 dark:text-slate-400">
+        {% if download.file_type.value == 'external' %}
+        {% if download.source_domain %}
+        <span class="flex items-center gap-1 {% if download.is_official_source %}text-green-700 dark:text-green-400{% else %}text-amber-700 dark:text-amber-400{% endif %}">
+          <i data-lucide="{{ 'badge-check' if download.is_official_source else 'alert-triangle' }}" class="w-3.5 h-3.5"></i>
+          {{ t(request, 'official_site') if download.is_official_source else t(request, 'third_party') }}
+        </span>
+        {% endif %}
+        <span class="flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'opens_new_tab') }}</span>
+        {% else %}
+        {% if download.file_size_human %}<span>{{ download.file_size_human }}</span>{% endif %}
+        <span class="flex items-center gap-1"><i data-lucide="server" class="w-3.5 h-3.5"></i>{{ t(request, 'stored_locally') }}</span>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 
@@ -198,13 +225,6 @@
   </h2>
 
   <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
-
-    {% if download_filename %}
-    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800 sm:col-span-2">
-      <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'filename') }}</dt>
-      <dd class="font-medium text-slate-700 dark:text-slate-300 truncate" title="{{ download_filename }}">{{ download_filename }}</dd>
-    </div>
-    {% endif %}
 
     {% if download.is_latest_version or download.version %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
@@ -233,7 +253,7 @@
       </dd>
     </div>
 
-    {% if download.file_size_human %}
+    {% if download.file_size_human and download.file_type.value == 'external' %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'file_size') }}</dt>
       <dd class="font-medium text-slate-700 dark:text-slate-300">{{ download.file_size_human }}</dd>
@@ -253,32 +273,6 @@
       </dd>
       <dd class="text-xs text-slate-400 mt-1">{{ t(request, 'checksum_help') }}</dd>
       <dd id="copy-sha256-status" class="sr-only" role="status" aria-live="polite"></dd>
-    </div>
-    {% endif %}
-
-    {% if download.source_domain %}
-    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
-      <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'source') }}</dt>
-      <dd class="font-medium text-blue-600 dark:text-blue-400">
-        <a href="{{ download.source_root_url }}" target="_blank" rel="noopener" class="hover:underline flex items-center gap-1">
-          {{ download.source_domain }}
-          <i data-lucide="external-link" class="w-3 h-3"></i>
-        </a>
-      </dd>
-    </div>
-
-    <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
-      <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'source_type') }}</dt>
-      <dd class="font-medium flex items-center gap-1
-        {% if download.is_official_source %}text-green-700 dark:text-green-400{% else %}text-amber-700 dark:text-amber-400{% endif %}">
-        {% if download.is_official_source %}
-        <i data-lucide="badge-check" class="w-3.5 h-3.5"></i>
-        {{ t(request, 'official_site') }}
-        {% else %}
-        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
-        {{ t(request, 'third_party') }}
-        {% endif %}
-      </dd>
     </div>
     {% endif %}
 

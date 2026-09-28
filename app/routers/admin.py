@@ -11,7 +11,8 @@ Rotalar:
   POST /admin/downloads/new          → Dosya oluştur
   GET  /admin/downloads/{id}/edit    → Düzenle formu
   POST /admin/downloads/{id}/edit    → Dosya güncelle
-  POST /admin/downloads/{id}/delete  → Dosya sil
+  POST /admin/downloads/{id}/delete  → İçeriği Silinenler'e taşı
+  GET  /admin/downloads/trash        → Silinenler
   GET  /admin/categories             → Kategori listesi
   POST /admin/categories             → Kategori oluştur
   POST /admin/categories/{id}/edit   → Kategori güncelle
@@ -667,8 +668,12 @@ async def media_file(
     safe_name = Path(unquote(filename or "")).name
     if not safe_name or safe_name != unquote(filename):
         raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
-    path = settings.download_path / safe_name
-    if not path.is_file():
+    root = settings.download_path.resolve()
+    try:
+        path = (root / safe_name).resolve()
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı.") from exc
+    if not path.is_relative_to(root) or not path.is_file():
         raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
     if path.suffix.lower().lstrip(".") in _IMAGE_EXTS:
         return FileResponse(path)
@@ -1083,6 +1088,47 @@ async def download_bulk(
     else:
         request.session["flash_message"] = translate(request, "bulk_completed").format(count=count)
     return _redirect(_same_admin_page(request, "/admin/downloads"))
+
+
+@router.get("/downloads/trash", name="admin_download_trash")
+async def download_trash(
+    request: Request,
+    page: int = 1,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    page = max(1, page)
+    items, total = await crud.get_trashed_downloads(session, page)
+    total_pages = max(1, math.ceil(total / 20))
+    if page > total_pages:
+        return _redirect(f"/admin/downloads/trash?page={total_pages}")
+    return templates.TemplateResponse(request=request, name="admin/trash.html", context={
+        "request": request,
+        "items": items,
+        "total": total,
+        "page": page,
+        "total_pages": total_pages,
+        "admin_user": _admin,
+        "flash_message": request.session.pop("flash_message", None),
+    })
+
+
+@router.post("/downloads/trash/bulk", name="admin_download_trash_bulk")
+async def download_trash_bulk(
+    request: Request,
+    action: str = Form(...),
+    download_ids: List[int] = Form(...),
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+):
+    try:
+        count = await crud.update_trashed_downloads(session, download_ids, action)
+    except ValueError as exc:
+        request.session["flash_message"] = system_message(request, str(exc))
+    else:
+        key = "trash_restored" if action == "restore" else "trash_purged"
+        request.session["flash_message"] = translate(request, key).format(count=count)
+    return _redirect("/admin/downloads/trash")
 
 
 # ---------------------------------------------------------------------------

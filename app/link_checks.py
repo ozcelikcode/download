@@ -38,6 +38,7 @@ async def save_link_result(
         select(Download.id).where(
             Download.id == download_id, Download.external_url == url,
             Download.file_type == FileType.external,
+            Download.deleted_at.is_(None),
         ).exists()
     )
     statement = insert(LinkCheck).from_select(["download_id", *values], source)
@@ -57,7 +58,7 @@ async def check_clicked_link(download_id: int, url: str) -> None:
         async with AsyncSessionLocal() as session:
             current = await session.scalar(select(Download.external_url).where(
                 Download.id == download_id, Download.file_type == FileType.external,
-                Download.is_active.is_(True), Download.is_draft.is_(False),
+                Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None),
             ))
             if current != url:
                 return

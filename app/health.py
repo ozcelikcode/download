@@ -109,6 +109,7 @@ async def get_admin_health(session: AsyncSession) -> AdminHealthSummary:
             LinkCheck.status == "broken",
             LinkCheck.url == Download.external_url,
             Download.file_type == FileType.external,
+            Download.deleted_at.is_(None),
         )
     )
     uncategorized_content = await session.scalar(
@@ -117,6 +118,7 @@ async def get_admin_health(session: AsyncSession) -> AdminHealthSummary:
             Download.category_id.is_(None),
             Download.is_active.is_(True),
             Download.is_draft.is_(False),
+            Download.deleted_at.is_(None),
         )
     )
     local_paths = list(
@@ -126,6 +128,7 @@ async def get_admin_health(session: AsyncSession) -> AdminHealthSummary:
                     Download.parent_id.is_(None),
                     Download.file_type == FileType.local,
                     Download.is_draft.is_(False),
+                    Download.deleted_at.is_(None),
                 )
             )
         ).all()
@@ -220,6 +223,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
                 Download.parent_id.is_(None),
                 Download.file_type == FileType.local,
                 Download.is_draft.is_(False),
+                Download.deleted_at.is_(None),
             )
         )
     ).all()
@@ -246,6 +250,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
         Download.category_id.is_(None),
         Download.is_active.is_(True),
         Download.is_draft.is_(False),
+        Download.deleted_at.is_(None),
     )
     if summary.uncategorized_content:
         technical.append(await _finding_from_query(
@@ -265,7 +270,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
         ))
 
     draft_statement = select(Download.id, Download.title).where(
-        Download.is_draft.is_(True)
+        Download.is_draft.is_(True), Download.deleted_at.is_(None)
     )
     draft_count = await session.scalar(
         select(func.count()).select_from(draft_statement.subquery())
@@ -291,6 +296,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             .where(
                 Download.is_active.is_(True),
                 Download.is_draft.is_(False),
+                Download.deleted_at.is_(None),
             )
             .order_by(Download.title)
         )
@@ -374,6 +380,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
         Download.category_id.is_not(None),
         Download.is_active.is_(True),
         Download.is_draft.is_(False),
+        Download.deleted_at.is_(None),
     )
     category_statement = select(Category.id, Category.name).where(
         func.trim(func.coalesce(Category.description, "")) == "",

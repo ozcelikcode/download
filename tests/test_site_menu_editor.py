@@ -50,6 +50,18 @@ async def test_theme_color_is_reflected_in_public_and_admin_pages(
     assert 'data-theme-color="green"' in admin_login.text
 
 
+async def test_amoled_admin_navigation_receives_neutral_theme_palette(admin_client: AsyncClient):
+    response = await admin_client.post(
+        "/admin/settings/branding",
+        data={"site_name": "AMOLED", "site_icon": "palette", "theme_color": "amoled"},
+    )
+    assert response.status_code == 302
+    content = await admin_client.get("/admin/downloads")
+    assert 'data-theme-color="amoled"' in content.text
+    assert '--accent-dark: #c4c4ca' in content.text
+    assert 'class="admin-nav-link is-active"' in content.text
+
+
 async def test_navbar_and_footer_items_are_independent(
     admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ):

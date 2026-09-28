@@ -23,14 +23,14 @@ PAGE_SIZE = 20
 STATUSES = {"unchecked": "Kontrol edilmedi", "ok": "Erişilebilir", "broken": "Kırık", "restricted": "Erişim sınırlı", "error": "Kontrol hatası", "blocked": "Engellendi"}
 STATUSES_EN = {"unchecked": "Not checked", "ok": "Available", "broken": "Broken", "restricted": "Restricted", "error": "Check failed", "blocked": "Blocked"}
 ENTITY_LABELS_EN = {"login": "Login security", "downloads": "Content", "categories": "Category", "tags": "Tag", "menu_items": "Menu", "site_settings": "Settings", "media_assets": "Media", "download_version_history": "Version"}
-ACTION_LABELS_EN = {"create": "Created", "update": "Updated", "delete": "Deleted", "replace": "File replaced", "crop": "Image cropped", "reorder": "Reordered", "bulk": "Bulk action", "transfer": "Transferred", "error": "Error", "login": "Signed in"}
+ACTION_LABELS_EN = {"create": "Created", "update": "Updated", "delete": "Deleted", "trash": "Moved to Trash", "restore": "Restored", "purge": "Permanently deleted", "replace": "File replaced", "crop": "Image cropped", "reorder": "Reordered", "bulk": "Bulk action", "transfer": "Transferred", "error": "Error", "login": "Signed in"}
 FIELD_LABELS_EN = {
     "ip_address": "IP address", "name": "Name", "title": "Title", "slug": "URL slug", "description": "Description",
     "short_description": "Short description", "position": "Position", "version": "Version", "file_type": "Source type",
     "file_path": "File path", "external_url": "Download URL", "file_size_bytes": "File size (bytes)", "icon_type": "Icon type",
     "thumbnail_path": "Thumbnail", "icon_image_path": "Icon file", "icon_image_url": "Icon URL", "icon_extension": "File extension",
     "os_compatibility": "Operating systems", "category_id": "Category", "parent_id": "Related version", "is_active": "Published",
-    "is_draft": "Draft", "is_featured": "Featured", "is_official_source": "Official source", "is_latest_version": "Latest version link",
+    "is_draft": "Draft", "is_featured": "Featured", "is_official_source": "Official source", "is_latest_version": "Latest version link", "deleted_at": "Deleted on",
     "label": "Label", "url": "URL", "icon": "Icon", "open_in_new_tab": "Open in new tab", "location": "Menu location",
     "site_name": "Site name", "site_language": "Site language", "site_icon": "Site icon", "site_icon_color": "Icon color",
     "sidebar_block_order": "Sidebar order", "theme_color": "Color theme", "logo_mode": "Logo layout", "logo_light_path": "Light logo",
@@ -64,7 +64,7 @@ async def _check_downloads(session: AsyncSession, items: list[tuple[int, str]]) 
 
 @router.get("/links", name="admin_links")
 async def links(request: Request, page: int = Query(1, ge=1), state: str = Query("all", pattern="^(all|unchecked|ok|broken|restricted|error|blocked)$"), session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
-    query = select(Download, LinkCheck).outerjoin(LinkCheck, and_(LinkCheck.download_id == Download.id, LinkCheck.url == Download.external_url)).where(Download.file_type == FileType.external)
+    query = select(Download, LinkCheck).outerjoin(LinkCheck, and_(LinkCheck.download_id == Download.id, LinkCheck.url == Download.external_url)).where(Download.file_type == FileType.external, Download.deleted_at.is_(None))
     if state != "all":
         query = query.where(func.coalesce(LinkCheck.status, "unchecked") == state)
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
@@ -77,7 +77,7 @@ async def links(request: Request, page: int = Query(1, ge=1), state: str = Query
 
 @router.post("/links/check", name="admin_links_check")
 async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)) -> RedirectResponse:
-    rows = (await session.execute(select(Download.id, Download.external_url).where(Download.file_type == FileType.external).order_by(Download.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
+    rows = (await session.execute(select(Download.id, Download.external_url).where(Download.file_type == FileType.external, Download.deleted_at.is_(None)).order_by(Download.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
     await session.rollback()  # Ağ kontrolü sırasında SQLite okuma işlemi açık tutulmaz.
     await _check_downloads(session, [(r.id, r.external_url or "") for r in rows])
     return RedirectResponse(f"/admin/links?page={page}", status_code=303)
@@ -85,7 +85,7 @@ async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends
 
 @router.post("/links/{download_id}/check", name="admin_link_check")
 async def check_one(download_id: int, session: AsyncSession = Depends(get_db)) -> RedirectResponse:
-    row = (await session.execute(select(Download.id, Download.external_url).where(Download.id == download_id, Download.file_type == FileType.external))).first()
+    row = (await session.execute(select(Download.id, Download.external_url).where(Download.id == download_id, Download.file_type == FileType.external, Download.deleted_at.is_(None)))).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Dış bağlantı bulunamadı.")
     await session.rollback()

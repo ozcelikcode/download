@@ -3,7 +3,7 @@
 
 {% block content %}
 
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
   <div>
     <div class="breadcrumb mb-1">
       <a href="/admin">{{ t(request, 'management') }}</a>
@@ -12,10 +12,10 @@
     </div>
     <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'contents') }}</h1>
   </div>
-  <a href="/admin/downloads/new" class="btn-primary">
-    <i data-lucide="plus" class="w-4 h-4"></i>
-    {{ t(request, 'new_file') }}
-  </a>
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="/admin/downloads/trash" class="btn-secondary py-2 px-3 text-sm shrink-0"><i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i><span>{{ t(request, 'trash') }}</span></a>
+    <a href="/admin/downloads/new" class="btn-primary shrink-0 whitespace-nowrap"><i data-lucide="plus" class="w-4 h-4 shrink-0"></i>{{ t(request, 'new_file') }}</a>
+  </div>
 </div>
 
 {# Arama + filtre — tek satır, kompakt #}
@@ -101,7 +101,7 @@
       <button type="submit" form="download-bulk-form" name="action" value="unpublish" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unpublish') }}</button>
       <button type="submit" form="download-bulk-form" name="action" value="feature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'feature') }}</button>
       <button type="submit" form="download-bulk-form" name="action" value="unfeature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unfeature') }}</button>
-      <button type="submit" form="download-bulk-form" name="action" value="delete" data-confirm-message="{{ t(request, 'delete_warning') }}" class="btn-danger py-1 px-2 text-xs">{{ t(request, 'delete') }}</button>
+      <button type="submit" form="download-bulk-form" name="action" value="delete" data-confirm-message="{{ t(request, 'trash_confirm') }}" class="btn-danger py-1 px-2 text-xs">{{ t(request, 'move_to_trash') }}</button>
     </div>
   <div class="hidden md:block overflow-x-auto">
     <table class="w-full text-sm">
@@ -119,7 +119,7 @@
       </thead>
       <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
         {% for d in downloads %}
-        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group">
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer select-none">
 
           {# ID #}
           <td class="px-3 py-3"><input class="admin-checkbox download-select" data-download-id="{{ d.id }}" type="checkbox" name="download_ids" value="{{ d.id }}" form="download-bulk-form" aria-label="{{ tf(request, 'selected_aria', name=d.title) }}"></td>
@@ -210,7 +210,7 @@
               </a>
               <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-                <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name=d.title) }}"
+                <button type="submit" data-confirm-message="{{ tf(request, 'trash_named_confirm', name=d.title) }}"
                   class="btn-danger py-1.5 px-2.5">
                   <i data-lucide="trash-2" class="w-3 h-3"></i>
                 </button>
@@ -252,7 +252,7 @@
             <a href="/admin/downloads/{{ d.id }}/edit" class="btn-secondary py-1.5 px-2.5 text-xs"><i data-lucide="pencil" class="w-3 h-3" aria-hidden="true"></i>{{ t(request, 'edit') }}</a>
             <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="ml-auto">
               <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-              <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name=d.title) }}" class="btn-danger py-1.5 px-2.5" aria-label="{{ tf(request, 'delete_named_confirm', name=d.title) }}"><i data-lucide="trash-2" class="w-3 h-3" aria-hidden="true"></i></button>
+              <button type="submit" data-confirm-message="{{ tf(request, 'trash_named_confirm', name=d.title) }}" class="btn-danger py-1.5 px-2.5" aria-label="{{ tf(request, 'trash_named_confirm', name=d.title) }}"><i data-lucide="trash-2" class="w-3 h-3" aria-hidden="true"></i></button>
             </form>
           </div>
         </div>
@@ -310,6 +310,7 @@
   var mobileBoxes = document.querySelectorAll('.download-select-mobile');
   var bar = document.getElementById('download-bulk-bar');
   var count = document.getElementById('download-selected-count');
+  var anchor = null;
   if (!bar || !count) return;
   function sync(source, targetSelector) {
     var target = document.querySelector(targetSelector + '[data-download-id="' + source.dataset.downloadId + '"]');
@@ -322,7 +323,35 @@
     if (all) { all.checked = selected === boxes.length && boxes.length > 0; all.indeterminate = selected > 0 && selected < boxes.length; }
   }
   if (all) all.addEventListener('change', function () { boxes.forEach(function (box) { box.checked = all.checked; }); mobileBoxes.forEach(function (box) { box.checked = all.checked; }); update(); });
-  boxes.forEach(function (box) { box.addEventListener('change', function () { sync(box, '.download-select-mobile'); update(); }); });
+  boxes.forEach(function (box, index) {
+    box.addEventListener('click', function (event) {
+      if (event.shiftKey && anchor !== null) {
+        var desired = box.checked;
+        for (var i = Math.min(anchor, index); i <= Math.max(anchor, index); i++) {
+          boxes[i].checked = desired;
+          sync(boxes[i], '.download-select-mobile');
+        }
+      } else sync(box, '.download-select-mobile');
+      anchor = index;
+      update();
+      event.stopPropagation();
+    });
+    box.closest('tr').addEventListener('click', function (event) {
+      if (event.target.closest('a,button,input,label,form,select,textarea')) return;
+      if (event.shiftKey && anchor !== null) {
+        for (var i = Math.min(anchor, index); i <= Math.max(anchor, index); i++) {
+          boxes[i].checked = true;
+          sync(boxes[i], '.download-select-mobile');
+        }
+      } else {
+        if (!event.metaKey && !event.ctrlKey) boxes.forEach(function (item) { item.checked = false; sync(item, '.download-select-mobile'); });
+        box.checked = event.metaKey || event.ctrlKey ? !box.checked : true;
+        sync(box, '.download-select-mobile');
+      }
+      anchor = index;
+      update();
+    });
+  });
   mobileBoxes.forEach(function (box) { box.addEventListener('change', function () { var primary = document.querySelector('.download-select[data-download-id="' + box.dataset.downloadId + '"]'); if (primary) primary.checked = box.checked; update(); }); });
   update();
 })();

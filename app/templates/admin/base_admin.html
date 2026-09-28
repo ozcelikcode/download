@@ -105,113 +105,67 @@
 <div class="flex min-h-[calc(100vh-3rem)]">
 
   {# ── Sol Sidebar Nav ──────────────────────────────── #}
-  <aside class="w-44 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
-    <nav class="space-y-0.5">
+  {% set admin_path = request.url.path %}
+  {% set content_section = admin_path.startswith('/admin/downloads') %}
+  {% set management_section = admin_path.startswith('/admin/categories') or admin_path.startswith('/admin/tags') or admin_path.startswith('/admin/media') or admin_path.startswith('/admin/links') or admin_path.startswith('/admin/audit') or admin_path.startswith('/admin/settings') %}
+  <aside class="w-48 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
+    <nav class="space-y-1" aria-label="{{ t(request, 'menu') }}">
+      <p class="admin-nav-label text-xs font-semibold uppercase tracking-wider px-2 mb-2">{{ t(request, 'menu') }}</p>
 
-      <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 mb-2">{{ t(request, 'menu') }}</p>
-
-      <a href="/admin"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if request.url.path in ['/admin', '/admin/'] %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'dashboard') }}
+      <a href="/admin" class="admin-nav-link {% if admin_path in ['/admin', '/admin/'] %}is-active{% endif %}" {% if admin_path in ['/admin', '/admin/'] %}aria-current="page"{% endif %}>
+        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 shrink-0"></i>{{ t(request, 'dashboard') }}
+      </a>
+      <a href="/admin/site-health" class="admin-nav-link {% if admin_path == '/admin/site-health' %}is-active{% endif %}" {% if admin_path == '/admin/site-health' %}aria-current="page"{% endif %}>
+        <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0"></i>{{ t(request, 'site_health') }}
       </a>
 
-      <a href="/admin/site-health"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if request.url.path == '/admin/site-health' %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'site_health') }}
-      </a>
+      <details class="admin-nav-group" name="admin-sidebar" {% if content_section %}open{% endif %}>
+        <summary class="admin-nav-summary {% if content_section %}is-active{% endif %}">
+          <i data-lucide="list" class="w-3.5 h-3.5 shrink-0"></i><span class="flex-1">{{ t(request, 'contents') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5 shrink-0"></i>
+        </summary>
+        <div class="admin-nav-children">
+          <a href="/admin/downloads" class="admin-nav-link {% if admin_path == '/admin/downloads' %}is-active{% endif %}" {% if admin_path == '/admin/downloads' %}aria-current="page"{% endif %}>{{ t(request, 'all_contents') }}</a>
+          <a href="/admin/downloads/new" class="admin-nav-link {% if admin_path == '/admin/downloads/new' %}is-active{% endif %}" {% if admin_path == '/admin/downloads/new' %}aria-current="page"{% endif %}>{{ t(request, 'new_file') }}</a>
+          <a href="/admin/downloads/trash" class="admin-nav-link {% if admin_path == '/admin/downloads/trash' %}is-active{% endif %}" {% if admin_path == '/admin/downloads/trash' %}aria-current="page"{% endif %}>{{ t(request, 'trash') }}</a>
+        </div>
+      </details>
 
-      <a href="/admin/downloads"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if request.url.path == '/admin/downloads' %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="list" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'contents') }}
-      </a>
-
-      <a href="/admin/downloads/new"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if request.url.path == '/admin/downloads/new' %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="plus-circle" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'new_file') }}
-      </a>
-
-      <div class="pt-3 pb-1">
-        <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 mb-1">{{ t(request, 'management') }}</p>
-      </div>
-
-      <a href="/admin/categories"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if '/admin/categories' in request.url.path %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="folder" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'categories') }}
-      </a>
-
-      <a href="/admin/tags"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if '/admin/tags' in request.url.path %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="tag" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'tags') }}
-      </a>
-
-      <a href="/admin/media"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if '/admin/media' in request.url.path %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="images" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'media_archive') }}
-      </a>
-
-      <a href="/admin/links" class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm {% if request.url.path == '/admin/links' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10{% else %}text-slate-600 dark:text-slate-400{% endif %}"><i data-lucide="link-2" class="w-3.5 h-3.5"></i> {{ t(request, 'link_report') }}</a>
-      <a href="/admin/audit" class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm {% if request.url.path == '/admin/audit' %}text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10{% else %}text-slate-600 dark:text-slate-400{% endif %}"><i data-lucide="history" class="w-3.5 h-3.5"></i> {{ t(request, 'audit_history') }}</a>
-
-      <a href="/admin/settings"
-        class="flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm transition-colors
-        {% if '/admin/settings' in request.url.path %}
-          bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium
-        {% else %}
-          text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800
-        {% endif %}">
-        <i data-lucide="settings" class="w-3.5 h-3.5 shrink-0"></i>
-        {{ t(request, 'settings') }}
-      </a>
+      <details class="admin-nav-group" name="admin-sidebar" {% if management_section %}open{% endif %}>
+        <summary class="admin-nav-summary {% if management_section %}is-active{% endif %}">
+          <i data-lucide="settings-2" class="w-3.5 h-3.5 shrink-0"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5 shrink-0"></i>
+        </summary>
+        <div class="admin-nav-children">
+          <a href="/admin/categories" class="admin-nav-link {% if admin_path.startswith('/admin/categories') %}is-active{% endif %}" {% if admin_path.startswith('/admin/categories') %}aria-current="page"{% endif %}>{{ t(request, 'categories') }}</a>
+          <a href="/admin/tags" class="admin-nav-link {% if admin_path.startswith('/admin/tags') %}is-active{% endif %}" {% if admin_path.startswith('/admin/tags') %}aria-current="page"{% endif %}>{{ t(request, 'tags') }}</a>
+          <a href="/admin/media" class="admin-nav-link {% if admin_path.startswith('/admin/media') %}is-active{% endif %}" {% if admin_path.startswith('/admin/media') %}aria-current="page"{% endif %}>{{ t(request, 'media_archive') }}</a>
+          <a href="/admin/links" class="admin-nav-link {% if admin_path.startswith('/admin/links') %}is-active{% endif %}" {% if admin_path.startswith('/admin/links') %}aria-current="page"{% endif %}>{{ t(request, 'link_report') }}</a>
+          <a href="/admin/audit" class="admin-nav-link {% if admin_path.startswith('/admin/audit') %}is-active{% endif %}" {% if admin_path.startswith('/admin/audit') %}aria-current="page"{% endif %}>{{ t(request, 'audit_history') }}</a>
+          <a href="/admin/settings" class="admin-nav-link {% if admin_path.startswith('/admin/settings') %}is-active{% endif %}" {% if admin_path.startswith('/admin/settings') %}aria-current="page"{% endif %}>{{ t(request, 'settings') }}</a>
+        </div>
+      </details>
     </nav>
   </aside>
 
   {# ── Ana İçerik ──────────────────────────────────── #}
   <main id="main-content" tabindex="-1" class="flex-1 min-w-0 p-6">
-    <nav class="sm:hidden flex flex-wrap gap-3 text-xs text-blue-600 dark:text-blue-400 mb-5" aria-label="{{ t(request, 'management') }}">
-      <a href="/admin">{{ t(request, 'dashboard') }}</a><a href="/admin/site-health">{{ t(request, 'site_health') }}</a><a href="/admin/downloads">{{ t(request, 'contents') }}</a><a href="/admin/media">{{ t(request, 'media_archive') }}</a><a href="/admin/links">{{ t(request, 'link_report') }}</a><a href="/admin/audit">{{ t(request, 'audit_history') }}</a><a href="/admin/settings">{{ t(request, 'settings') }}</a>
-    </nav>
+    <details class="admin-mobile-menu sm:hidden mb-5 border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
+      <summary class="admin-nav-summary"><i data-lucide="menu" class="w-4 h-4"></i><span class="flex-1">{{ t(request, 'menu') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-4 h-4"></i></summary>
+      <nav class="px-2 py-2 border-t border-slate-100 dark:border-slate-800" aria-label="{{ t(request, 'menu') }}">
+        <a href="/admin" class="admin-nav-link">{{ t(request, 'dashboard') }}</a>
+        <a href="/admin/site-health" class="admin-nav-link">{{ t(request, 'site_health') }}</a>
+        <p class="admin-nav-label px-2 pt-2 text-xs font-semibold">{{ t(request, 'contents') }}</p>
+        <a href="/admin/downloads" class="admin-nav-link">{{ t(request, 'all_contents') }}</a>
+        <a href="/admin/downloads/new" class="admin-nav-link">{{ t(request, 'new_file') }}</a>
+        <a href="/admin/downloads/trash" class="admin-nav-link">{{ t(request, 'trash') }}</a>
+        <p class="admin-nav-label px-2 pt-2 text-xs font-semibold">{{ t(request, 'management') }}</p>
+        <a href="/admin/categories" class="admin-nav-link">{{ t(request, 'categories') }}</a>
+        <a href="/admin/tags" class="admin-nav-link">{{ t(request, 'tags') }}</a>
+        <a href="/admin/media" class="admin-nav-link">{{ t(request, 'media_archive') }}</a>
+        <a href="/admin/links" class="admin-nav-link">{{ t(request, 'link_report') }}</a>
+        <a href="/admin/audit" class="admin-nav-link">{{ t(request, 'audit_history') }}</a>
+        <a href="/admin/settings" class="admin-nav-link">{{ t(request, 'settings') }}</a>
+      </nav>
+    </details>
     {% if flash_message %}
     <div hidden data-toast-message="{{ system_message(request, flash_message) }}" data-toast-type="{{ flash_type|default('success') }}" data-toast-id="server-flash"></div>
     <noscript><div role="status" class="flex items-center gap-2 px-3 py-2.5 mb-5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-sm text-sm text-emerald-800 dark:text-emerald-400"><span class="font-medium">{{ system_message(request, flash_message) }}</span></div></noscript>

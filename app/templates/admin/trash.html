@@ -1,0 +1,107 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'trash') }}{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+  <div>
+    <h1 class="text-lg font-bold">{{ t(request, 'trash') }}</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t(request, 'trash_help') }}</p>
+  </div>
+  <a href="/admin/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a>
+</div>
+
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
+  {% if items %}
+  <form id="trash-bulk-form" method="post" action="/admin/downloads/trash/bulk">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+      <label class="flex items-center gap-2 mr-2 text-sm">
+        <input id="trash-select-all" type="checkbox" class="admin-checkbox" aria-label="{{ t(request, 'select_all') }}">
+        <span id="trash-selected-count">0 {{ t(request, 'selected_count') }}</span>
+      </label>
+      <button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-3 text-xs">{{ t(request, 'restore') }}</button>
+      <button type="submit" name="action" value="purge" data-confirm-message="{{ t(request, 'permanent_delete_confirm') }}" class="btn-danger py-1.5 px-3 text-xs">{{ t(request, 'permanent_delete') }}</button>
+    </div>
+    <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+      {% for item in items %}
+      <li class="trash-row flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer select-none">
+        <input class="admin-checkbox trash-select shrink-0" type="checkbox" name="download_ids" value="{{ item.id }}" aria-label="{{ tf(request, 'selected_aria', name=item.title) }}">
+        <div class="min-w-[160px] flex-1">
+          <p class="font-medium text-sm truncate">{{ item.title }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">#{{ item.id }} · {{ t(request, 'deleted_on') }}: {{ item.deleted_at | format_date }}</p>
+        </div>
+        <button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}">{{ t(request, 'restore') }}</button>
+        <button type="submit" name="action" value="purge" class="btn-danger py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}" data-confirm-message="{{ t(request, 'permanent_delete_confirm') }}">{{ t(request, 'permanent_delete') }}</button>
+      </li>
+      {% endfor %}
+    </ul>
+  </form>
+  {% else %}
+  <p class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ t(request, 'trash_empty') }}</p>
+  {% endif %}
+</div>
+{% if total_pages > 1 %}
+<nav class="flex items-center justify-between mt-4 text-sm" aria-label="{{ t(request, 'page') }}">
+  {% if page > 1 %}<a class="btn-secondary py-1.5 px-3" href="?page={{ page - 1 }}">{{ t(request, 'previous_page') }}</a>{% else %}<span></span>{% endif %}
+  <span>{{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}<a class="btn-secondary py-1.5 px-3" href="?page={{ page + 1 }}">{{ t(request, 'next_page') }}</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('trash-bulk-form');
+  if (!form) return;
+  var boxes = Array.from(form.querySelectorAll('.trash-select'));
+  var all = document.getElementById('trash-select-all');
+  var count = document.getElementById('trash-selected-count');
+  var anchor = null;
+  function update() {
+    var selected = boxes.filter(function (box) { return box.checked; }).length;
+    count.textContent = selected + ' ' + {{ t(request, 'selected_count')|tojson }};
+    all.checked = selected === boxes.length;
+    all.indeterminate = selected > 0 && selected < boxes.length;
+  }
+  function select(box, event, fromCheckbox) {
+    var index = boxes.indexOf(box);
+    if (event.shiftKey && anchor !== null) {
+      var checked = fromCheckbox ? box.checked : true;
+      for (var i = Math.min(anchor, index); i <= Math.max(anchor, index); i++) boxes[i].checked = checked;
+    } else if (!fromCheckbox) {
+      if (!event.metaKey && !event.ctrlKey) boxes.forEach(function (item) { item.checked = false; });
+      box.checked = event.metaKey || event.ctrlKey ? !box.checked : true;
+    }
+    anchor = index;
+    update();
+  }
+  boxes.forEach(function (box) {
+    box.addEventListener('click', function (event) { select(box, event, true); event.stopPropagation(); });
+    box.closest('.trash-row').addEventListener('click', function (event) {
+      if (event.target.closest('button,input,a,label,select,textarea')) return;
+      select(box, event, false);
+    });
+  });
+  all.addEventListener('change', function () { boxes.forEach(function (box) { box.checked = all.checked; }); update(); });
+  form.addEventListener('click', function (event) {
+    var single = event.target.closest('.trash-single');
+    if (single) {
+      boxes.forEach(function (box) { box.checked = box.value === single.dataset.id; });
+      update();
+    }
+    if (event.target.closest('button[type="submit"]') && !boxes.some(function (box) { return box.checked; })) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.showAdminNotice({{ t(request, 'select_content')|tojson }});
+    }
+  });
+  form.addEventListener('submit', function (event) {
+    if (!boxes.some(function (box) { return box.checked; })) {
+      event.preventDefault();
+      window.showAdminNotice({{ t(request, 'select_content')|tojson }});
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -21,7 +21,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "unit": "Birim", "source_examples": "GitHub, resmî site vb.",
         "menu_url_placeholder": "/category/oyunlar veya https://…",
         "document": "Belge", "video": "Video", "audio": "Ses", "other": "Diğer",
-        "old_version_intro": "Bu,", "content_deleted": "\"{title}\" silindi.",
+        "old_version_intro": "Bu,", "content_deleted": "\"{title}\" Silinenler'e taşındı.",
         "draft_preview_title": "Taslak önizlemesi", "draft_preview_body": "Bu sayfa yalnızca yönetici oturumunda görünür. Taslak henüz yayımlanmadı.",
         "back_to_edit": "Düzenlemeye dön", "draft_download_disabled": "İndirme bağlantısı yayınlandıktan sonra etkinleşir.",
         "home_return": "Ana Sayfaya Dön", "home": "Anasayfa", "actions": "Aksiyonlar", "edit_content": "İçeriği Düzenle",
@@ -68,7 +68,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "unit": "Unit", "source_examples": "GitHub, official website, etc.",
         "menu_url_placeholder": "/category/games or https://…",
         "document": "Document", "video": "Video", "audio": "Audio", "other": "Other",
-        "old_version_intro": "This is an older release of", "content_deleted": "\"{title}\" was deleted.",
+        "old_version_intro": "This is an older release of", "content_deleted": "\"{title}\" was moved to Trash.",
         "draft_preview_title": "Draft preview", "draft_preview_body": "This page is visible only to an administrator. The draft has not been published.",
         "back_to_edit": "Back to editing", "draft_download_disabled": "The download link will be enabled after publishing.",
         "home_return": "Return to Home", "home": "Home", "actions": "Actions", "edit_content": "Edit Content",
@@ -517,6 +517,37 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
 
 for language, entries in ADMIN_TRANSLATIONS.items():
     TRANSLATIONS[language].update(entries)
+
+TRANSLATIONS["tr"].update({
+    "trash": "Silinenler",
+    "all_contents": "Tüm içerikler",
+    "move_to_trash": "Silinenler'e taşı",
+    "trash_confirm": "Seçili içerikler Silinenler'e taşınacak. Daha sonra geri yüklenebilir.",
+    "trash_named_confirm": "{name} Silinenler'e taşınacak. Daha sonra geri yüklenebilir.",
+    "trash_empty": "Silinenler klasörü boş.",
+    "trash_help": "İçerikler yayından kaldırılmıştır; geri yükleyebilir veya kalıcı olarak silebilirsiniz.",
+    "trash_restored": "{count} içerik geri yüklendi.",
+    "trash_purged": "{count} içerik kalıcı olarak silindi.",
+    "restore": "Geri yükle",
+    "permanent_delete": "Kalıcı sil",
+    "permanent_delete_confirm": "Seçili içerikler kalıcı olarak silinecek. Bu işlem geri alınamaz. İlişkili medya dosyaları ayrıca medya arşivinde kalır.",
+    "deleted_on": "Silinme tarihi",
+})
+TRANSLATIONS["en"].update({
+    "trash": "Trash",
+    "all_contents": "All content",
+    "move_to_trash": "Move to Trash",
+    "trash_confirm": "Selected items will be moved to Trash and can be restored later.",
+    "trash_named_confirm": "{name} will be moved to Trash and can be restored later.",
+    "trash_empty": "Trash is empty.",
+    "trash_help": "Items are no longer public. You can restore or permanently delete them.",
+    "trash_restored": "{count} items restored.",
+    "trash_purged": "{count} items permanently deleted.",
+    "restore": "Restore",
+    "permanent_delete": "Delete permanently",
+    "permanent_delete_confirm": "Selected items will be permanently deleted. This cannot be undone. Related media files remain in the media library.",
+    "deleted_on": "Deleted on",
+})
 
 
 def set_ui_language(language: str) -> None:

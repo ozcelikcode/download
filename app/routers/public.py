@@ -84,6 +84,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
                 Download.parent_id.is_(None),
                 Download.is_active.is_(True),
                 Download.is_draft.is_(False),
+                Download.deleted_at.is_(None),
             )
             .distinct()
             .order_by(Category.slug)
@@ -101,6 +102,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
                 Download.parent_id.is_(None),
                 Download.is_active.is_(True),
                 Download.is_draft.is_(False),
+                Download.deleted_at.is_(None),
             )
             .distinct()
             .order_by(Tag.slug)
@@ -112,7 +114,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
     downloads = (
         await session.execute(
             select(Download.slug, Download.updated_at)
-            .where(Download.is_active.is_(True), Download.is_draft.is_(False))
+            .where(Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None))
             .order_by(Download.slug)
         )
     ).all()
@@ -474,7 +476,7 @@ def _build_version_timeline(download) -> list:
     }]
 
     for v in root.versions:
-        if v.id == download.id:
+        if v.id == download.id or v.deleted_at is not None:
             continue
         entries.append({
             "version": v.version or v.title,
@@ -552,6 +554,8 @@ async def do_download(
         max_per_hour=settings.rate_limit_downloads_per_hour,
     )
     if not allowed:
+        if await crud.get_download_by_slug(session, slug) is None:
+            raise HTTPException(status_code=404, detail="İndirme bulunamadı.")
         logger.warning("Rate limit aşıldı: ip=%s download_id=%d", ip, download_id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

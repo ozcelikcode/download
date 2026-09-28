@@ -53,6 +53,11 @@ async def test_uploaded_download_is_private_but_public_download_route_serves_it(
     assert public_download.status_code == 200
     assert public_download.content == b"private-content"
 
+    detail = await client.get(f"/download/{download.slug}")
+    assert detail.status_code == 200
+    assert name in detail.text
+    assert "Bu siteden güvenli biçimde sunulur" in detail.text
+
 
 async def test_admin_private_file_preview_forces_non_images_to_download(
     admin_client: AsyncClient,

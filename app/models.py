@@ -330,6 +330,7 @@ class Download(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Kaynak güvenilirliği: True → resmî site, False → üçüncü parti site
     is_official_source: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     # Zaman damgaları
     created_at: Mapped[datetime] = mapped_column(

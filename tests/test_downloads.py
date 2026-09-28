@@ -4,11 +4,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from httpx import AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
-from app.models import Download
+from app.models import Download, DownloadLog
 from app.schemas import DownloadCreate
 from pydantic import ValidationError
 import pytest
@@ -106,6 +109,37 @@ async def test_detail_cta_says_baglantiya_git_for_external(
     page = await client.get(f"/download/{d.slug}")
     assert "Bağlantıya Git" in page.text
     assert "Şimdi Bağlantıya Git" not in page.text
+
+
+@pytest.mark.parametrize("state", ["deleted", "inactive", "draft"])
+async def test_download_log_rejects_content_hidden_before_recording(
+    db_session: AsyncSession, state: str
+):
+    download = await _create_external(db_session, title=f"Hidden {state}")
+    if state == "deleted":
+        download.deleted_at = datetime.now(timezone.utc)
+    elif state == "inactive":
+        download.is_active = False
+    else:
+        download.is_draft = True
+    await db_session.commit()
+
+    allowed = await crud.record_download_if_allowed(
+        db_session, download.id, "127.0.0.1", "test", 100
+    )
+    assert allowed is False
+    assert await db_session.scalar(select(func.count()).select_from(DownloadLog)) == 0
+
+
+async def test_active_draft_is_not_publicly_visible_or_downloadable(
+    client: AsyncClient, db_session: AsyncSession
+):
+    download = await _create_external(db_session, title="Hidden draft")
+    download.is_draft = True
+    await db_session.commit()
+
+    assert (await client.get(f"/download/{download.slug}")).status_code == 404
+    assert (await client.get(f"/dl/{download.slug}")).status_code == 404
 
 
 async def test_index_card_always_says_indir(client: AsyncClient, db_session: AsyncSession):

@@ -17,7 +17,7 @@ from slugify import slugify
 from sqlalchemy import Select, case, delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.audit import add_event
 from app.models import (
@@ -612,7 +612,11 @@ def _download_base_query():
             selectinload(Download.category),
             selectinload(Download.tags),
         )
-        .where(Download.is_active == True)  # noqa: E712
+        .where(
+            Download.is_active.is_(True),
+            Download.is_draft.is_(False),
+            Download.deleted_at.is_(None),
+        )
     )
 
 
@@ -662,6 +666,7 @@ async def get_downloads_paginated(
                 selectinload(Download.category),
                 selectinload(Download.tags),
             )
+            .where(Download.deleted_at.is_(None))
         )
 
     # Yalnızca üst seviye kayıtları getir (parent_id=NULL)
@@ -744,28 +749,29 @@ async def get_downloads_paginated(
 async def get_dashboard_stats(session: AsyncSession) -> dict:
     """Dashboard'daki genel istatistik kartları için toplu sayım."""
     total_downloads = await session.scalar(
-        select(func.count()).select_from(Download).where(Download.parent_id == None)  # noqa: E711
+        select(func.count()).select_from(Download).where(Download.parent_id.is_(None), Download.deleted_at.is_(None))
     )
     active_downloads = await session.scalar(
         select(func.count()).select_from(Download).where(
             Download.parent_id == None,  # noqa: E711
             Download.is_active == True,  # noqa: E712
             Download.is_draft == False,  # noqa: E712
+            Download.deleted_at.is_(None),
         )
     )
     draft_downloads = await session.scalar(
         select(func.count()).select_from(Download).where(
-            Download.parent_id == None, Download.is_draft == True  # noqa: E711, E712
+            Download.parent_id.is_(None), Download.is_draft.is_(True), Download.deleted_at.is_(None)
         )
     )
     inactive_downloads = (
         (total_downloads or 0) - (active_downloads or 0) - (draft_downloads or 0)
     )
     total_download_count = await session.scalar(
-        select(func.coalesce(func.sum(Download.download_count), 0))
+        select(func.coalesce(func.sum(Download.download_count), 0)).where(Download.deleted_at.is_(None))
     )
     featured_count = await session.scalar(
-        select(func.count()).select_from(Download).where(Download.is_featured == True)  # noqa: E712
+        select(func.count()).select_from(Download).where(Download.is_featured.is_(True), Download.deleted_at.is_(None))
     )
     category_count = await session.scalar(select(func.count()).select_from(Category))
     tag_count = await session.scalar(select(func.count()).select_from(Tag))
@@ -817,7 +823,10 @@ async def get_download_by_slug(
 ) -> Optional[Download]:
     """Yayımlanmış detay sayfası için içerik ve sürüm ilişkilerini yükle."""
     stmt = _download_detail_query().where(
-        Download.slug == slug, Download.is_active == True  # noqa: E712
+        Download.slug == slug,
+        Download.is_active.is_(True),
+        Download.is_draft.is_(False),
+        Download.deleted_at.is_(None),
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -828,7 +837,7 @@ async def get_download_detail_by_id(
 ) -> Optional[Download]:
     """Yönetici önizlemesi için taslak dahil detay ilişkilerini yükle."""
     result = await session.execute(
-        _download_detail_query().where(Download.id == download_id)
+        _download_detail_query().where(Download.id == download_id, Download.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
@@ -891,7 +900,7 @@ async def get_download_by_id(
             selectinload(Download.tags),
             selectinload(Download.version_history),
         )
-        .where(Download.id == download_id)
+        .where(Download.id == download_id, Download.deleted_at.is_(None))
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -957,7 +966,7 @@ async def get_download_draft_by_token(
     result = await session.execute(
         select(Download)
         .options(selectinload(Download.tags), selectinload(Download.version_history))
-        .where(Download.draft_token == draft_token, Download.is_draft.is_(True))
+        .where(Download.draft_token == draft_token, Download.is_draft.is_(True), Download.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
@@ -1052,9 +1061,61 @@ async def update_download(
 
 
 async def delete_download(session: AsyncSession, download: Download) -> None:
-    await session.delete(download)
+    """İçeriği ve bağlı sürümlerini geri alınabilir biçimde gizle."""
+    now = datetime.now(timezone.utc)
+    await session.execute(
+        update(Download)
+        .where(or_(Download.id == download.id, Download.parent_id == download.id), Download.deleted_at.is_(None))
+        .values(deleted_at=now, draft_token=None)
+    )
+    add_event(session, "trash", "downloads", download.title, entity_id=download.id)
     await session.commit()
-    logger.info("Download silindi: id=%d slug=%r", download.id, download.slug)
+    logger.info("Download silinenlere taşındı: id=%d slug=%r", download.id, download.slug)
+
+
+async def get_trashed_downloads(session: AsyncSession, page: int, page_size: int = 20) -> tuple[list[Download], int]:
+    base = select(Download).where(Download.deleted_at.is_not(None), _trash_visible_condition())
+    total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
+    items = list((await session.scalars(
+        base.order_by(Download.deleted_at.desc(), Download.id.desc())
+        .offset((page - 1) * page_size).limit(page_size)
+    )).all())
+    return items, total
+
+
+def _trash_visible_condition():
+    """Silinmiş bir ana kaydın alt sürümlerini listede tekrar gösterme."""
+    parent = aliased(Download)
+    trashed_parent = select(parent.id).where(
+        parent.id == Download.parent_id, parent.deleted_at.is_not(None)
+    ).correlate(Download).exists()
+    return or_(Download.parent_id.is_(None), ~trashed_parent)
+
+
+async def update_trashed_downloads(session: AsyncSession, download_ids: list[int], action: str) -> int:
+    """Yalnızca Silinenler'de görünen kayıtları geri getir veya kalıcı sil."""
+    if action not in {"restore", "purge"}:
+        raise ValueError("Geçersiz silinenler işlemi.")
+    ids = sorted(set(download_ids))
+    if not ids:
+        raise ValueError("En az bir içerik seçin.")
+    items = list((await session.scalars(select(Download).where(
+        Download.id.in_(ids), Download.deleted_at.is_not(None), _trash_visible_condition()
+    ))).all())
+    if len(items) != len(ids):
+        raise ValueError("Seçilen içeriklerden biri Silinenler bölümünde bulunamadı.")
+    if action == "restore":
+        await session.execute(update(Download).where(
+            or_(Download.id.in_(ids), Download.parent_id.in_(ids)),
+            Download.deleted_at.is_not(None),
+        ).values(deleted_at=None))
+    else:
+        children = list((await session.scalars(select(Download).where(Download.parent_id.in_(ids)))).all())
+        for item in children + items:
+            await session.delete(item)
+    add_event(session, "restore" if action == "restore" else "purge", "downloads", f"{len(items)} içerik", changes={"islem": [None, action], "adet": [None, len(items)]})
+    await session.commit()
+    return len(items)
 
 
 async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], action: str) -> int:
@@ -1062,7 +1123,7 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
     ids = sorted(set(download_ids))
     if not ids:
         raise ValueError("En az bir içerik seçin.")
-    downloads = list((await session.scalars(select(Download).where(Download.id.in_(ids)))).all())
+    downloads = list((await session.scalars(select(Download).where(Download.id.in_(ids), Download.deleted_at.is_(None)))).all())
     if action == "publish":
         incomplete = [
             item
@@ -1077,8 +1138,11 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
         if incomplete:
             raise ValueError("Eksik taslaklar düzenlenmeden yayınlanamaz.")
     if action == "delete":
-        for download in downloads:
-            await session.delete(download)
+        selected_ids = [download.id for download in downloads]
+        await session.execute(update(Download).where(
+            or_(Download.id.in_(selected_ids), Download.parent_id.in_(selected_ids)),
+            Download.deleted_at.is_(None),
+        ).values(deleted_at=datetime.now(timezone.utc), draft_token=None))
     elif action == "publish":
         for download in downloads:
             if download.is_draft:
@@ -1097,8 +1161,8 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
         }.get(action)
         if values is None:
             raise ValueError("Geçersiz toplu işlem.")
-        await session.execute(update(Download).where(Download.id.in_(ids)).values(**values))
-    labels = {"delete": "silindi", "publish": "yayınlandı", "unpublish": "pasife alındı", "feature": "öne çıkarıldı", "unfeature": "öne çıkarma kaldırıldı"}
+        await session.execute(update(Download).where(Download.id.in_(ids), Download.deleted_at.is_(None)).values(**values))
+    labels = {"delete": "Silinenler'e taşındı", "publish": "yayınlandı", "unpublish": "pasife alındı", "feature": "öne çıkarıldı", "unfeature": "öne çıkarma kaldırıldı"}
     add_event(session, "bulk", "downloads", f"{len(downloads)} içerik {labels[action]}", changes={"islem": [None, action], "adet": [None, len(downloads)]})
     await session.commit()
     return len(downloads)
@@ -1193,7 +1257,12 @@ async def record_download_if_allowed(
         )
         result = await session.execute(
             update(Download)
-            .where(Download.id == download_id)
+            .where(
+                Download.id == download_id,
+                Download.deleted_at.is_(None),
+                Download.is_active.is_(True),
+                Download.is_draft.is_(False),
+            )
             .values(download_count=Download.download_count + 1)
         )
         if result.rowcount != 1:
@@ -1216,7 +1285,12 @@ async def get_category_download_counts(
     """Her kategorinin aktif indirme sayısını döndürür."""
     stmt = (
         select(Download.category_id, func.count(Download.id))
-        .where(Download.is_active == True, Download.parent_id == None)  # noqa: E711, E712
+        .where(
+            Download.is_active.is_(True),
+            Download.is_draft.is_(False),
+            Download.parent_id.is_(None),
+            Download.deleted_at.is_(None),
+        )
         .group_by(Download.category_id)
     )
     result = await session.execute(stmt)
