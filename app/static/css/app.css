@@ -107,6 +107,13 @@ body.dialog-open { overflow: hidden; }
   flex-shrink: 0;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+.detail-icon {
+  width: 4rem;
+  height: 4rem;
+}
+.detail-cta {
+  max-width: 34rem;
+}
 .icon-box.zip   { background: #fff7ed; color: #ea580c; }
 .icon-box.pdf   { background: #fef2f2; color: #dc2626; }
 .icon-box.link  { background: #eff6ff; color: #2563eb; }
