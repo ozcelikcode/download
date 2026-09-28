@@ -175,7 +175,7 @@ async def _sidebar_context(
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
     ] or ["search", "categories", "tags"]
-    admin_username = get_optional_admin_username(request)
+    admin_username = get_optional_admin_username(request, site_settings)
     try:
         hero_components = json.loads(site_settings.hero_components)
     except (TypeError, json.JSONDecodeError):

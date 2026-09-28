@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # Admin
     admin_username: str = "admin"
     admin_password_hash: str = ""
+    # İlk kurulum/silme sonrası yeniden kurulum yalnız sunucu sahibine açıktır.
+    setup_token: str = ""
 
     # Dosya yükleme
     upload_dir: str = "app/static/uploads"

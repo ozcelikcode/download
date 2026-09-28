@@ -3,8 +3,9 @@
   ('appearance', '/admin/settings/appearance', 'layout-template', t(request, 'appearance')),
   ('account', '/admin/settings/account', 'user-cog', t(request, 'account')),
   ('menu', '/admin/settings/menu', 'menu', t(request, 'menus')),
+  ('maintenance', '/admin/settings/maintenance', 'shield-alert', t(request, 'maintenance')),
 ] %}
-<div class="flex items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-800">
+<div class="flex flex-wrap items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-800">
   {% for key, url, icon, label in _tabs %}
   <a href="{{ url }}"
     class="flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 -mb-px transition-colors

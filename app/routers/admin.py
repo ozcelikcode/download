@@ -52,6 +52,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -70,7 +71,6 @@ from app.dependencies import (
     get_db,
     get_request_ip,
     hash_admin_password,
-    refresh_session_max_age,
     require_admin,
     verify_admin_password,
     SESSION_COOKIE,
@@ -381,11 +381,22 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
         logger.info("Dış görsel indirildi: %s -> %s", url, dest)
+    except asyncio.CancelledError:
+        if dest is not None:
+            dest.unlink(missing_ok=True)
+        raise
     except Exception as exc:
         if dest is not None:
             dest.unlink(missing_ok=True)
         logger.error("Dış görsel indirme hatası (%s): %s", url, exc)
         _icon_fetch_progress[token].update({"done": True, "error": str(exc)})
+
+
+async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str) -> None:
+    try:
+        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by), timeout=60)
+    except TimeoutError:
+        _icon_fetch_progress[token].update({"done": True, "error": "Bağlantı kontrolü zaman aşımına uğradı."})
 
 
 # ---------------------------------------------------------------------------
@@ -759,8 +770,8 @@ async def upload_icon_image_url(
     _icon_fetch_progress[token] = {
         "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
     }
-    asyncio.create_task(_fetch_icon_from_url(url, token, _admin))
-    return {"started": True, "token": token}
+    return JSONResponse({"started": True, "token": token},
+                        background=BackgroundTask(_fetch_icon_with_timeout, url, token, _admin))
 
 
 @router.get("/upload/progress/{token}", name="admin_upload_progress")
@@ -873,7 +884,7 @@ async def login_post(
     request.session.clear()
     add_event(session, "login", "login", "Yönetici oturumu açıldı", changes={"ip_address": [None, ip]}, actor=username)
     await session.commit()
-    token = create_admin_session_token(username, site_settings.admin_password_hash or settings.admin_password_hash)
+    token = create_admin_session_token(username, site_settings.admin_password_hash or settings.admin_password_hash, site_settings.session_generation)
     response = _redirect("/admin")
     response.set_cookie(
         key=SESSION_COOKIE,
@@ -2144,12 +2155,17 @@ async def settings_account_update(
     new_password: Optional[str] = Form(None),
     new_password_confirm: Optional[str] = Form(None),
 ):
+    # require_admin aynı oturumda okuma yaptı; kota kendi kısa işlemini kullanır.
+    await session.rollback()
+    attempt_id = await reserve_login_attempt(session, "account:" + get_request_ip(request))
     site_settings = await crud.get_site_settings(session)
     effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
 
-    if not verify_admin_password(current_password, effective_hash):
+    if not await run_in_threadpool(verify_admin_password, current_password, effective_hash):
         request.session["flash_message"] = translate(request, "wrong_current_password")
         return _redirect("/admin/settings/account")
+
+    await clear_successful_attempt(session, attempt_id)
 
     new_username = (new_username or "").strip()
     new_password = new_password or ""
@@ -2185,8 +2201,7 @@ async def settings_session_duration_update(
     session_max_age_minutes: int = Form(...),
 ):
     minutes = max(5, min(int(session_max_age_minutes), 60 * 24 * 30))  # 5 dk – 30 gün arası
-    updated = await crud.update_session_max_age(session, minutes)
-    refresh_session_max_age(updated.session_max_age_minutes)
+    await crud.update_session_max_age(session, minutes)
     request.session["flash_message"] = translate(request, "session_updated")
     return _redirect("/admin/settings/account")
 

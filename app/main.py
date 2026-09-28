@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import PurePosixPath
 
 from fastapi import FastAPI, Request, status
 from fastapi.exception_handlers import http_exception_handler
@@ -18,10 +17,11 @@ from app import crud
 from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
-from app.dependencies import refresh_session_max_age
 from app.i18n import translate, system_message
-from app.routers import admin, public, reports
+from app.routers import admin, public, reports, setup
+from app.lifecycle import LifecycleMiddleware, finish_pending_reset, single_worker_guard, reset_storage_roots
 from app.storage import migrate_legacy_local_downloads
+from app.security import SecurityHeadersMiddleware
 from app.templating import refresh_site_branding_globals, templates
 
 # ---------------------------------------------------------------------------
@@ -40,21 +40,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    settings.upload_path  # upload klasörünü oluştur
-    settings.download_path  # özel indirme klasörünü oluştur
-    async with AsyncSessionLocal() as session:
-        migrated = await migrate_legacy_local_downloads(session)
-        if migrated:
-            logger.info("%d eski yerel indirme özel depoya taşındı", migrated)
-        site_settings = await crud.get_site_settings(session)
-        refresh_site_branding_globals(site_settings)
-        refresh_session_max_age(site_settings.session_max_age_minutes)
-    logger.info("✅ %s başlatıldı", settings.app_name)
-    yield
-    # Shutdown
-    await engine.dispose()
-    logger.info("⛔ Uygulama kapatıldı.")
+    with single_worker_guard():
+        reset_storage_roots()
+        settings.upload_path
+        settings.download_path
+        async with AsyncSessionLocal() as session:
+            await finish_pending_reset(session)
+            migrated = await migrate_legacy_local_downloads(session)
+            if migrated:
+                logger.info("%d eski yerel indirme özel depoya taşındı", migrated)
+            site_settings = await crud.get_site_settings(session)
+            refresh_site_branding_globals(site_settings)
+        logger.info("✅ %s başlatıldı", settings.app_name)
+        try:
+            yield
+        finally:
+            await engine.dispose()
+            logger.info("⛔ Uygulama kapatıldı.")
 
 
 # ---------------------------------------------------------------------------
@@ -85,29 +87,12 @@ app.add_middleware(
     https_only=settings.app_base_url.startswith("https://"),
 )
 
-@app.middleware("http")
-async def security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "same-origin"
-    if request.url.path.startswith("/admin"):
-        response.headers["Cache-Control"] = "no-store"
-    if (
-        request.url.path.startswith("/static/uploads/")
-        and PurePosixPath(request.url.path).suffix.lower()
-        in {".css", ".htm", ".html", ".js", ".mjs", ".svg", ".svgz", ".xhtml", ".xml"}
-    ):
-        response.headers["Content-Disposition"] = "attachment"
-        response.headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
-    if settings.app_base_url.startswith("https://"):
-        response.headers["Strict-Transport-Security"] = "max-age=31536000"
-    return response
-
-
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
+app.add_middleware(LifecycleMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.include_router(setup.router)
 app.include_router(public.router)
 app.include_router(admin.router)
 app.include_router(reports.router)

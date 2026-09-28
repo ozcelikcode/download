@@ -70,6 +70,8 @@ async def migrate_legacy_local_downloads(session: AsyncSession) -> int:
         path.resolve()
         for path in public_root.rglob("*")
         if path.is_file()
+        and not path.is_symlink()
+        and path.resolve().is_relative_to(public_root)
         and path.name != ".gitkeep"
         and not path.resolve().is_relative_to(icons_root)
     ]

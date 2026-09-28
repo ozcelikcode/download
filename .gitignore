@@ -11,6 +11,7 @@ __pycache__/
 *.db-wal
 *.db-shm
 *.db-journal
+*.db.runtime.lock
 
 # Kullanıcı yüklemeleri çalışma verisidir; Git'e eklenmez.
 app/static/uploads/*

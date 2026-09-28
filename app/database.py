@@ -39,6 +39,7 @@ def _set_sqlite_pragmas(dbapi_conn, _):
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.execute("PRAGMA cache_size=10000")
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA secure_delete=ON")
     cursor.close()
 
 # ---------------------------------------------------------------------------

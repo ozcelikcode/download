@@ -13,6 +13,15 @@ from app.schemas import DownloadCreate
 from app.storage import migrate_legacy_local_downloads
 
 
+async def test_legacy_migration_does_not_move_symlink_targets(db_session, tmp_path):
+    outside = tmp_path / "outside.txt"
+    outside.write_text("private")
+    (settings.upload_path / "link.txt").symlink_to(outside)
+    await migrate_legacy_local_downloads(db_session)
+    assert outside.read_text() == "private"
+    assert not (settings.download_path / outside.name).exists()
+
+
 async def test_uploaded_download_is_private_but_public_download_route_serves_it(
     client: AsyncClient,
     admin_client: AsyncClient,

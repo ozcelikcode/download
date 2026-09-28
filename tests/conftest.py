@@ -24,6 +24,7 @@ from app.config import settings
 from app.database import Base
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, get_db
 from app.main import app
+from app.models import SiteLifecycle
 from app.i18n import set_ui_language
 from app.templating import templates
 
@@ -64,10 +65,14 @@ async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
         await conn.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
-    from app import link_checks
+    from app import link_checks, lifecycle
     from app.routers import public
 
     monkeypatch.setattr(link_checks, "AsyncSessionLocal", session_factory)
+    monkeypatch.setattr(lifecycle, "AsyncSessionLocal", session_factory)
+    async with session_factory() as session:
+        session.add(SiteLifecycle(id=1, installed=True))
+        await session.commit()
 
     async def skip_network_check(download_id: int, url: str) -> None:
         pass

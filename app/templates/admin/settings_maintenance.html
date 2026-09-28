@@ -1,0 +1,45 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'maintenance') }}{% endblock %}
+{% block content %}
+<h1 class="text-lg font-bold mb-6">{{ t(request, 'maintenance') }}</h1>
+{% set active_settings_tab = 'maintenance' %}
+{% include "admin/_settings_tabs.html" %}
+<div class="max-w-2xl space-y-5">
+  <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
+    <h2 class="font-semibold">{{ site_settings.site_name }}</h2>
+    <p class="text-sm text-slate-500 mt-1 break-all">{{ public_url }}</p>
+    <p class="text-sm text-slate-500 mt-3">{{ tf(request, 'reset_inventory', contents=content_count, media=media_count) }}</p>
+    <p class="text-sm mt-3">{{ t(request, 'reset_backup_help') }}</p>
+  </section>
+  {% if error %}<div role="alert" class="p-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 rounded-sm text-sm">{{ error }}</div>{% endif %}
+  {% if challenge %}
+  <form method="post" action="/admin/settings/maintenance/confirm" class="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-500/20 rounded-sm p-5 space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <input type="hidden" name="nonce" value="{{ challenge.nonce }}">
+    <h2 class="font-semibold text-red-700 dark:text-red-400">{{ t(request, 'reset_' + challenge.action) }}</h2>
+    <p class="text-sm">{{ t(request, 'reset_' + challenge.action + '_help') }}</p>
+    <p class="text-sm text-slate-500">{{ t(request, 'reset_confirm_help') }}</p>
+    <div class="border border-slate-200 dark:border-slate-800 rounded-sm p-3 font-semibold break-all">{{ challenge.site_name }}</div>
+    <div><label for="reset-name" class="form-label">{{ t(request, 'reset_type_name') }}</label><input id="reset-name" name="confirmation" required maxlength="100" autocomplete="off" class="form-input"></div>
+    <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="irreversible" value="yes" required class="mt-1">{{ t(request, 'reset_irreversible') }}</label>
+    <div class="flex flex-wrap gap-3"><button type="submit" class="btn-danger">{{ t(request, 'reset_execute') }}</button><a href="/admin/settings/maintenance" class="btn-secondary">{{ t(request, 'cancel') }}</a></div>
+  </form>
+  {% else %}
+  <form method="post" action="/admin/settings/maintenance/authorize" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <fieldset class="space-y-3">
+      <legend class="font-semibold mb-3">{{ t(request, 'reset_choose') }}</legend>
+      {% for action in ['settings', 'full', 'uninstall'] %}
+      <label class="flex items-start gap-3 border border-slate-200 dark:border-slate-800 rounded-sm p-4">
+        <input type="radio" name="action" value="{{ action }}" required class="mt-1" {% if action == 'uninstall' and not can_uninstall %}disabled{% endif %}>
+        <span><span class="block text-sm font-semibold">{{ t(request, 'reset_' + action) }}</span><span class="block text-sm text-slate-500 mt-1">{{ t(request, 'reset_' + action + '_help') }}</span></span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    {% if not can_uninstall %}<p class="text-sm text-amber-700 dark:text-amber-400">{{ t(request, 'reset_key_required') }}</p>{% endif %}
+    <div><label for="reset-password" class="form-label">{{ t(request, 'current_password') }}</label><input id="reset-password" name="password" type="password" required autocomplete="current-password" maxlength="1024" class="form-input"></div>
+    <button type="submit" class="btn-secondary">{{ t(request, 'reset_review') }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

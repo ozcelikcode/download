@@ -1,6 +1,7 @@
 """Oturuma bağlı CSRF doğrulaması ve SQLite üzerinde giriş denemesi sınırı."""
 
 import secrets
+from pathlib import PurePosixPath
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
@@ -8,9 +9,45 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import LoginAttempt
+from app.config import settings
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Scope, Receive, Send, Message
 
 LOGIN_LIMIT = 5
 LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+class SecurityHeadersMiddleware:
+    """Akış/parçalı yüklemeleri sarmalayan ek görevler oluşturmadan başlık ekle."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def secure_send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+                headers["Referrer-Policy"] = "same-origin"
+                path = scope["path"]
+                if path.startswith(("/admin", "/setup")):
+                    headers["Cache-Control"] = "no-store"
+                    headers["X-Robots-Tag"] = "noindex, nofollow"
+                if path.startswith("/static/uploads/") and PurePosixPath(path).suffix.lower() in {
+                    ".css", ".htm", ".html", ".js", ".mjs", ".svg", ".svgz", ".xhtml", ".xml",
+                }:
+                    headers["Content-Disposition"] = "attachment"
+                    headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
+                if settings.app_base_url.startswith("https://"):
+                    headers["Strict-Transport-Security"] = "max-age=31536000"
+            await send(message)
+
+        await self.app(scope, receive, secure_send)
 
 
 def csrf_token(request: Request) -> str:

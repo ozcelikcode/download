@@ -6,6 +6,12 @@ Projenin güvenlik ve temel backend sağlamlaştırması tamamlandı. Site Sağl
 
 ## Recently completed
 
+- Sunucu anahtarıyla korunan ilk kurulum (`/setup`), alan adı/HTTPS/debug/depolama kontrolleri ve tarayıcıdan yönetici hesabı oluşturma eklendi. `make setup` yeni .env üretir; `make setup-key` yeniden kurulum anahtarını yeniler. Mevcut siteler Alembic geçişinde kurulu kalır.
+- Ayarlar → Bakım ve Sıfırlama: ayarlar / tüm site / hesabı kaldırıp kuruluma dönme kapsamları. Parola + beş dakikalık oturuma bağlı onay + birebir site adı gerekir. Yenileme kuşağı tüm eski yönetici oturumlarını public/admin tarafında geçersiz kılar.
+- Tam silme yalnız özel veri dizinlerini temizler; kod/.env/hosting korunur. Kesilen temizlik kalıcı bakım durumunda yeniden başlatmayla sürer. Tek worker OS kilidiyle zorunludur; sıfırlama aktif istekleri ve arka plan görsel indirmelerini bekler.
+- Güvenlik bakımı: hesap parolası doğrulamasına kota ve threadpool, istek gövdesine akış dahil sınır, SQLite secure_delete ve eski dosya taşımasında symlink hedef koruması. Bildirimli bağımlılıklar güncellendi; kurulum/yayın/sıfırlama sınırları README ve SECURITY içinde belgeli.
+- Doğrulama: 227 test geçti; bağımlılık taramasında bilinen açık ve pip uyumsuzluğu bulunmadı. Kurulum ve bakım ekranları izole sunucuda tarayıcıyla kontrol edildi. Mevcut DB migration'ı veri korunarak uygulandı; migration öncesi yedek proje dışında saklandı.
+
 - Ortak erişilebilirlik davranışları: skip link, focus-visible, dialog focus trap, Escape ile kapatma, `aria-expanded`, reduced-motion ve dokunmatik işlem görünürlüğü.
 - Public listeleme: query-param tabanlı sıralama, işletim sistemi, kaynak türü ve kaynak güveni filtreleri.
 - Detay sayfası: ilgili içerikler, güçlendirilmiş indirme kartı, mobil CTA ve SHA-256 kopyalama.

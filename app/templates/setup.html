@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="{{ ui_language(request) }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <title>{{ t(request, 'setup_title') }}</title>
+  <link rel="stylesheet" href="/static/css/tailwind.css?v={{ css_asset_v }}">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ css_asset_v }}">
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen p-4">
+<main class="max-w-2xl mx-auto py-8 space-y-6">
+  <header>
+    <nav class="flex gap-3 text-sm mb-5" aria-label="Language"><a href="/setup?lang=tr" lang="tr">Türkçe</a><a href="/setup?lang=en" lang="en">English</a></nav>
+    <p class="text-sm text-blue-700 mb-2">Downloader</p>
+    <h1 class="text-2xl font-bold">{{ t(request, 'setup_title') }}</h1>
+    <p class="text-sm text-slate-500 mt-2">{{ t(request, 'setup_intro') }}</p>
+  </header>
+  {% if error %}<div role="alert" class="border border-red-200 bg-red-50 text-red-700 rounded-sm p-4 text-sm">{{ error }}</div>{% endif %}
+  <section class="bg-white border border-slate-200 rounded-sm p-5">
+    <h2 class="font-semibold mb-3">1. {{ t(request, 'setup_deployment') }}</h2>
+    <p class="text-sm text-slate-500 mb-4">{{ t(request, 'setup_hosting_help') }}</p>
+    <ul class="space-y-2 text-sm">
+      {% for label, ok in checks %}<li class="flex justify-between gap-4"><span>{{ t(request, label) }}</span><span class="{{ 'text-green-700' if ok else 'text-red-700' }}">{{ t(request, 'setup_ready' if ok else 'setup_attention') }}</span></li>{% endfor %}
+    </ul>
+    <p class="text-sm text-slate-500 mt-4">{{ t(request, 'setup_config_help') }}</p>
+  </section>
+  <form method="post" action="/setup?lang={{ ui_language(request) }}" class="space-y-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <section class="bg-white border border-slate-200 rounded-sm p-5 space-y-4">
+      <h2 class="font-semibold">2. {{ t(request, 'setup_owner') }}</h2>
+      <div><label for="setup-token" class="form-label">{{ t(request, 'setup_key') }}</label><input id="setup-token" name="setup_token" type="password" autocomplete="off" required maxlength="200" class="form-input"><p class="form-hint">{{ t(request, 'setup_key_help') }}</p></div>
+      <div><label for="setup-user" class="form-label">{{ t(request, 'username') }}</label><input id="setup-user" name="username" autocomplete="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9_.\-]+" class="form-input"><p class="form-hint">{{ t(request, 'setup_username_help') }}</p></div>
+      <div><label for="setup-password" class="form-label">{{ t(request, 'password') }}</label><input id="setup-password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" class="form-input"><p class="form-hint">{{ t(request, 'setup_password_help') }}</p></div>
+      <div><label for="setup-password-confirm" class="form-label">{{ t(request, 'setup_password_confirm') }}</label><input id="setup-password-confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="1024" class="form-input"></div>
+    </section>
+    <section class="bg-white border border-slate-200 rounded-sm p-5 space-y-4">
+      <h2 class="font-semibold">3. {{ t(request, 'setup_site') }}</h2>
+      <div><label for="setup-name" class="form-label">{{ t(request, 'site_name') }}</label><input id="setup-name" name="site_name" required maxlength="100" class="form-input"></div>
+      <div><label for="setup-url" class="form-label">{{ t(request, 'setup_domain') }}</label><input id="setup-url" name="public_url" type="url" value="{{ public_url }}" required class="form-input"><p class="form-hint">{{ t(request, 'setup_domain_help') }}</p></div>
+      <div><label for="setup-language" class="form-label">{{ t(request, 'site_language') }}</label><select id="setup-language" name="language" class="form-input"><option value="tr" {% if ui_language(request) == 'tr' %}selected{% endif %}>Türkçe</option><option value="en" {% if ui_language(request) == 'en' %}selected{% endif %}>English</option></select></div>
+      <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="deployment_confirmed" value="yes" required class="mt-1">{{ t(request, 'setup_acknowledge') }}</label>
+      <button type="submit" class="btn-primary">{{ t(request, 'setup_finish') }}</button>
+    </section>
+  </form>
+</main>
+</body>
+</html>

@@ -21,6 +21,7 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from app.config import settings
 from app.database import get_db  # noqa: F401 — re-export
+from app.models import SiteSettings
 from app import audit  # noqa: F401 — işlem geçmişi olaylarını kaydeder
 
 logger = logging.getLogger(__name__)
@@ -30,36 +31,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _serializer = URLSafeTimedSerializer(settings.app_secret_key)
 SESSION_COOKIE = "admin_session"
-# Varsayılan; Ayarlar'dan değiştirilip DB'den yüklenince refresh_session_max_age
-# ile güncellenir (bkz. app/main.py lifespan, app/routers/admin.py Ayarlar kaydı).
-SESSION_MAX_AGE = 60 * 60 * 8  # 8 saat
-
-
-def refresh_session_max_age(minutes: int) -> None:
-    """Admin oturum süresini (dakika) DB'deki güncel değere göre ayarlar."""
-    global SESSION_MAX_AGE
-    SESSION_MAX_AGE = max(1, int(minutes)) * 60
 
 
 def credential_stamp(username: str, password_hash: str) -> str:
     return hmac.new(settings.app_secret_key.encode(), (username + "\0" + password_hash).encode(), hashlib.sha256).hexdigest()
 
 
-def create_admin_session_token(username: str, password_hash: str | None = None) -> str:
+def create_admin_session_token(username: str, password_hash: str | None = None, generation: str = "") -> str:
     stamp = credential_stamp(username, settings.admin_password_hash if password_hash is None else password_hash)
-    return _serializer.dumps({"u": username, "v": stamp, "nonce": secrets.token_urlsafe(16)}, salt="admin-session")
-
-
-def verify_admin_session_token(token: str) -> Optional[str]:
-    """
-    Geçerli token → username döndürür.
-    Geçersiz/süresi dolmuş → None.
-    """
-    try:
-        data = _serializer.loads(token, salt="admin-session", max_age=SESSION_MAX_AGE)
-        return data.get("u")
-    except (BadSignature, SignatureExpired):
-        return None
+    return _serializer.dumps({"u": username, "v": stamp, "g": generation, "nonce": secrets.token_urlsafe(16)}, salt="admin-session")
 
 
 # ---------------------------------------------------------------------------
@@ -115,35 +95,47 @@ async def require_admin(
             status_code=status.HTTP_302_FOUND,
             headers={"Location": "/admin/login"},
         )
-    username = verify_admin_session_token(admin_session)
+    from app.crud import get_site_settings
+    account = await get_site_settings(session)
+    username = authenticated_username(admin_session, account)
     if not username:
         raise HTTPException(
             status_code=status.HTTP_302_FOUND,
             headers={"Location": "/admin/login"},
         )
-    from app.crud import get_site_settings
-    account = await get_site_settings(session)
-    current_username = account.admin_username or settings.admin_username
-    current_hash = account.admin_password_hash or settings.admin_password_hash
-    data = _serializer.loads(admin_session, salt="admin-session", max_age=SESSION_MAX_AGE)
-    if username != current_username or not secrets.compare_digest(str(data.get("v", "")), credential_stamp(current_username, current_hash)):
-        raise HTTPException(status_code=302, headers={"Location": "/admin/login"})
     session.info["audit_actor"] = username
     return username
 
 
-def get_optional_admin_username(request: Request) -> Optional[str]:
+def authenticated_username(token: str, account: SiteSettings) -> Optional[str]:
+    try:
+        data = _serializer.loads(token, salt="admin-session", max_age=max(1, account.session_max_age_minutes) * 60)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(data, dict):
+        return None
+    username = account.admin_username or settings.admin_username
+    password_hash = account.admin_password_hash or settings.admin_password_hash
+    if (
+        data.get("u") != username
+        or not secrets.compare_digest(str(data.get("v", "")), credential_stamp(username, password_hash))
+        or not secrets.compare_digest(str(data.get("g", "")), account.session_generation)
+    ):
+        return None
+    return username
+
+
+def get_optional_admin_username(request: Request, account: SiteSettings) -> Optional[str]:
     """
     `require_admin`'in aksine hiçbir şeyi zorunlu kılmaz — sadece geçerli bir
     admin oturumu varsa kullanıcı adını, yoksa None döndürür. Herkese açık
     sayfalarda (navbar'da admin durumu, indirme sayfasında admin aksiyonları)
-    kullanılır. İmza doğrulaması `verify_admin_session_token` ile aynıdır,
-    yalnızca çerez varlığına bakılmaz — sahte/geçersiz çerez admin sayılmaz.
+    kullanılır. İmza, süre, güncel hesap bilgileri ve oturum kuşağı doğrulanır.
     """
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         return None
-    return verify_admin_session_token(token)
+    return authenticated_username(token, account)
 
 
 # ---------------------------------------------------------------------------

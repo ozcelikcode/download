@@ -1,6 +1,15 @@
-.PHONY: dev migrate seed install install-dev hash test tailwind-cli css css-watch check-python
+.PHONY: dev prod migrate install install-dev hash test tailwind-cli css css-watch check-python setup setup-key
 
 PYTHON ?= python3
+SITE_URL ?= http://127.0.0.1:8000
+
+# İlk kurulum: mevcut .env üzerine yazılmaz.
+setup:
+	.venv/bin/python -m app.manage prepare --url "$(SITE_URL)"
+	$(MAKE) migrate
+
+setup-key:
+	.venv/bin/python -m app.manage setup-key
 
 TAILWIND_VERSION := 3.4.19
 TAILWIND_BIN := .bin/tailwindcss

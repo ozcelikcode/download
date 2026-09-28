@@ -525,6 +525,8 @@ def set_ui_language(language: str) -> None:
 
 
 def ui_language(request: Request | None = None) -> str:
+    if request is not None and getattr(request.state, "ui_language", None) in {"tr", "en"}:
+        return request.state.ui_language
     return _active_language
 
 
@@ -540,6 +542,55 @@ def translate_format(request: Request | None, key: str, **values: object) -> str
 # Kalıcı raporlar ve alt katmanlardan gelen tanımlı sistem mesajları.
 # Kullanıcı içeriğine uygulanmaz; eski kayıtlar da dil değişimini izler.
 SYSTEM_MESSAGES: dict[str, tuple[str, str]] = {
+    "maintenance": ("Bakım ve Sıfırlama", "Maintenance and Reset"),
+    "request_too_large": ("İstek boyutu sınırını aşıyor.", "The request exceeds the size limit."),
+    "setup_title": ("Site kurulumu", "Site setup"),
+    "setup_intro": ("Sunucu kontrollerini tamamlayın, yönetici hesabınızı oluşturun ve sitenizi açın.", "Complete the server checks, create your administrator account and open your site."),
+    "setup_deployment": ("Sunucu ve alan adı", "Server and domain"),
+    "setup_hosting_help": ("Python 3.12+ çalıştıran, kalıcı diskli bir sunucu kullanın. Alan adınızın DNS kaydını sunucuya yönlendirin ve reverse proxy üzerinde HTTPS sertifikasını etkinleştirin. Bu ekran hosting veya alan adı satın almaz; DNS ayarlarını değiştirmez.", "Use a server with Python 3.12+ and persistent storage. Point your domain's DNS record at the server and enable an HTTPS certificate on your reverse proxy. This screen does not purchase hosting or domains or change DNS records."),
+    "setup_config_help": ("Yeni kurulum için terminalde make setup çalıştırın. Mevcut kurulumda anahtar gerekiyorsa make setup-key kullanın. APP_BASE_URL ve proxy ayarlarını .env üzerinden düzenleyip sunucuyu yeniden başlatın. Yayın yönergeleri README.md içindedir.", "Run make setup in the terminal for a new installation. Use make setup-key if an existing installation needs a key. Configure APP_BASE_URL and proxy settings in .env, then restart the server. See README.md for deployment instructions."),
+    "setup_key_ready": ("Kurulum anahtarı tanımlı", "Setup key configured"),
+    "setup_domain_ready": ("Geçerli HTTPS veya yerel site adresi", "Valid HTTPS or local site URL"),
+    "setup_https_ready": ("Güvenli bağlantı veya yerel geliştirme", "Secure connection or local development"),
+    "setup_debug_ready": ("Canlı ortamda debug kapalı", "Debug disabled in production"),
+    "setup_storage_ready": ("Veri dizinleri güvenli ve yazılabilir", "Data directories are safe and writable"),
+    "setup_ready": ("Hazır", "Ready"),
+    "setup_attention": ("Düzenleme gerekli", "Needs attention"),
+    "setup_owner": ("Sahiplik ve yönetici hesabı", "Ownership and administrator account"),
+    "setup_key": ("Kurulum anahtarı", "Setup key"),
+    "setup_key_help": ("Sunucuda üretilen SETUP_TOKEN değerini girin. Bu anahtarı paylaşmayın; yeniden kurulumda da gereklidir.", "Enter the SETUP_TOKEN generated on your server. Keep this key private; it is also required for reinstallation."),
+    "setup_username_help": ("3–50 karakter: harf, rakam, nokta, alt çizgi veya tire.", "3–50 characters: letters, numbers, periods, underscores or hyphens."),
+    "setup_password_help": ("En az 12 karakterlik, başka yerde kullanmadığınız bir parola belirleyin.", "Choose a unique password of at least 12 characters."),
+    "setup_password_confirm": ("Parolayı tekrar girin", "Repeat password"),
+    "setup_site": ("Site bilgileri", "Site details"),
+    "setup_domain": ("Site adresi", "Site URL"),
+    "setup_domain_help": ("Adres, sunucudaki APP_BASE_URL ile aynı olmalıdır. Canlı ortamda https://alan-adiniz biçimini kullanın.", "This must match APP_BASE_URL on the server. Use https://your-domain in production."),
+    "setup_acknowledge": ("Alan adı, HTTPS ve kalıcı depolama ayarlarını kontrol ettim; yedekleme sorumluluğunun bende olduğunu biliyorum.", "I have checked the domain, HTTPS and persistent storage settings and understand that I am responsible for backups."),
+    "setup_finish": ("Kurulumu tamamla", "Complete setup"),
+    "setup_key_invalid": ("Kurulum anahtarı doğrulanamadı.", "The setup key could not be verified."),
+    "setup_checks_failed": ("Kuruluma devam etmeden önce sunucu kontrollerindeki eksikleri giderin.", "Resolve the server checks before completing setup."),
+    "setup_invalid": ("Alanları kontrol edin: site adı, kullanıcı adı, eşleşen en az 12 karakterlik parolalar ve sunucuyla aynı site adresi gereklidir.", "Check the fields: a site name, a valid username, matching passwords of at least 12 characters and the configured site URL are required."),
+    "setup_domain_mismatch": ("Site adresi sunucu yapılandırmasıyla eşleşmiyor.", "The site URL does not match the server configuration."),
+    "reset_backup_help": ("Başlamadan önce veritabanı ve iki yükleme dizininin yedeğini sunucu dışında saklayın. Bu işlemler geri alınamaz. Alan adı, hosting, .env, uygulama kodu ve harici yedekler silinmez.", "Before proceeding, store a backup of the database and both upload directories outside the server. These actions cannot be undone. The domain, hosting, .env, application code and external backups are not deleted."),
+    "reset_choose": ("Sıfırlama kapsamını seçin", "Choose what to reset"),
+    "reset_inventory": ("{contents} içerik · {media} medya kaydı", "{contents} content items · {media} media records"),
+    "reset_settings": ("Yalnız site ayarlarını sıfırla", "Reset site settings only"),
+    "reset_settings_help": ("Görünüm, SEO, menüler ve site tercihleri varsayılana döner. İçerikler, medya dosyaları, kayıtlar, yönetici hesabı, dil ve sunucu yapılandırması korunur. Tüm yönetici oturumları kapatılır.", "Restore appearance, SEO, menus and site preferences to defaults. Keep content, media files, logs, the administrator account, language and server configuration. Sign out all administrator sessions."),
+    "reset_full": ("Siteyi tamamen sıfırla", "Reset the entire site"),
+    "reset_full_help": ("İçerikler, kategoriler, etiketler, medya ve indirilebilir dosyalar, menüler ve işlem kayıtları silinir; ayarlar varsayılana döner. Yalnız yönetici hesabı, dil ve sunucu yapılandırması korunur. Yeniden giriş yapmanız gerekir.", "Delete content, categories, tags, media and downloadable files, menus and activity logs; restore settings to defaults. Keep only the administrator account, language and server configuration. You must sign in again."),
+    "reset_uninstall": ("Siteyi sil ve kuruluma dön", "Delete site data and return to setup"),
+    "reset_uninstall_help": ("Tam sıfırlamaya ek olarak yönetici hesabı da silinir ve site kapanır. Yeniden açmak için sunucudaki kurulum anahtarı gerekir. Uygulama dosyaları çalışır durumda kalır.", "In addition to a full reset, remove the administrator account and close the site. The server's setup key is required to reopen it. Application files remain operational."),
+    "reset_key_required": ("Kuruluma dönmek için önce sunucuda make setup-key çalıştırıp uygulamayı yeniden başlatın ve anahtarı güvenli yerde saklayın.", "Before returning to setup, run make setup-key on the server, restart the application and store the key safely."),
+    "reset_review": ("Parolayı doğrula ve kapsamı incele", "Verify password and review scope"),
+    "reset_confirm_help": ("Parolanız doğrulandı. Beş dakika içinde aşağıdaki site adını aynen yazarak seçtiğiniz işlemi onaylayın.", "Your password has been verified. Within five minutes, type the exact site name below to confirm your selected action."),
+    "reset_type_name": ("Doğrulama için site adını yazın", "Type the site name to confirm"),
+    "reset_irreversible": ("Seçilen verilerin kalıcı olarak silineceğini ve bu işlemin geri alınamayacağını anlıyorum.", "I understand that the selected data will be permanently deleted and this action cannot be undone."),
+    "reset_execute": ("Onayladığım işlemi uygula", "Apply the confirmed action"),
+    "reset_invalid": ("İşlem bilgileri geçersiz. Kapsamı seçip yeniden doğrulayın.", "Invalid action details. Select the scope and verify again."),
+    "reset_confirmation_failed": ("Site adı veya işlem doğrulaması geçersiz ya da süresi dolmuş. Parolanızla yeniden başlayın.", "The site name or confirmation is invalid or expired. Start again with your password."),
+    "reset_storage_unsafe": ("Dosya dizinleri güvenli sıfırlama için uygun değil. Sunucudaki UPLOAD_DIR ve DOWNLOAD_DIR ayarlarını kontrol edin.", "The file directories are not safe to reset. Check UPLOAD_DIR and DOWNLOAD_DIR on the server."),
+    "reset_failed": ("Temizleme tamamlanamadı. Site bakımda tutulur; dosya izinlerini kontrol edip uygulamayı yeniden başlatın. Temizleme yeniden denenecek.", "Cleanup could not finish. The site remains in maintenance; check file permissions and restart the application to retry cleanup."),
+    "reset_done": ("Sıfırlama tamamlandı. Yönetici hesabınızla yeniden giriş yapın.", "Reset completed. Sign in again with your administrator account."),
     "media_in_use": ("Dosya kullanıldığı için silinemedi. Önce ilgili içeriklerdeki bağlantıyı kaldırın.", "The file is in use. Remove its links from the related content before deleting it."),
     "external_create_required": ("file_type='external' seçildiğinde external_url zorunludur.", "An external URL is required for external downloads."),
     "local_create_required": ("file_type='local' seçildiğinde file_path zorunludur.", "A local file is required for local downloads."),

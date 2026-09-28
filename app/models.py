@@ -155,6 +155,16 @@ class MenuItem(Base):
 # ---------------------------------------------------------------------------
 # SiteSettings — tekil satır; site adı, ikon ve ikon rengi (admin panelinden düzenlenir)
 # ---------------------------------------------------------------------------
+class SiteLifecycle(Base):
+    """Kurulum kapısı ve kesinti sonrası tamamlanabilen temizleme işlemi."""
+
+    __tablename__ = "site_lifecycle"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    installed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pending_reset: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    purge_roots: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
 class SiteSettings(Base):
     __tablename__ = "site_settings"
 
@@ -190,6 +200,7 @@ class SiteSettings(Base):
     # (ilk kurulum varsayılanı). Ayarlar'dan değiştirilince burada saklanır.
     admin_username: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     admin_password_hash: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    session_generation: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     admin_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="user-circle")
     admin_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="slate")
     # Admin oturumunun dakika cinsinden geçerlilik süresi
