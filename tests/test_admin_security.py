@@ -54,21 +54,21 @@ async def test_logout_requires_post_and_csrf(admin_client):
     assert (await admin_client.get("/admin")).status_code == 302
 
 
-async def test_failed_login_is_critical_with_trusted_ip(client, db_session):
+async def test_failed_login_is_critical_without_stored_address(client, db_session):
     from app.models import AuditLog
     response = await client.post('/admin/login', data={'username': 'attacker', 'password': 'never-log-this'}, headers={'X-Forwarded-For': '203.0.113.42'})
     assert response.status_code == 401
     row = await db_session.scalar(select(AuditLog).where(AuditLog.entity == 'login'))
     assert row.level == 'critical'
-    assert '127.0.0.1' in row.changes
+    assert '127.0.0.1' not in row.changes
     assert '203.0.113.42' not in row.changes
     assert 'never-log-this' not in row.changes
 
 
 async def test_changed_credentials_revoke_existing_session(admin_client, db_session):
-    from app import crud
-    row = await crud.get_site_settings(db_session)
-    row.admin_password_hash = 'changed-credential-hash'
+    from app.models import User
+    row = await db_session.scalar(select(User).where(User.username == "admin"))
+    row.password_hash = 'changed-credential-hash'
     await db_session.commit()
     assert (await admin_client.get('/admin')).status_code == 302
 

@@ -4,6 +4,7 @@
 
 - Public download catalog, search and filters, content detail pages, related items, version history, and safe local/external download flow.
 - Administrator workflows for content, drafts, categories, tags, media, navigation, appearance, account settings, Site Health, link reports, and audit records.
+- Standalone public and administrator-only private pages with explicit publishing, sanitized rich text, menu integration, and page Trash.
 - Owner-key-protected setup, three reset scopes, session invalidation, private download storage, and recovery after interrupted cleanup.
 - CSRF, password hashing, login and download limits, upload/URL validation, audit logging, and custom error pages.
 - Responsive interface, light/dark/system themes, accessibility behaviors, and consistent toast feedback.
@@ -17,4 +18,4 @@
 
 ## Verification
 
-The four-language setup and installation-content-language changes passed the full test suite: 246 tests. An isolated Alembic upgrade preserved existing-site language and set English defaults for an uninstalled database. Existing administrator-authored content remains unchanged on interface-language changes.
+The full suite passes 249 tests, including page publication, private access, sanitization, CSRF, and page Trash. The local database has been upgraded to revision `p3a5c7e9f014` and passed SQLite integrity checks. Existing administrator-authored content remains unchanged on interface-language changes.

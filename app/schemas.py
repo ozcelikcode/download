@@ -465,19 +465,6 @@ class DownloadListItem(BaseModel):
 
 
 # ===========================================================================
-# DownloadLog
-# ===========================================================================
-
-class DownloadLogRead(BaseModel):
-    id: int
-    download_id: int
-    ip_address: str
-    downloaded_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ===========================================================================
 # Admin Auth
 # ===========================================================================
 

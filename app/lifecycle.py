@@ -26,7 +26,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal, Base
 from app.default_content import default_hero_components
 from app.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
-from app.models import SiteLifecycle, SiteSettings, MenuItem
+from app.models import SiteLifecycle, SiteSettings, MenuItem, User
 
 logger = logging.getLogger(__name__)
 ResetAction = Literal["settings", "full", "uninstall"]
@@ -156,9 +156,10 @@ class LifecycleMiddleware:
                     delivered = False
                 else:
                     from app.crud import get_site_settings
-                    from app.dependencies import SESSION_COOKIE, authenticated_username
+                    from app.dependencies import SESSION_COOKIE, authenticated_user
                     account = await get_site_settings(session)
-                    exclusive = bool(authenticated_username(request.cookies.get(SESSION_COOKIE, ""), account))
+                    user = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session)
+                    exclusive = bool(user and user.role == "admin")
         async with self.gate.enter(exclusive):
             request = Request(scope)
             body_limit = 16 * 1024
@@ -167,9 +168,9 @@ class LifecycleMiddleware:
                 installed, pending = state.installed, state.pending_reset
                 if installed and scope["method"] in {"POST", "PUT", "PATCH"}:
                     from app.crud import get_site_settings
-                    from app.dependencies import SESSION_COOKIE, authenticated_username
+                    from app.dependencies import SESSION_COOKIE, authenticated_user
                     account = await get_site_settings(session)
-                    if authenticated_username(request.cookies.get(SESSION_COOKIE, ""), account):
+                    if await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session):
                         body_limit = settings.max_upload_size_bytes + 1024 * 1024
             if path in {"/setup", "/admin/login", "/admin/settings/account"} or path.startswith("/admin/settings/maintenance/"):
                 body_limit = 16 * 1024
@@ -275,15 +276,16 @@ async def finish_pending_reset(session: AsyncSession) -> None:
     logger.info("Site data reset completed")
 
 
-async def reset_site(session: AsyncSession, action: ResetAction) -> SiteSettings:
+async def reset_site(session: AsyncSession, action: ResetAction, preserve_user_id: int | None = None) -> SiteSettings:
     from app.crud import get_site_settings
 
     current = await get_site_settings(session)
     state = await get_lifecycle(session)
     roots = reset_storage_roots() if action != "settings" else []
     session.info["audit_suppressed"] = True
-    username = current.admin_username or settings.admin_username
-    password_hash = current.admin_password_hash or settings.admin_password_hash
+    preserved_user = await session.get(User, preserve_user_id) if preserve_user_id is not None else None
+    username = preserved_user.username if preserved_user else current.admin_username or settings.admin_username
+    password_hash = preserved_user.password_hash if preserved_user else current.admin_password_hash or settings.admin_password_hash
     language = current.site_language
     content_language = current.content_language
     if action == "settings":
@@ -305,6 +307,8 @@ async def reset_site(session: AsyncSession, action: ResetAction) -> SiteSettings
         session_generation=secrets.token_hex(32),
     )
     session.add(fresh)
+    if action == "full":
+        session.add(User(username=username, password_hash=password_hash, role="admin"))
     await session.commit()
     if action != "settings":
         await finish_pending_reset(session)

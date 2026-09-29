@@ -2,7 +2,7 @@
 
 ## Current focus
 
-Maintain four complete interface catalogs, English-first setup, and immutable installation-language defaults. Preserve existing site data during migrations and subsequent interface-language changes.
+Maintain secure standalone pages alongside the four-language interface and installation-language defaults. Preserve existing site data during migrations.
 
 ## Current decisions
 
@@ -11,11 +11,12 @@ Maintain four complete interface catalogs, English-first setup, and immutable in
 - Setup creates a protected category named `General`, `General`, `Général`, or `Genel` and matching default hero text. Full reset recreates both in `content_language`, including after interrupted cleanup. Uninstall returns to English-first setup.
 - Existing installed sites inherit their current language as `content_language` through an Alembic migration; existing records are preserved.
 - Spanish and French have full catalog-key coverage across public, admin, setup, and system messages. Report labels and locale metadata are localized separately.
+- Public pages may be published and added to menus. Private pages are administrator-only; drafts and deleted pages are invisible to visitors. Deletion moves pages to a dedicated Trash, and restoration returns a draft.
 
 ## Recent verification
 
-- The full suite passes 246 tests, including catalog/placeholder parity and ES/FR setup and page flows.
-- Isolated Alembic upgrades verified both existing-site preservation and English defaults for an uninstalled database.
+- The full suite passes 249 tests, including page publication, private access, HTML sanitization, CSRF, and page Trash.
+- Alembic revision `p3a5c7e9f014` has been applied to the local database; SQLite integrity check and anonymous HTTP smoke checks passed.
 
 ## Next step
 

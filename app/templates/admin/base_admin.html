@@ -106,7 +106,7 @@
 
   {# ── Sol Sidebar Nav ──────────────────────────────── #}
   {% set admin_path = request.url.path %}
-  {% set content_section = admin_path.startswith('/admin/downloads') %}
+  {% set content_section = admin_path.startswith('/admin/downloads') or admin_path.startswith('/admin/pages') %}
   {% set management_section = admin_path.startswith('/admin/categories') or admin_path.startswith('/admin/tags') or admin_path.startswith('/admin/media') or admin_path.startswith('/admin/links') or admin_path.startswith('/admin/audit') or admin_path.startswith('/admin/settings') %}
   <aside class="w-48 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
     <nav class="space-y-1" aria-label="{{ t(request, 'menu') }}">
@@ -115,9 +115,9 @@
       <a href="/admin" class="admin-nav-link {% if admin_path in ['/admin', '/admin/'] %}is-active{% endif %}" {% if admin_path in ['/admin', '/admin/'] %}aria-current="page"{% endif %}>
         <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 shrink-0"></i>{{ t(request, 'dashboard') }}
       </a>
-      <a href="/admin/site-health" class="admin-nav-link {% if admin_path == '/admin/site-health' %}is-active{% endif %}" {% if admin_path == '/admin/site-health' %}aria-current="page"{% endif %}>
+      {% if request.state.admin_role != 'editor' %}<a href="/admin/site-health" class="admin-nav-link {% if admin_path == '/admin/site-health' %}is-active{% endif %}" {% if admin_path == '/admin/site-health' %}aria-current="page"{% endif %}>
         <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0"></i>{{ t(request, 'site_health') }}
-      </a>
+      </a>{% endif %}
 
       <details class="admin-nav-group" name="admin-sidebar" {% if content_section %}open{% endif %}>
         <summary class="admin-nav-summary {% if content_section %}is-active{% endif %}">
@@ -126,6 +126,7 @@
         <div class="admin-nav-children">
           <a href="/admin/downloads" class="admin-nav-link {% if admin_path == '/admin/downloads' %}is-active{% endif %}" {% if admin_path == '/admin/downloads' %}aria-current="page"{% endif %}>{{ t(request, 'all_contents') }}</a>
           <a href="/admin/downloads/new" class="admin-nav-link {% if admin_path == '/admin/downloads/new' %}is-active{% endif %}" {% if admin_path == '/admin/downloads/new' %}aria-current="page"{% endif %}>{{ t(request, 'new_file') }}</a>
+          {% if request.state.admin_role != 'editor' %}<a href="/admin/pages" class="admin-nav-link {% if admin_path.startswith('/admin/pages') %}is-active{% endif %}" {% if admin_path.startswith('/admin/pages') %}aria-current="page"{% endif %}>{{ t(request, 'pages') }}</a>{% endif %}
           <a href="/admin/downloads/trash" class="admin-nav-link {% if admin_path == '/admin/downloads/trash' %}is-active{% endif %}" {% if admin_path == '/admin/downloads/trash' %}aria-current="page"{% endif %}>{{ t(request, 'trash') }}</a>
         </div>
       </details>
@@ -138,9 +139,11 @@
           <a href="/admin/categories" class="admin-nav-link {% if admin_path.startswith('/admin/categories') %}is-active{% endif %}" {% if admin_path.startswith('/admin/categories') %}aria-current="page"{% endif %}>{{ t(request, 'categories') }}</a>
           <a href="/admin/tags" class="admin-nav-link {% if admin_path.startswith('/admin/tags') %}is-active{% endif %}" {% if admin_path.startswith('/admin/tags') %}aria-current="page"{% endif %}>{{ t(request, 'tags') }}</a>
           <a href="/admin/media" class="admin-nav-link {% if admin_path.startswith('/admin/media') %}is-active{% endif %}" {% if admin_path.startswith('/admin/media') %}aria-current="page"{% endif %}>{{ t(request, 'media_archive') }}</a>
-          <a href="/admin/links" class="admin-nav-link {% if admin_path.startswith('/admin/links') %}is-active{% endif %}" {% if admin_path.startswith('/admin/links') %}aria-current="page"{% endif %}>{{ t(request, 'link_report') }}</a>
-          <a href="/admin/audit" class="admin-nav-link {% if admin_path.startswith('/admin/audit') %}is-active{% endif %}" {% if admin_path.startswith('/admin/audit') %}aria-current="page"{% endif %}>{{ t(request, 'audit_history') }}</a>
-          <a href="/admin/settings" class="admin-nav-link {% if admin_path.startswith('/admin/settings') %}is-active{% endif %}" {% if admin_path.startswith('/admin/settings') %}aria-current="page"{% endif %}>{{ t(request, 'settings') }}</a>
+          {% if request.state.admin_role != 'editor' %}<a href="/admin/links" class="admin-nav-link {% if admin_path.startswith('/admin/links') %}is-active{% endif %}" {% if admin_path.startswith('/admin/links') %}aria-current="page"{% endif %}>{{ t(request, 'link_report') }}</a>{% endif %}
+          {% if request.state.admin_role == 'admin' %}<a href="/admin/audit" class="admin-nav-link {% if admin_path.startswith('/admin/audit') %}is-active{% endif %}" {% if admin_path.startswith('/admin/audit') %}aria-current="page"{% endif %}>{{ t(request, 'audit_history') }}</a>{% endif %}
+          {% if request.state.admin_role != 'editor' %}<a href="/admin/settings" class="admin-nav-link {% if admin_path.startswith('/admin/settings') %}is-active{% endif %}" {% if admin_path.startswith('/admin/settings') %}aria-current="page"{% endif %}>{{ t(request, 'settings') }}</a>{% endif %}
+          <a href="/admin/settings/account" class="admin-nav-link">{{ t(request, 'account') }}</a>
+          {% if request.state.admin_role != 'editor' %}<a href="/admin/users" class="admin-nav-link {% if admin_path.startswith('/admin/users') %}is-active{% endif %}">{{ t(request, 'users') }}</a>{% endif %}
         </div>
       </details>
     </nav>
@@ -152,18 +155,21 @@
       <summary class="admin-nav-summary"><i data-lucide="menu" class="w-4 h-4"></i><span class="flex-1">{{ t(request, 'menu') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-4 h-4"></i></summary>
       <nav class="px-2 py-2 border-t border-slate-100 dark:border-slate-800" aria-label="{{ t(request, 'menu') }}">
         <a href="/admin" class="admin-nav-link">{{ t(request, 'dashboard') }}</a>
-        <a href="/admin/site-health" class="admin-nav-link">{{ t(request, 'site_health') }}</a>
+        {% if request.state.admin_role != 'editor' %}<a href="/admin/site-health" class="admin-nav-link">{{ t(request, 'site_health') }}</a>{% endif %}
         <p class="admin-nav-label px-2 pt-2 text-xs font-semibold">{{ t(request, 'contents') }}</p>
         <a href="/admin/downloads" class="admin-nav-link">{{ t(request, 'all_contents') }}</a>
         <a href="/admin/downloads/new" class="admin-nav-link">{{ t(request, 'new_file') }}</a>
+        {% if request.state.admin_role != 'editor' %}<a href="/admin/pages" class="admin-nav-link">{{ t(request, 'pages') }}</a>{% endif %}
         <a href="/admin/downloads/trash" class="admin-nav-link">{{ t(request, 'trash') }}</a>
         <p class="admin-nav-label px-2 pt-2 text-xs font-semibold">{{ t(request, 'management') }}</p>
         <a href="/admin/categories" class="admin-nav-link">{{ t(request, 'categories') }}</a>
         <a href="/admin/tags" class="admin-nav-link">{{ t(request, 'tags') }}</a>
         <a href="/admin/media" class="admin-nav-link">{{ t(request, 'media_archive') }}</a>
-        <a href="/admin/links" class="admin-nav-link">{{ t(request, 'link_report') }}</a>
-        <a href="/admin/audit" class="admin-nav-link">{{ t(request, 'audit_history') }}</a>
-        <a href="/admin/settings" class="admin-nav-link">{{ t(request, 'settings') }}</a>
+        {% if request.state.admin_role != 'editor' %}<a href="/admin/links" class="admin-nav-link">{{ t(request, 'link_report') }}</a>{% endif %}
+        {% if request.state.admin_role == 'admin' %}<a href="/admin/audit" class="admin-nav-link">{{ t(request, 'audit_history') }}</a>{% endif %}
+        {% if request.state.admin_role != 'editor' %}<a href="/admin/settings" class="admin-nav-link">{{ t(request, 'settings') }}</a>{% endif %}
+        <a href="/admin/settings/account" class="admin-nav-link">{{ t(request, 'account') }}</a>
+        {% if request.state.admin_role != 'editor' %}<a href="/admin/users" class="admin-nav-link">{{ t(request, 'users') }}</a>{% endif %}
       </nav>
     </details>
     {% if flash_message %}

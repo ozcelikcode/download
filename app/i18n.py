@@ -4,6 +4,8 @@ from fastapi import Request
 
 from app.locales.es import STRINGS as SPANISH_STRINGS
 from app.locales.fr import STRINGS as FRENCH_STRINGS
+from app.locales.pages import STRINGS as PAGE_STRINGS
+from app.locales.users import STRINGS as USER_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -14,7 +16,7 @@ _active_language = DEFAULT_LANGUAGE
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "tr": {
-        "meta_default": "Güvenli ve ücretsiz yazılımları indirin.", "admin_panel": "Admin Panel", "logout": "Çıkış Yap",
+        "meta_default": "Güvenli ve ücretsiz yazılımları indirin.", "admin_panel": "Yönetim Paneli", "logout": "Çıkış Yap",
         "theme": "Tema seç", "light": "Aydınlık", "dark": "Karanlık", "system": "Sistem", "menu_open": "Menüyü aç", "skip_to_content": "Ana içeriğe geç",
         "language": "Dil seç", "search": "Ara", "search_placeholder": "İndirme ara...", "categories": "Kategoriler", "all": "Tümü", "tags": "Etiketler",
         "no_results": "Sonuç bulunamadı", "downloads": "indirme", "page": "Sayfa", "all_downloads": "Tüm İndirmeler",
@@ -172,7 +174,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "health_finding_seo_category_descriptions": "Açıklaması olmayan kategoriler", "health_help_seo_category_descriptions": "Kategori açıklaması, kategori sayfasının meta açıklaması olarak kullanılır.",
         "health_finding_seo_long_category_descriptions": "Uzun kategori açıklamaları", "health_help_seo_long_category_descriptions": "160 karakter bu panelde yaklaşık gözden geçirme eşiğidir; arama snippet'i cihaza göre değişebilir. Kısa ve ayırt edici özet tercih edin.",
         "health_check_metadata": "Başlık ve meta açıklaması", "health_check_canonical": "Canonical adresler",
-        "health_check_sitemap": "XML sitemap", "health_check_robots": "Robots yönergeleri", "health_check_base_url": "Site adresi (APP_BASE_URL)",
+        "health_check_sitemap": "XML site haritası", "health_check_robots": "Robots yönergeleri", "health_check_base_url": "Site adresi (APP_BASE_URL)",
         "health_detail_metadata": "Genel ve detay sayfalarında başlık ile açıklama şablonları kullanılıyor.",
         "health_detail_homepage_metadata_customized": "Ana sayfanın SEO başlığı ve meta açıklaması özel olarak tanımlanmış.",
         "health_detail_homepage_metadata_defaults": "Ana sayfada geçerli varsayılan SEO metinleri kullanılıyor; isterseniz Genel Ayarlar'dan özelleştirin.",
@@ -714,6 +716,10 @@ for key, (turkish, english) in SYSTEM_MESSAGES.items():
     TRANSLATIONS["en"][key] = english
 TRANSLATIONS["es"] = SPANISH_STRINGS
 TRANSLATIONS["fr"] = FRENCH_STRINGS
+for language, strings in PAGE_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for language, strings in USER_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
 
 
 def system_message(request: Request | None, message: str) -> str:

@@ -1,0 +1,28 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'pages') }} — {{ t(request, 'trash') }}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+  <div><a href="/admin/pages" class="text-xs text-slate-500 hover:underline">{{ t(request, 'pages') }}</a><h1 class="text-lg font-bold mt-1">{{ t(request, 'trash') }}</h1></div>
+  <a href="/admin/pages" class="btn-secondary">{{ t(request, 'pages') }}</a>
+</div>
+<div class="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden bg-white dark:bg-slate-900">
+  {% if pages %}
+  <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+    {% for item in pages %}
+    <li class="p-4 flex flex-wrap items-center gap-3">
+      <div class="flex-1 min-w-0"><p class="font-medium">{{ item.title }}</p><p class="text-xs text-slate-500 dark:text-slate-400">/page/{{ item.slug }} · {{ t(request, 'deleted_on') }}: {{ item.deleted_at | format_date }}</p></div>
+      <form method="post" action="/admin/pages/{{ item.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary text-xs">{{ t(request, 'restore') }}</button></form>
+      <form method="post" action="/admin/pages/{{ item.id }}/purge"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-danger text-xs" data-confirm-message="{{ t(request, 'page_delete_confirm') }}">{{ t(request, 'permanent_delete') }}</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="p-6 text-sm text-slate-500">{{ t(request, 'trash_empty') }}</p>{% endif %}
+</div>
+{% if total_pages > 1 %}
+<nav class="mt-4 flex items-center justify-between text-sm" aria-label="{{ t(request, 'page') }}">
+  {% if page > 1 %}<a href="?page={{ page - 1 }}" class="btn-secondary">{{ t(request, 'previous_page') }}</a>{% else %}<span></span>{% endif %}
+  <span>{{ page }}/{{ total_pages }}</span>
+  {% if page < total_pages %}<a href="?page={{ page + 1 }}" class="btn-secondary">{{ t(request, 'next_page') }}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

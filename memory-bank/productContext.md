@@ -8,6 +8,7 @@ Downloader provides a clean alternative to cluttered download pages. The site ow
 
 - Visitors search, filter by category or tag, review a detail page, and use `/dl/{slug}` to download or open a validated external destination.
 - Administrators manage content, drafts, categories, tags, media, menus, appearance, SEO metadata, and account security.
+- Administrators create standalone pages, choose public or private access, publish explicitly, and restore deleted pages from Trash.
 - Site Health groups technical and SEO findings with actionable destinations. The Activity Log records changes and errors without secrets.
 - First-run setup verifies server ownership and deployment checks before opening the site. Maintenance supports settings-only reset, full reset, or returning to setup after deleting site data.
 

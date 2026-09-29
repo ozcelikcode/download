@@ -5,6 +5,7 @@ FastAPI uygulama fabrikası.
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -18,7 +19,7 @@ from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.i18n import translate, system_message
-from app.routers import admin, public, reports, setup
+from app.routers import admin, pages, public, reports, setup, users
 from app.lifecycle import LifecycleMiddleware, finish_pending_reset, single_worker_guard, reset_storage_roots
 from app.storage import migrate_legacy_local_downloads
 from app.security import SecurityHeadersMiddleware
@@ -33,6 +34,30 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+_recent_public_errors: dict[tuple[str, int], float] = {}
+
+
+async def _record_public_error(request: Request, code: int, error_type: str = "") -> None:
+    """Bound anonymous diagnostics without storing URLs, addresses, or request bodies."""
+    route = request.scope.get("route")
+    pattern = getattr(route, "path", "<unmatched>")
+    if pattern.startswith("/static/"):
+        return
+    key = (f"{request.method} {pattern}", code)
+    now = time.monotonic()
+    if code != 500 and now - _recent_public_errors.get(key, 0) < 300:
+        return
+    if len(_recent_public_errors) > 100:
+        _recent_public_errors.clear()
+    _recent_public_errors[key] = now
+    try:
+        async with AsyncSessionLocal() as session:
+            add_event(session, "error", "request", f"{key[0]} → {code}",
+                      changes={"status": [None, code], "error_type": [None, error_type or "HTTPError"]},
+                      actor="anonymous", level="error")
+            await session.commit()
+    except Exception:
+        logger.exception("Anonymous error event could not be recorded")
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +119,11 @@ app.add_middleware(LifecycleMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(setup.router)
 app.include_router(public.router)
+app.include_router(pages.public_router)
 app.include_router(admin.router)
+app.include_router(pages.admin_router)
 app.include_router(reports.router)
+app.include_router(users.router)
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +143,7 @@ async def localized_http_error(request: Request, exc: HTTPException):
 
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
+    await _record_public_error(request, 404)
     return templates.TemplateResponse(
         request=request, name="errors/404.html",
         context={
@@ -128,22 +157,14 @@ async def not_found_handler(request: Request, exc):
             "current_search": None,
         },
         status_code=status.HTTP_404_NOT_FOUND,
+        headers=getattr(exc, "headers", None),
     )
 
 
 @app.exception_handler(500)
 async def server_error_handler(request: Request, exc):
-    logger.exception("500 hatası: %s", exc)
-    try:
-        async with AsyncSessionLocal() as session:
-            add_event(
-                session, "error", "request", f"{request.method} {request.url.path} → 500",
-                changes={"durum": [None, 500], "hata_turu": [None, type(exc).__name__]},
-                actor="system", level="error",
-            )
-            await session.commit()
-    except Exception:
-        logger.exception("500 hata kaydı yazılamadı")
+    logger.error("Unhandled request error: %s", type(exc).__name__, exc_info=exc)
+    await _record_public_error(request, 500, type(exc).__name__)
     return templates.TemplateResponse(
         request=request, name="errors/500.html",
         context={

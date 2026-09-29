@@ -1,5 +1,7 @@
-"""Oturuma bağlı CSRF doğrulaması ve SQLite üzerinde giriş denemesi sınırı."""
+"""CSRF protection, anonymous client quotas, and security headers."""
 
+import hashlib
+import hmac
 import secrets
 from pathlib import PurePosixPath
 from datetime import datetime, timedelta, timezone
@@ -15,6 +17,11 @@ from starlette.types import ASGIApp, Scope, Receive, Send, Message
 
 LOGIN_LIMIT = 5
 LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+def client_key(address: str, *, context: str = "client") -> str:
+    """Stable keyed digest for quotas; never persist a raw network address."""
+    return hmac.new(settings.app_secret_key.encode(), f"{context}\0{address}".encode(), hashlib.sha256).hexdigest()
 
 
 class SecurityHeadersMiddleware:
@@ -33,7 +40,8 @@ class SecurityHeadersMiddleware:
                 headers = MutableHeaders(scope=message)
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["X-Frame-Options"] = "DENY"
-                headers["Referrer-Policy"] = "same-origin"
+                if "referrer-policy" not in headers:
+                    headers["Referrer-Policy"] = "same-origin"
                 path = scope["path"]
                 if path.startswith(("/admin", "/setup")):
                     headers["Cache-Control"] = "no-store"
@@ -51,6 +59,8 @@ class SecurityHeadersMiddleware:
 
 
 def csrf_token(request: Request) -> str:
+    if "session" not in request.scope:
+        return ""
     if "csrf_token" not in request.session:
         request.session["csrf_token"] = secrets.token_urlsafe(32)
     return request.session["csrf_token"]
@@ -73,20 +83,21 @@ async def reserve_login_attempt(session: AsyncSession, ip: str) -> int:
     """Denemeyi parola kontrolünden önce sayar; eşzamanlı worker'lar kotayı paylaşır."""
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(seconds=LOGIN_WINDOW_SECONDS)
+    key = client_key(ip, context="login")
     # Bu işlem login rotasının ilk DB işlemidir. Yazma kilidi, sayım ve
     # eklemeyi tek bir SQLite işlemi içinde seri hale getirir.
     await session.execute(text("BEGIN IMMEDIATE"))
     await session.execute(delete(LoginAttempt).where(LoginAttempt.attempted_at < cutoff))
-    count = await session.scalar(select(func.count()).select_from(LoginAttempt).where(LoginAttempt.ip_address == ip))
+    count = await session.scalar(select(func.count()).select_from(LoginAttempt).where(LoginAttempt.client_key == key))
     if count >= LOGIN_LIMIT:
-        oldest = await session.scalar(select(func.min(LoginAttempt.attempted_at)).where(LoginAttempt.ip_address == ip))
+        oldest = await session.scalar(select(func.min(LoginAttempt.attempted_at)).where(LoginAttempt.client_key == key))
         await session.rollback()
         if oldest.tzinfo is None:
             oldest = oldest.replace(tzinfo=timezone.utc)
         # Zaman yuvarlaması pencerenin tam başında 901 üretmesin.
         retry = min(LOGIN_WINDOW_SECONDS, max(1, int((oldest + timedelta(seconds=LOGIN_WINDOW_SECONDS) - now).total_seconds()) + 1))
         raise HTTPException(status_code=429, detail="Çok fazla giriş denemesi. Daha sonra tekrar deneyin.", headers={"Retry-After": str(retry)})
-    attempt = LoginAttempt(ip_address=ip, attempted_at=now)
+    attempt = LoginAttempt(client_key=key, attempted_at=now)
     session.add(attempt)
     await session.commit()
     return attempt.id

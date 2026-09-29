@@ -24,15 +24,17 @@ router = APIRouter(prefix="/admin", tags=["reports"], dependencies=[Depends(requ
 PAGE_SIZE = 20
 STATUSES = {"unchecked": "Kontrol edilmedi", "ok": "Erişilebilir", "broken": "Kırık", "restricted": "Erişim sınırlı", "error": "Kontrol hatası", "blocked": "Engellendi"}
 STATUSES_EN = {"unchecked": "Not checked", "ok": "Available", "broken": "Broken", "restricted": "Restricted", "error": "Check failed", "blocked": "Blocked"}
-ENTITY_LABELS_EN = {"login": "Login security", "downloads": "Content", "categories": "Category", "tags": "Tag", "menu_items": "Menu", "site_settings": "Settings", "media_assets": "Media", "download_version_history": "Version"}
+ENTITY_LABELS_EN = {"login": "Login security", "request": "Visitor error", "users": "User", "downloads": "Content", "categories": "Category", "tags": "Tag", "menu_items": "Menu", "pages": "Page", "site_settings": "Settings", "media_assets": "Media", "download_version_history": "Version"}
 ACTION_LABELS_EN = {"create": "Created", "update": "Updated", "delete": "Deleted", "trash": "Moved to Trash", "restore": "Restored", "purge": "Permanently deleted", "replace": "File replaced", "crop": "Image cropped", "reorder": "Reordered", "bulk": "Bulk action", "transfer": "Transferred", "error": "Error", "login": "Signed in"}
 FIELD_LABELS_EN = {
-    "ip_address": "IP address", "name": "Name", "title": "Title", "slug": "URL slug", "description": "Description",
+    "role": "Role", "status": "Status", "error_type": "Error type", "name": "Name", "title": "Title", "slug": "URL slug", "description": "Description",
     "short_description": "Short description", "position": "Position", "version": "Version", "file_type": "Source type",
     "file_path": "File path", "external_url": "Download URL", "file_size_bytes": "File size (bytes)", "icon_type": "Icon type",
     "thumbnail_path": "Thumbnail", "icon_image_path": "Icon file", "icon_image_url": "Icon URL", "icon_extension": "File extension",
     "os_compatibility": "Operating systems", "category_id": "Category", "parent_id": "Related version", "is_active": "Published",
     "is_draft": "Draft", "is_featured": "Featured", "is_official_source": "Official source", "is_latest_version": "Latest version link", "deleted_at": "Deleted on",
+    "visibility": "Access", "is_published": "Published",
+    "body_html": "Page content",
     "label": "Label", "url": "URL", "icon": "Icon", "open_in_new_tab": "Open in new tab", "location": "Menu location",
     "site_name": "Site name", "site_language": "Site language", "content_language": "Initial content language", "site_icon": "Site icon", "site_icon_color": "Icon color",
     "sidebar_block_order": "Sidebar order", "theme_color": "Color theme", "logo_mode": "Logo layout", "logo_light_path": "Light logo",

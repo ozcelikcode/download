@@ -1,0 +1,32 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'pages') }}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+  <div><h1 class="text-lg font-bold">{{ t(request, 'pages') }}</h1><p class="form-hint">{{ t(request, 'pages_help') }}</p></div>
+  <div class="flex items-center gap-2"><a href="/admin/pages/trash" class="btn-secondary"><i data-lucide="trash-2" class="w-4 h-4"></i>{{ t(request, 'trash') }}</a><a href="/admin/pages/new" class="btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>{{ t(request, 'new_page') }}</a></div>
+</div>
+<div class="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden bg-white dark:bg-slate-900">
+  {% if pages %}
+  <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+    {% for item in pages %}
+    <li class="p-4 flex flex-wrap items-center gap-3">
+      <div class="flex-1 min-w-0">
+        <a href="/admin/pages/{{ item.id }}/edit" class="font-medium hover:underline">{{ item.title }}</a>
+        <p class="text-xs text-slate-500 dark:text-slate-400 break-all mt-0.5">/page/{{ item.slug }}</p>
+      </div>
+      <span class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'private_page') if item.visibility == 'private' else t(request, 'public_page') }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'published') if item.is_published else t(request, 'draft') }}</span>
+      <a href="/page/{{ item.slug }}" target="_blank" rel="noopener noreferrer" class="btn-secondary text-xs">{{ t(request, 'view') }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="p-6 text-sm text-slate-500">{{ t(request, 'no_pages') }}</p>{% endif %}
+</div>
+{% if total_pages > 1 %}
+<nav class="mt-4 flex items-center justify-between text-sm" aria-label="{{ t(request, 'page') }}">
+  {% if page > 1 %}<a href="?page={{ page - 1 }}" class="btn-secondary">{{ t(request, 'previous_page') }}</a>{% else %}<span></span>{% endif %}
+  <span>{{ page }}/{{ total_pages }}</span>
+  {% if page < total_pages %}<a href="?page={{ page + 1 }}" class="btn-secondary">{{ t(request, 'next_page') }}</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

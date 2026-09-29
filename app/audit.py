@@ -8,14 +8,14 @@ from sqlalchemy import event, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.models import AuditLog, Category, Download, DownloadVersionHistory, MediaAsset, MenuItem, SiteSettings, Tag
+from app.models import AuditLog, Category, Download, DownloadVersionHistory, MediaAsset, MenuItem, Page, SiteSettings, Tag
 
-TRACKED = (Download, Category, Tag, MenuItem, SiteSettings, MediaAsset, DownloadVersionHistory)
-IGNORED = {"id", "created_at", "updated_at", "download_count", "draft_token", "sha256", "checksum_size", "checksum_mtime_ns"}
-ENTITY_LABELS = {"login": "Giriş güvenliği","downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
+TRACKED = (Download, Category, Tag, MenuItem, Page, SiteSettings, MediaAsset, DownloadVersionHistory)
+IGNORED = {"id", "created_at", "updated_at", "body_html", "download_count", "draft_token", "sha256", "checksum_size", "checksum_mtime_ns"}
+ENTITY_LABELS = {"login": "Giriş güvenliği", "request": "Ziyaretçi hatası", "users": "Kullanıcı", "downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "pages": "Sayfa", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
 ACTION_LABELS = {"create": "Eklendi", "update": "Düzenlendi", "delete": "Silindi", "trash": "Silinenler'e taşındı", "restore": "Geri yüklendi", "purge": "Kalıcı silindi", "replace": "Dosya değiştirildi", "crop": "Görsel kırpıldı", "reorder": "Sıralandı", "bulk": "Toplu işlem", "transfer": "Aktarıldı", "error": "Hata", "login": "Oturum açıldı"}
 FIELD_LABELS = {
-    "ip_address": "IP adresi",
+    "role": "Rol", "status": "Durum", "error_type": "Hata türü",
     "name": "Ad", "title": "Başlık", "slug": "Adres adı", "description": "Açıklama",
     "short_description": "Kısa açıklama", "position": "Sıra", "version": "Sürüm",
     "file_type": "Kaynak türü", "file_path": "Dosya yolu", "external_url": "İndirme adresi",
@@ -23,6 +23,8 @@ FIELD_LABELS = {
     "icon_image_path": "İkon dosyası", "icon_image_url": "İkon adresi", "icon_extension": "Dosya uzantısı",
     "os_compatibility": "İşletim sistemleri", "category_id": "Kategori", "parent_id": "Bağlı sürüm",
     "is_active": "Yayında", "is_draft": "Taslak", "is_featured": "Öne çıkan", "is_official_source": "Resmî kaynak",
+    "visibility": "Erişim", "is_published": "Yayında",
+    "body_html": "Sayfa içeriği",
     "is_latest_version": "Güncel sürüm bağlantısı", "deleted_at": "Silinme tarihi",
     "label": "Başlık", "url": "Adres", "icon": "İkon", "open_in_new_tab": "Yeni sekmede aç",
     "location": "Menü konumu", "site_name": "Site adı", "site_language": "Site dili", "content_language": "Başlangıç içerik dili", "site_icon": "Site ikonu",
@@ -42,7 +44,7 @@ FIELD_LABELS = {
 
 
 def _safe_value(key: str, value: object) -> object:
-    if "password" in key or "secret" in key:
+    if "password" in key or "secret" in key or "ip_address" in key or "client_key" in key:
         return "[gizli]"
     if isinstance(value, enum.Enum):
         return value.value
@@ -85,6 +87,8 @@ def capture_changes(session: Session, flush_context: object) -> None:
                         "Kaldırılan: " + ", ".join(str(t.id) for t in history.deleted),
                         "Eklenen: " + ", ".join(str(t.id) for t in history.added),
                     ]
+            if isinstance(obj, Page) and state.attrs.body_html.history.has_changes():
+                changes["body_html"] = ["[redacted]", "[updated]"]
             if not changes:
                 continue
             label = next((str(getattr(obj, k)) for k in ("title", "name", "label", "path", "site_name", "version") if getattr(obj, k, None)), obj.__tablename__)

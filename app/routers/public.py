@@ -17,7 +17,7 @@ import math
 import mimetypes
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 from xml.etree import ElementTree
 from pathlib import Path
 
@@ -34,7 +34,7 @@ from app.content_security import normalize_http_url, rich_text_to_plain_text
 from app.dependencies import get_db, get_optional_admin_username, get_request_ip
 from app.i18n import translate
 from app.link_checks import check_clicked_link
-from app.models import Category, Download, DownloadTag, FileType, SiteSettings, Tag
+from app.models import Category, Download, DownloadTag, FileType, Page, SiteSettings, Tag
 from app.seo import inspect_public_base_url
 from app.schemas import PublicDownloadFilters
 from app.templating import templates
@@ -121,6 +121,14 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
     for download in downloads:
         add_url(f"/download/{quote(download.slug, safe='')}", download.updated_at)
 
+    pages = (await session.execute(
+        select(Page.slug, Page.updated_at)
+        .where(Page.visibility == "public", Page.is_published.is_(True), Page.deleted_at.is_(None))
+        .order_by(Page.slug)
+    )).all()
+    for page_slug, updated_at in pages:
+        add_url(f"/page/{quote(page_slug, safe='')}", updated_at)
+
     return Response(
         content=ElementTree.tostring(root, encoding="utf-8", xml_declaration=True),
         media_type="application/xml",
@@ -172,12 +180,22 @@ async def _sidebar_context(
     counts = await crud.get_category_download_counts(session)
     if site_settings is None:
         site_settings = await crud.get_site_settings(session)
-    menu_items = (await crud.get_menu_items(session, active_only=True, location="navbar"))[:site_settings.navbar_limit]
-    footer_menu_items = (await crud.get_menu_items(session, active_only=True, location="footer"))[:site_settings.footer_limit]
+    menu_items = await crud.get_menu_items(session, active_only=True, location="navbar")
+    footer_menu_items = await crud.get_menu_items(session, active_only=True, location="footer")
+    hidden_page_slugs = set((await session.scalars(
+        select(Page.slug).where((Page.visibility != "public") | Page.is_published.is_(False) | Page.deleted_at.is_not(None))
+    )).all())
+
+    def safe_menu_item(item) -> bool:
+        path = unquote(urlsplit(item.url).path)
+        return not (path.startswith("/page/") and path[6:] in hidden_page_slugs)
+
+    menu_items = [item for item in menu_items if safe_menu_item(item)][:site_settings.navbar_limit]
+    footer_menu_items = [item for item in footer_menu_items if safe_menu_item(item)][:site_settings.footer_limit]
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
     ] or ["search", "categories", "tags"]
-    admin_username = get_optional_admin_username(request, site_settings)
+    admin_username = await get_optional_admin_username(request, site_settings, session)
     try:
         hero_components = json.loads(site_settings.hero_components)
     except (TypeError, json.JSONDecodeError):
@@ -524,7 +542,6 @@ async def do_download(
         raise HTTPException(status_code=404, detail="İndirme bulunamadı.")
 
     ip = get_request_ip(request)
-    ua = request.headers.get("user-agent", "")
     download_id = download.id
     download_type = download.file_type
 
@@ -550,19 +567,19 @@ async def do_download(
         session,
         download_id,
         ip,
-        ua[:500],
+        None,
         max_per_hour=settings.rate_limit_downloads_per_hour,
     )
     if not allowed:
         if await crud.get_download_by_slug(session, slug) is None:
             raise HTTPException(status_code=404, detail="İndirme bulunamadı.")
-        logger.warning("Rate limit aşıldı: ip=%s download_id=%d", ip, download_id)
+        logger.warning("Download rate limit reached: download_id=%d", download_id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Saatlik indirme limitine ulaştınız. Lütfen bekleyiniz.",
         )
 
-    logger.info("İndirme başlatıldı: slug=%r ip=%s", slug, ip)
+    logger.info("Download started: download_id=%d", download_id)
 
     if download_type == FileType.external:
         # Dış bağlantıya yönlendir

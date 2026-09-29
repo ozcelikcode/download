@@ -7,6 +7,7 @@ Downloader is a minimal, self-hosted FastAPI download catalog. Visitors should f
 - Serve private local files or redirect to validated external HTTP(S) sources.
 - Organize content by categories, tags, versions, and searchable metadata.
 - Provide an administrator-only interface for content, media, navigation, appearance, site health, and audit records.
+- Support standalone public pages and administrator-only private pages with explicit publication and recoverable deletion.
 - Keep draft publication explicit and destructive operations confirmable and recoverable where possible.
 - Offer light, dark, and system themes with a restrained, configurable accent color.
 - Use an owner-key-protected first-run setup. The first screen and default installation language are English; the installed site uses one administrator-selected language.

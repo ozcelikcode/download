@@ -7,8 +7,8 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "restricted": "Acceso restringido", "error": "Error de comprobación", "blocked": "Bloqueado",
         },
         "entities": {
-            "login": "Seguridad de inicio de sesión", "downloads": "Contenido", "categories": "Categoría",
-            "tags": "Etiqueta", "menu_items": "Menú", "site_settings": "Configuración",
+            "login": "Seguridad de inicio de sesión", "request": "Error de visitante", "users": "Usuario", "downloads": "Contenido", "categories": "Categoría",
+            "tags": "Etiqueta", "menu_items": "Menú", "pages": "Página", "site_settings": "Configuración",
             "media_assets": "Archivos multimedia", "download_version_history": "Versión",
         },
         "actions": {
@@ -18,7 +18,7 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "bulk": "Acción en bloque", "transfer": "Transferido", "error": "Error", "login": "Sesión iniciada",
         },
         "fields": {
-            "ip_address": "Dirección IP", "name": "Nombre", "title": "Título", "slug": "Identificador de URL",
+            "role": "Rol", "status": "Estado", "error_type": "Tipo de error", "name": "Nombre", "title": "Título", "slug": "Identificador de URL",
             "description": "Descripción", "short_description": "Descripción breve", "position": "Posición",
             "version": "Versión", "file_type": "Tipo de origen", "file_path": "Ruta del archivo",
             "external_url": "URL de descarga", "file_size_bytes": "Tamaño del archivo (bytes)",
@@ -27,6 +27,8 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "os_compatibility": "Sistemas operativos", "category_id": "Categoría",
             "parent_id": "Versión relacionada", "is_active": "Publicado", "is_draft": "Borrador",
             "is_featured": "Destacado", "is_official_source": "Fuente oficial",
+            "visibility": "Acceso", "is_published": "Publicado",
+            "body_html": "Contenido de la página",
             "is_latest_version": "Enlace a la última versión", "deleted_at": "Fecha de eliminación",
             "label": "Etiqueta", "url": "URL", "icon": "Icono", "open_in_new_tab": "Abrir en una pestaña nueva",
             "location": "Ubicación del menú", "site_name": "Nombre del sitio", "site_language": "Idioma del sitio",
@@ -52,8 +54,8 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "restricted": "Accès restreint", "error": "Échec de la vérification", "blocked": "Bloqué",
         },
         "entities": {
-            "login": "Sécurité de connexion", "downloads": "Contenu", "categories": "Catégorie",
-            "tags": "Étiquette", "menu_items": "Menu", "site_settings": "Paramètres",
+            "login": "Sécurité de connexion", "request": "Erreur de visiteur", "users": "Utilisateur", "downloads": "Contenu", "categories": "Catégorie",
+            "tags": "Étiquette", "menu_items": "Menu", "pages": "Page", "site_settings": "Paramètres",
             "media_assets": "Médias", "download_version_history": "Version",
         },
         "actions": {
@@ -63,7 +65,7 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "bulk": "Action groupée", "transfer": "Transféré", "error": "Erreur", "login": "Connexion établie",
         },
         "fields": {
-            "ip_address": "Adresse IP", "name": "Nom", "title": "Titre", "slug": "Identifiant d’URL",
+            "role": "Rôle", "status": "État", "error_type": "Type d’erreur", "name": "Nom", "title": "Titre", "slug": "Identifiant d’URL",
             "description": "Description", "short_description": "Description courte", "position": "Position",
             "version": "Version", "file_type": "Type de source", "file_path": "Chemin du fichier",
             "external_url": "URL de téléchargement", "file_size_bytes": "Taille du fichier (octets)",
@@ -72,6 +74,8 @@ LABELS: dict[str, dict[str, dict[str, str]]] = {
             "os_compatibility": "Systèmes d’exploitation", "category_id": "Catégorie",
             "parent_id": "Version associée", "is_active": "Publié", "is_draft": "Brouillon",
             "is_featured": "À la une", "is_official_source": "Source officielle",
+            "visibility": "Accès", "is_published": "Publié",
+            "body_html": "Contenu de la page",
             "is_latest_version": "Lien vers la dernière version", "deleted_at": "Date de suppression",
             "label": "Libellé", "url": "URL", "icon": "Icône", "open_in_new_tab": "Ouvrir dans un nouvel onglet",
             "location": "Emplacement du menu", "site_name": "Nom du site", "site_language": "Langue du site",

@@ -64,8 +64,12 @@
               {% for field, values in changes[row.id].items() %}
               <tr class="border-t border-slate-100 dark:border-slate-800">
                 <th class="p-2 font-medium">{{ fields.get(field, field) }}</th>
+                {% if field == 'body_html' %}
+                <td class="p-2">—</td><td class="p-2">{{ t(request, 'page_content_changed') }}</td>
+                {% else %}
                 <td class="p-2 break-all">{{ values[0] if values[0] is not none else '—' }}</td>
                 <td class="p-2 break-all">{{ values[1] if values[1] is not none else '—' }}</td>
+                {% endif %}
               </tr>
               {% endfor %}
             </tbody>

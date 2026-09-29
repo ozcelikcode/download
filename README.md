@@ -148,6 +148,14 @@ Before completing production setup:
 
 Only trust forwarded headers from known proxy addresses; never use `FORWARDED_ALLOW_IPS=*`. Moving to multiple application workers requires redesigning the database, request coordination and progress state; it is not supported by this deployment.
 
+## Standalone pages
+
+Use **Content → Pages** to create an editorial page at `/page/{slug}`. Save a draft first or publish explicitly. Public pages can be added to the header or footer from **Settings → Menus**; only published public pages appear in the page picker or sitemap.
+
+Private pages require a valid administrator session. Visitors receive a generic 404, including for drafts and deleted pages. Private responses disable caching and indexing, suppress referrers, and block third-party images. Private pages are not visitor password links and cannot be shared with non-administrators. Changing a public page to private or a draft disables matching menu entries.
+
+Deleting a page moves it to **Pages → Trash**. Restore brings it back as a draft; permanent deletion is available from the page trash. A full-site reset removes pages, while a settings-only reset retains them.
+
 ## Reset and removal
 
 Use **Settings → Maintenance and Reset**. First select a scope and verify the current administrator password. Then, within five minutes, type the exact displayed site name and acknowledge permanent deletion. Confirmation is tied to the authenticated session, account and selected action. CSRF checks and password-attempt limits apply. Every successful reset invalidates all existing administrator sessions.

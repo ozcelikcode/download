@@ -42,6 +42,13 @@
       <label><span class="form-label">{{ t(request, 'tags') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'tags') }}</option>{% for tag in tags %}<option value="{{ tag.id }}">#{{ tag.name }}</option>{% endfor %}</select></label>
       <div class="flex gap-2"><select name="location" class="form-input w-auto"><option value="navbar">{{ t(request, 'top_menu') }}</option><option value="footer">{{ t(request, 'footer_menu') }}</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="tag" class="w-4 h-4"></i>{{ t(request, 'import_tag') }}</button></div>
     </form>
+    {% if pages %}
+    <form method="post" action="/admin/settings/menu/from-source" class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><input type="hidden" name="source_type" value="page">
+      <label><span class="form-label">{{ t(request, 'pages') }}</span><select name="source_id" class="form-input" required><option value="">{{ t(request, 'pages') }}</option>{% for page in pages %}<option value="{{ page.id }}">{{ page.title }}</option>{% endfor %}</select></label>
+      <div class="flex gap-2"><select name="location" class="form-input w-auto"><option value="navbar">{{ t(request, 'top_menu') }}</option><option value="footer">{{ t(request, 'footer_menu') }}</option></select><button class="btn-secondary py-2 px-3 whitespace-nowrap"><i data-lucide="file-plus" class="w-4 h-4"></i>{{ t(request, 'import_page') }}</button></div>
+    </form>
+    {% endif %}
   </div>
 </div>
 

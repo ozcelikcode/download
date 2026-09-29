@@ -169,7 +169,11 @@ async def test_parallel_downloads_reserve_rate_limit_atomically(client, db_sessi
 
 
 async def test_login_cookie_uses_configured_duration(client: AsyncClient, db_session: AsyncSession):
-    await crud.update_admin_credentials(db_session, "test-admin", hash_admin_password("test-password"))
+    from app.models import User
+    user = await db_session.scalar(select(User).where(User.username == "admin"))
+    user.username = "test-admin"
+    user.password_hash = hash_admin_password("test-password")
+    await db_session.commit()
     await crud.update_session_max_age(db_session, 30)
     response = await client.post("/admin/login", data={"username": "test-admin", "password": "test-password"})
     assert response.status_code == 302

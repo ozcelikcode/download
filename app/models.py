@@ -1,13 +1,4 @@
-"""
-SQLAlchemy ORM modelleri.
-
-Tablolar:
-  - Category       : İçerik kategorileri
-  - Tag            : Etiketler
-  - Download       : Ana indirme kaydı (self-ref ile sürüm ilişkisi)
-  - DownloadTag    : M2M junction (Download ↔ Tag)
-  - DownloadLog    : İndirme logları (sayaç + rate limiting)
-"""
+"""SQLAlchemy models for downloads, navigation, standalone pages, and site state."""
 
 from __future__ import annotations
 
@@ -18,6 +9,7 @@ from typing import List, Optional
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -153,6 +145,25 @@ class MenuItem(Base):
         return f"<MenuItem id={self.id} label={self.label!r} location={self.location!r}>"
 
 
+class Page(Base):
+    """Standalone page; private pages require an administrator session."""
+
+    __tablename__ = "pages"
+    __table_args__ = (CheckConstraint("visibility IN ('public', 'private')", name="ck_pages_visibility"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
+    body_html: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    visibility: Mapped[str] = mapped_column(String(10), nullable=False, default="public")
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+
 # ---------------------------------------------------------------------------
 # SiteSettings — tekil satır; site adı, ikon ve ikon rengi (admin panelinden düzenlenir)
 # ---------------------------------------------------------------------------
@@ -257,8 +268,23 @@ class LoginAttempt(Base):
     __tablename__ = "login_attempts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    ip_address: Mapped[str] = mapped_column(String(45), index=True)
+    client_key: Mapped[str] = mapped_column(String(64), index=True)
     attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[str] = mapped_column(String(10), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deletion_requested_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (CheckConstraint("role IN ('admin', 'manager', 'editor')", name="ck_users_role"),)
 
 
 class AuditLog(Base):
@@ -457,8 +483,7 @@ class DownloadLog(Base):
     download_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("downloads.id", ondelete="CASCADE"), nullable=False
     )
-    ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
-    user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    client_key: Mapped[str] = mapped_column(String(64), nullable=False)
     downloaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -470,9 +495,9 @@ class DownloadLog(Base):
 
     # İndeks: rate limiting sorgusunu hızlandırır
     __table_args__ = (
-        Index("ix_download_logs_ip_time", "ip_address", "downloaded_at"),
+        Index("ix_download_logs_client_time", "client_key", "downloaded_at"),
         Index("ix_download_logs_download_id", "download_id"),
     )
 
     def __repr__(self) -> str:
-        return f"<DownloadLog id={self.id} download_id={self.download_id} ip={self.ip_address!r}>"
+        return f"<DownloadLog id={self.id} download_id={self.download_id}>"

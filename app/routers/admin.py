@@ -57,6 +57,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 
 from app import crud
 from app.branding import SITE_ICON_COLORS
@@ -70,6 +71,7 @@ from app.i18n import translate, system_message
 from app.link_checks import resolve_public_url
 from app.dependencies import (
     create_admin_session_token,
+    DUMMY_PASSWORD_HASH,
     get_db,
     get_request_ip,
     hash_admin_password,
@@ -77,7 +79,7 @@ from app.dependencies import (
     verify_admin_password,
     SESSION_COOKIE,
 )
-from app.models import FileType, IconType
+from app.models import FileType, IconType, Page, User
 from app.media import ensure_unused, media_path, media_usage
 from app.routers.public import build_download_detail_context
 from app.schemas import (
@@ -863,19 +865,19 @@ async def login_post(
         attempt_id = await reserve_login_attempt(session, ip)
     except HTTPException as exc:
         if exc.status_code == 429:
-            add_event(session, "error", "login", "Kritik: giriş denemesi sınırı aşıldı",
-                      changes={"ip_address": [None, ip]}, actor="anonymous", level="critical")
+            add_event(session, "error", "login", "Login attempt limit reached",
+                      actor="anonymous", level="critical")
             await session.commit()
-            logger.critical("Giriş denemesi sınırı aşıldı: ip=%r", ip)
+            logger.warning("Login attempt limit reached")
         raise
     site_settings = await crud.get_site_settings(session)
-    effective_username = site_settings.admin_username or settings.admin_username
-    effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
-
+    user = await session.scalar(select(User).where(User.username == username, User.is_active.is_(True), User.deleted_at.is_(None)))
+    # Always perform a memory-hard check, including for unknown accounts.
+    effective_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
     password_valid = await run_in_threadpool(verify_admin_password, password, effective_hash)
-    if not secrets.compare_digest(username.encode(), effective_username.encode()) or not password_valid:
-        logger.critical("Başarısız admin giriş denemesi: ip=%r", ip)
-        add_event(session, "error", "login", "Başarısız yönetici giriş denemesi", changes={"ip_address": [None, ip]}, actor="anonymous", level="critical")
+    if user is None or not password_valid:
+        logger.warning("Failed staff login attempt")
+        add_event(session, "error", "login", "Failed staff login attempt", actor="anonymous", level="critical")
         await session.commit()
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
@@ -883,14 +885,14 @@ async def login_post(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    if not effective_hash.startswith("scrypt$"):
-        site_settings.admin_password_hash = await run_in_threadpool(hash_admin_password, password)
+    if not user.password_hash.startswith("scrypt$"):
+        user.password_hash = await run_in_threadpool(hash_admin_password, password)
         await session.commit()
     await clear_successful_attempt(session, attempt_id)
     request.session.clear()
-    add_event(session, "login", "login", "Yönetici oturumu açıldı", changes={"ip_address": [None, ip]}, actor=username)
+    add_event(session, "login", "login", "Staff session opened", actor=username)
     await session.commit()
-    token = create_admin_session_token(username, site_settings.admin_password_hash or settings.admin_password_hash, site_settings.session_generation)
+    token = create_admin_session_token(user.username, user.password_hash, site_settings.session_generation, user_id=user.id)
     response = _redirect("/admin")
     response.set_cookie(
         key=SESSION_COOKIE,
@@ -900,7 +902,7 @@ async def login_post(
         samesite="strict",
         secure=settings.app_base_url.startswith("https://"),
     )
-    logger.info("Admin girişi başarılı: username=%r", username)
+    logger.info("Staff login succeeded: user_id=%d", user.id)
     return response
 
 
@@ -1962,12 +1964,13 @@ async def settings_account_view(
 ):
     site_settings = await crud.get_site_settings(session)
     flash_message = request.session.pop("flash_message", None)
+    current_user = await session.get(User, request.state.admin_id)
     return templates.TemplateResponse(
         request=request, name="admin/settings_account.html",
         context={
             "request": request,
             "site_settings": site_settings,
-            "effective_admin_username": site_settings.admin_username or settings.admin_username,
+            "effective_admin_username": current_user.username,
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
@@ -1987,6 +1990,10 @@ async def settings_menu_view(
     categories = await crud.get_categories_ordered(session)
     category_counts = await crud.get_category_download_counts(session)
     tags = await crud.get_tags_ordered(session)
+    pages = (await session.scalars(
+        select(Page).where(Page.visibility == "public", Page.is_published.is_(True), Page.deleted_at.is_(None))
+        .order_by(Page.title)
+    )).all()
     site_settings = await crud.get_site_settings(session)
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
@@ -2001,6 +2008,7 @@ async def settings_menu_view(
             "categories": categories,
             "category_counts": category_counts,
             "tags": tags,
+            "pages": pages,
             "sidebar_block_order": sidebar_block_order,
             "site_settings": site_settings,
             "icon_colors": SITE_ICON_COLORS,
@@ -2232,8 +2240,8 @@ async def settings_account_update(
     # require_admin aynı oturumda okuma yaptı; kota kendi kısa işlemini kullanır.
     await session.rollback()
     attempt_id = await reserve_login_attempt(session, "account:" + get_request_ip(request))
-    site_settings = await crud.get_site_settings(session)
-    effective_hash = site_settings.admin_password_hash or settings.admin_password_hash
+    current_user = await session.get(User, request.state.admin_id)
+    effective_hash = current_user.password_hash
 
     if not await run_in_threadpool(verify_admin_password, current_password, effective_hash):
         request.session["flash_message"] = translate(request, "wrong_current_password")
@@ -2254,7 +2262,15 @@ async def settings_account_update(
         return _redirect("/admin/settings/account")
 
     password_hash = await run_in_threadpool(hash_admin_password, new_password) if new_password else None
-    await crud.update_admin_credentials(session, new_username or None, password_hash)
+    if new_username and new_username != current_user.username:
+        existing = await session.scalar(select(User).where(User.username == new_username))
+        if existing:
+            request.session["flash_message"] = translate(request, "username_taken")
+            return _redirect("/admin/settings/account")
+        current_user.username = new_username
+    if password_hash:
+        current_user.password_hash = password_hash
+    await session.commit()
 
     changed = []
     if new_username:
@@ -2324,6 +2340,15 @@ async def sidebar_reorder(
     return {"ok": True}
 
 
+async def _ensure_public_page_menu_target(request: Request, session: AsyncSession, url: str) -> None:
+    path = unquote(urlsplit(url).path)
+    if not path.startswith("/page/"):
+        return
+    page = await session.scalar(select(Page).where(Page.slug == path[6:]))
+    if page and (page.visibility != "public" or not page.is_published or page.deleted_at is not None):
+        raise HTTPException(status_code=422, detail=translate(request, "page_menu_unavailable"))
+
+
 @router.post("/settings/menu", name="admin_menu_item_create")
 async def menu_item_create(
     request: Request,
@@ -2341,6 +2366,7 @@ async def menu_item_create(
         url = normalize_navigation_url(url)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await _ensure_public_page_menu_target(request, session, url)
     site_settings = await crud.get_site_settings(session)
     limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
     if len(await crud.get_menu_items(session, location=location)) >= limit:
@@ -2379,6 +2405,13 @@ async def menu_item_from_source(
     elif source_type == "tag":
         source = await crud.get_tag_by_id(session, source_id)
         label, url, icon = (f"#{source.name}", f"/tag/{source.slug}", "tag") if source else (None, None, None)
+    elif source_type == "page":
+        source = await session.get(Page, source_id)
+        if source and source.visibility == "public" and source.is_published and source.deleted_at is None:
+            label, url, icon = source.title, f"/page/{source.slug}", "file-text"
+        else:
+            source = None
+            label = url = icon = None
     else:
         source = None
         label = url = icon = None
@@ -2412,6 +2445,7 @@ async def menu_item_edit(
         url = normalize_navigation_url(url)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await _ensure_public_page_menu_target(request, session, url)
     data = MenuItemUpdate(
         label=label, label_en=label_en or None, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,

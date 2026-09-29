@@ -16,7 +16,7 @@ import re
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 — tüm modelleri Base.metadata'ya kaydeder
@@ -24,7 +24,7 @@ from app.config import settings
 from app.database import Base
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, get_db
 from app.main import app
-from app.models import SiteLifecycle, SiteSettings
+from app.models import SiteLifecycle, SiteSettings, User
 from app.i18n import set_ui_language
 from app.templating import templates
 
@@ -67,15 +67,17 @@ async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
         await conn.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
-    from app import link_checks, lifecycle
+    from app import link_checks, lifecycle, main
     from app.routers import public
 
     monkeypatch.setattr(link_checks, "AsyncSessionLocal", session_factory)
     monkeypatch.setattr(lifecycle, "AsyncSessionLocal", session_factory)
+    monkeypatch.setattr(main, "AsyncSessionLocal", session_factory)
     async with session_factory() as session:
         session.add_all([
             SiteLifecycle(id=1, installed=True),
             SiteSettings(site_name="Download Sitesi", site_language="tr", content_language="tr"),
+            User(username="admin", password_hash=settings.admin_password_hash, role="admin"),
         ])
         await session.commit()
 
@@ -114,7 +116,8 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
 async def admin_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """Admin oturumu açılmış istemci — gerçek şifreye ihtiyaç duymadan
     geçerli bir imzalı session cookie üretir."""
-    token = create_admin_session_token("admin")
+    user = await db_session.scalar(select(User).where(User.username == "admin"))
+    token = create_admin_session_token("admin", user.password_hash, user_id=user.id)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         ac.cookies.set(SESSION_COOKIE, token, domain="test.local", path="/")

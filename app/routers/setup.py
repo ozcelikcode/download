@@ -23,7 +23,7 @@ from app.dependencies import (SESSION_COOKIE, credential_stamp, get_request_ip,
                               hash_admin_password, require_admin, verify_admin_password)
 from app.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from app.lifecycle import get_lifecycle, reset_site, reset_storage_roots
-from app.models import Download, MediaAsset, MenuItem
+from app.models import Download, MediaAsset, MenuItem, User
 from app.security import require_csrf, reserve_login_attempt, clear_successful_attempt
 from app.seo import inspect_public_base_url
 from app.setup_schemas import InstallationForm, ResetAuthorization, ResetConfirmation
@@ -99,6 +99,8 @@ async def install(request: Request, session: AsyncSession = Depends(get_db)):
     account.admin_username = data.username
     account.admin_password_hash = password_hash
     account.session_generation = secrets.token_hex(32)
+    await session.execute(delete(User))
+    session.add(User(username=data.username, password_hash=password_hash, role="admin"))
     # Discard menu items seeded by older migrations on a fresh installation.
     await session.execute(delete(MenuItem))
     await crud.ensure_required_category(session, language=data.language, commit=False)
@@ -118,7 +120,7 @@ async def maintenance_page(request: Request, session: AsyncSession, error: str |
     account = await crud.get_site_settings(session)
     return templates.TemplateResponse(request=request, name="admin/settings_maintenance.html", context={
         "site_settings": account, "public_url": settings.app_base_url,
-        "admin_user": account.admin_username or settings.admin_username,
+        "admin_user": getattr(request.state, "admin_user", account.admin_username or settings.admin_username),
         "content_count": await session.scalar(select(func.count()).select_from(Download)),
         "media_count": await session.scalar(select(func.count()).select_from(MediaAsset)),
         "error": translate(request, error) if error else None,
@@ -144,7 +146,8 @@ async def authorize_reset(request: Request, session: AsyncSession = Depends(get_
     except ValidationError:
         return await maintenance_page(request, session, "reset_invalid", 422)
     account = await crud.get_site_settings(session)
-    password_hash = account.admin_password_hash or settings.admin_password_hash
+    current_user = await session.get(User, request.state.admin_id)
+    password_hash = current_user.password_hash
     if not await run_in_threadpool(verify_admin_password, data.password, password_hash):
         logger.warning("Password verification failed for site reset")
         return await maintenance_page(request, session, "wrong_current_password", 403)
@@ -176,7 +179,8 @@ async def confirm_reset(request: Request, session: AsyncSession = Depends(get_db
     except ValidationError:
         return await maintenance_page(request, session, "reset_invalid", 422)
     account = await crud.get_site_settings(session)
-    password_hash = account.admin_password_hash or settings.admin_password_hash
+    current_user = await session.get(User, request.state.admin_id)
+    password_hash = current_user.password_hash
     if not challenge or (
         challenge.get("expires", 0) < time.time()
         or challenge.get("action") not in {"settings", "full", "uninstall"}
@@ -192,7 +196,7 @@ async def confirm_reset(request: Request, session: AsyncSession = Depends(get_db
     if action == "uninstall" and not setup_available():
         return await maintenance_page(request, session, "reset_key_required", 422)
     try:
-        fresh = await reset_site(session, action)
+        fresh = await reset_site(session, action, preserve_user_id=request.state.admin_id)
     except (OSError, ValueError):
         await session.rollback()
         logger.exception("Site reset did not complete; pending cleanup state is retained")

@@ -1202,10 +1202,10 @@ async def create_download_log(
     ip_address: str,
     user_agent: Optional[str] = None,
 ) -> DownloadLog:
+    from app.security import client_key
     log = DownloadLog(
         download_id=download_id,
-        ip_address=ip_address,
-        user_agent=user_agent,
+        client_key=client_key(ip_address, context="download"),
     )
     session.add(log)
     await session.commit()
@@ -1217,13 +1217,14 @@ async def check_rate_limit(
     ip_address: str,
     max_per_hour: int,
 ) -> bool:
+    from app.security import client_key
     """
     True → indirmeye izin ver.
     False → rate limit aşıldı.
     """
     window_start = datetime.now(timezone.utc) - timedelta(hours=1)
     stmt = select(func.count()).where(
-        DownloadLog.ip_address == ip_address,
+        DownloadLog.client_key == client_key(ip_address, context="download"),
         DownloadLog.downloaded_at >= window_start,
     )
     result = await session.execute(stmt)
@@ -1238,6 +1239,7 @@ async def record_download_if_allowed(
     user_agent: Optional[str],
     max_per_hour: int,
 ) -> bool:
+    from app.security import client_key
     """Kotayı, indirme kaydını ve sayacı tek bir SQLite işlemi içinde günceller.
 
     `BEGIN IMMEDIATE` eşzamanlı isteklerin aynı eski sayımı görmesini engeller.
@@ -1246,10 +1248,11 @@ async def record_download_if_allowed(
     await session.rollback()
     await session.execute(text("BEGIN IMMEDIATE"))
     try:
+        key = client_key(ip_address, context="download")
         window_start = datetime.now(timezone.utc) - timedelta(hours=1)
         count = await session.scalar(
             select(func.count()).where(
-                DownloadLog.ip_address == ip_address,
+                DownloadLog.client_key == key,
                 DownloadLog.downloaded_at >= window_start,
             )
         )
@@ -1260,8 +1263,7 @@ async def record_download_if_allowed(
         session.add(
             DownloadLog(
                 download_id=download_id,
-                ip_address=ip_address,
-                user_agent=user_agent,
+                client_key=key,
             )
         )
         result = await session.execute(

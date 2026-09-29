@@ -1,0 +1,56 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'edit_page') if page else t(request, 'new_page') }}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
+<script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-5xl">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <div><a href="/admin/pages" class="text-xs text-slate-500 hover:underline">{{ t(request, 'pages') }}</a><h1 class="text-lg font-bold mt-1">{{ t(request, 'edit_page') if page else t(request, 'new_page') }}</h1></div>
+    {% if page and page.id %}<a href="/page/{{ page.slug }}" target="_blank" rel="noopener noreferrer" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'view') }}</a>{% endif %}
+  </div>
+  {% if error %}<p role="alert" class="mb-4 p-3 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-sm">{{ error }}</p>{% endif %}
+  <form id="page-form" method="post" action="{{ '/admin/pages/' ~ page.id ~ '/edit' if page and page.id else '/admin/pages' }}" class="space-y-5">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 space-y-4">
+      <div><label for="page-title" class="form-label">{{ t(request, 'title') }}</label><input id="page-title" name="title" class="form-input" maxlength="200" required value="{{ page.title if page else '' }}"></div>
+      <div><label for="page-slug" class="form-label">{{ t(request, 'page_address') }}</label><div class="flex items-center gap-2"><span class="text-sm text-slate-500 shrink-0">/page/</span><input id="page-slug" name="slug" class="form-input" maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="{{ page.slug if page else '' }}" placeholder="{{ t(request, 'page_slug_auto') }}"></div></div>
+      <div><label for="page-body" class="form-label">{{ t(request, 'page_content') }}</label><div id="page-editor-wrap" class="hidden quill-editor-wrap rounded-sm border border-slate-200 dark:border-slate-800 overflow-hidden"><div id="page-editor"></div></div><textarea id="page-body" name="body_html" class="form-input mt-2" rows="12" maxlength="100000">{{ page.body_html if page else '' }}</textarea></div>
+    </div>
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
+      <p class="form-label mb-2">{{ t(request, 'page_access') }}</p>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <label class="choice-card p-3"><input class="choice-input" type="radio" name="visibility" value="public" {% if not page or page.visibility == 'public' %}checked{% endif %}><span class="block font-medium text-sm">{{ t(request, 'public_page') }}</span><span class="form-hint">{{ t(request, 'public_page_help') }}</span></label>
+        <label class="choice-card p-3"><input class="choice-input" type="radio" name="visibility" value="private" {% if page and page.visibility == 'private' %}checked{% endif %}><span class="block font-medium text-sm">{{ t(request, 'private_page') }}</span><span class="form-hint">{{ t(request, 'private_page_help') }}</span></label>
+      </div>
+    </div>
+    <div class="flex flex-wrap justify-end gap-2">
+      {% if page and page.id %}<button type="submit" form="page-delete-form" class="btn-danger mr-auto" data-confirm-message="{{ t(request, 'page_trash_confirm') }}"><i data-lucide="trash-2" class="w-4 h-4"></i>{{ t(request, 'trash') }}</button>{% endif %}
+      <button type="submit" name="is_published" value="false" class="btn-secondary">{{ t(request, 'unpublish_page') if page and page.is_published else t(request, 'save_draft') }}</button>
+      <button type="submit" name="is_published" value="true" class="btn-primary">{{ t(request, 'publish') }}</button>
+    </div>
+  </form>
+  {% if page and page.id %}<form id="page-delete-form" method="post" action="/admin/pages/{{ page.id }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var field = document.getElementById('page-body');
+  if (typeof Quill === 'undefined') return;
+  var editor = new Quill('#page-editor', {
+    theme: 'snow',
+    modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['blockquote', 'code-block', 'link'], ['clean']] }
+  });
+  editor.root.setAttribute('aria-label', {{ t(request, 'page_content')|tojson }});
+  if (field.value.trim()) editor.clipboard.dangerouslyPasteHTML(field.value);
+  document.getElementById('page-editor-wrap').classList.remove('hidden');
+  field.classList.add('hidden');
+  editor.on('text-change', function () { field.value = editor.getText().trim() ? editor.root.innerHTML : ''; });
+  document.getElementById('page-form').addEventListener('submit', function () {
+    field.value = editor.getText().trim() ? editor.root.innerHTML : '';
+  });
+});
+</script>
+{% endblock %}

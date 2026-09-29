@@ -13,7 +13,7 @@ from app.config import settings
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, hash_admin_password
 from app.lifecycle import RequestGate, finish_pending_reset, get_lifecycle, reset_site, reset_storage_roots, single_worker_guard
 from app.main import app
-from app.models import AuditLog, Category, Download, MediaAsset
+from app.models import AuditLog, Category, Download, MediaAsset, User
 from app.schemas import DownloadCreate
 
 PASSWORD = "a unique test password 123!"
@@ -30,8 +30,10 @@ async def owner(client, session, password_hash):
     account.site_name = "Doğrulanacak Site"
     account.admin_username = "admin"
     account.admin_password_hash = password_hash
+    user = await session.scalar(select(User).where(User.username == "admin"))
+    user.password_hash = password_hash
     await session.commit()
-    client.cookies.set(SESSION_COOKIE, create_admin_session_token("admin", password_hash), domain="test.local", path="/")
+    client.cookies.set(SESSION_COOKIE, create_admin_session_token("admin", password_hash, user_id=user.id), domain="test.local", path="/")
     return account
 
 
