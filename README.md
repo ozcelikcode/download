@@ -7,7 +7,7 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - Local file uploads and external download sources
 - Version history, latest-version links, SHA-256 checksums, and operating-system metadata
 - Search, category and tag filtering, featured items, and query-string pagination
-- One admin-controlled Turkish or English interface setting shared by the public site, admin panel, and SEO metadata; editorial content remains unchanged
+- One administrator-controlled interface language (English, Spanish, French, or Turkish), shared by the public site and admin panel; English is the new-installation default and existing content remains unchanged when the interface language changes
 - Configurable branding, color themes, light and dark modes, navigation, and hero layout
 - Bulk content operations and safe category deletion with content transfer
 - Automatic application drafts with live save status and manual finalization
@@ -35,6 +35,8 @@ make dev
 
 `make setup` creates a private `.env` file with random session and setup keys, then applies migrations. It refuses to overwrite an existing `.env`. Save the printed setup key privately. Open `http://127.0.0.1:8000`: the installation screen appears until you enter that key, create an administrator account, and confirm the site settings. No public content or uploads are served before installation.
 
+The first installation screen opens in English. Choose English, Spanish, French, or Turkish there before submitting the form, in that order. Setup creates the protected default category (`General`, `General`, `Général`, or `Genel`) and default hero content in the selected language. The installation content language is stored separately from the interface language. Changing the interface language later does not rewrite existing content; a full reset recreates defaults in the original installation language. Returning to setup restores English as the initial choice.
+
 For a new production installation, choose the final domain when preparing the configuration:
 
 ```bash
@@ -43,7 +45,7 @@ make setup SITE_URL=https://downloads.example.com
 
 Complete the deployment steps below before opening production setup. The browser cannot purchase hosting, configure DNS, or provision TLS; it verifies the application configuration and asks you to confirm the infrastructure checks. `APP_BASE_URL` remains the source of truth for the public URL and secure cookies.
 
-For an **existing installation**, use `.venv/bin/pip install -r requirements.txt` and `make migrate`, then restart the server. Existing accounts and content are preserved; the new migration marks existing sites as installed. Do not run `make setup` over your existing configuration. To enable returning to setup, run `make setup-key`, save the printed key, and restart the server.
+For an **existing installation**, use `.venv/bin/pip install -r requirements.txt` and `make migrate`, then restart the server. Existing accounts and content are preserved. The new migration records the existing site language as its initial content language. Do not run `make setup` over your existing configuration. To enable returning to setup, run `make setup-key`, save the printed key, and restart the server.
 
 Stop the development server with `Ctrl+C` in the terminal that runs `make dev`. Wait for the shell prompt to return before starting it again.
 

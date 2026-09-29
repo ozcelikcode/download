@@ -9,11 +9,11 @@
 {% if site_settings.hero_enabled and not current_category and not current_search and (current_tag is not defined or not current_tag) and not has_filters and page == 1 %}
 <section class="hero-section hero-bg-{{ site_settings.hero_background }} mb-6" id="hero"{% if site_settings.hero_background == 'image' and site_settings.hero_image_path %} style="--hero-image: url('{{ site_settings.hero_image_path }}')"{% endif %}>
   {% for component in hero_components %}
-    {% set hero_text = component.get('text_en') if ui_language(request) == 'en' and component.get('text_en') else component.get('text', '') %}
+    {% set hero_text = component.get('text', '') %}
     {% if component.type == 'eyebrow' %}<p class="text-xs font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-widest mb-2">{{ hero_text }}</p>
     {% elif component.type == 'title' %}<h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{{ hero_text }}</h1>
     {% elif component.type == 'description' %}<p class="text-sm text-slate-500 dark:text-slate-400 mb-5">{{ hero_text }}</p>
-    {% elif component.type == 'search' %}<div class="hero-search-wrap my-4"><form action="/search" method="get"><i data-lucide="search" class="hero-search-icon w-4 h-4"></i><input id="hero-search" name="q" type="search" placeholder="{{ hero_text or t(request, 'search_placeholder') }}" autocomplete="off" class="hero-search-input"></form></div>
+    {% elif component.type == 'search' %}<div class="hero-search-wrap my-4"><form action="/search" method="get"><i data-lucide="search" class="hero-search-icon w-4 h-4"></i><input id="hero-search" name="q" type="search" placeholder="{{ hero_text }}" autocomplete="off" class="hero-search-input"></form></div>
     {% elif component.type == 'stats' and total is defined %}<div class="flex items-center justify-center gap-2 my-4 flex-wrap"><span class="stat-pill"><i data-lucide="package" class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400"></i>{{ total }} {{ t(request, 'downloads') }}</span>{% if total_categories %}<span class="stat-pill"><i data-lucide="folder" class="w-3.5 h-3.5"></i>{{ total_categories }} {{ t(request, 'categories')|lower }}</span>{% endif %}{% if total_tags %}<span class="stat-pill"><i data-lucide="tag" class="w-3.5 h-3.5"></i>{{ total_tags }} {{ t(request, 'tags')|lower }}</span>{% endif %}</div>
     {% endif %}
   {% endfor %}

@@ -2,33 +2,23 @@
 
 ## Architecture
 
-- Katmanlı FastAPI monolith: `routers`, `crud`, `models`, `schemas`, `templates` ayrımı korunur.
-- Rotalar ve SQLAlchemy işlemleri asenkrondur; DB sorguları mümkün olduğunca `app/crud.py` içinde tutulur.
-- Router ayrımı: `public.py`, `admin.py`, rapor/denetim için `reports.py`.
-- Pydantic v2 giriş doğrulaması ve SQLAlchemy async session kullanılır.
+- FastAPI routes are split between public, administration, setup, and reports modules.
+- Database models, Pydantic schemas, CRUD operations, Jinja2 templates, and static assets remain separate.
+- SQLite access uses asynchronous SQLAlchemy sessions and Alembic migrations.
+- Public pagination uses query parameters.
 
-## Data and storage
+## Security and lifecycle
 
-- SQLite + Alembic; model değişiklikleri migration gerektirir.
-- Yerel indirilebilir dosyalar `app/static` dışında özel depoda tutulur ve yalnız kontrollü rotalardan sunulur.
-- Public görseller `app/static/uploads`, indirme paketleri `storage/downloads` altında tutulur.
-- Sayfalama her zaman `?page=x` query parametresiyle yapılır.
+- Signed administrator sessions, CSRF checks, throttling, request-size limits, sanitized rich text, and validated URLs protect application boundaries.
+- Local downloads are stored outside the public static root and served only through controlled routes.
+- Remote link checks block private-network targets and pin resolved addresses.
+- Setup requires a server-held owner key. Reset requires password verification, a short-lived challenge, and the exact site name.
+- Full reset clears site data but not application code or server configuration. Uninstall returns to setup.
 
-## Security and observability
+## UI and localization
 
-- CSRF koruması, imzalı admin oturumu, giriş/indirme rate limit'i ve güvenlik başlıkları aktiftir.
-- Zengin metin `nh3` ile temizlenir; dış ve navigasyon URL'leri izin verilen şemalarla sınırlandırılır.
-- Yüklemeler boyut ve gerçek içerik türü bakımından doğrulanır; yazma işlemleri geçici dosya üzerinden atomik yapılır.
-- Admin değişiklikleri `AuditLog`, dış bağlantı sonuçları `LinkCheck` ile izlenir.
-- Dashboard dosya sistemi kontrolleri `app/health.py` içinde, bloklayan tarama işi threadpool'da çalışır.
-- Admin Site Sağlığı teknik ve SEO bulgularını `app/health.py` içinde üretir; rapor şemaları `app/schemas.py` ile tiplenir. İlk kayıt örnekleri sınırlı sayıda gösterilir ve güvenli admin hedeflerine bağlanır.
-- Ana sayfa SEO varsayılanları `SiteSettings` içinde nullable `seo_home_title` / `seo_meta_description` alanlarında tutulur ve `app/routers/admin.py` üzerinden Pydantic v2 ile doğrulanır. Boş değerler yerelleştirilmiş varsayılanlara döner; bu alan değişikliği Alembic migration gerektirir.
-- Sağlık bulguları düzeltme bağlantısı ve gerektiğinde öneri anahtarı taşır; teknik yapılandırma kontrolleri de çözüm adımı sunabilir. Kritik/uyarı özeti kullanıcıya görünür, form sonucu ortak admin toast'ı ile bildirilir.
-- `app/seo.py`, canonical, sitemap ve robots için `APP_BASE_URL` değerini tek noktada doğrular. Sitemap'e yalnız aktif yayınlar ile kullanılan kategori/etiket sayfaları eklenir; arama/filtre varyantları `noindex` durumundadır.
-
-## UI patterns
-
-- Jinja2 + Tailwind; yalnız `rounded-sm`, ölçülü gölge ve minimum JavaScript.
-- Public ve admin için ayrı base template vardır; tema, erişilebilirlik ve toast JavaScript'i ortaktır.
-- Tema açık/koyu/sistem seçeneklerini ve merkezi vurgu rengini destekler.
-- Ortak toast API'si `window.AppToast`; kısa başarılı/uyarı/hata/bilgi geri bildirimleri içindir. İlerleme göstergeleri ve onay dialogları ayrı kalır.
+- Jinja2 and Tailwind provide server-rendered pages; small JavaScript modules handle interactions such as menus, confirmations, toasts, and compact audit rows.
+- `app/i18n.py` provides the shared interface/system-message catalog, with Spanish and French catalogs in `app/locales/`. Language is site-wide, not a visitor cookie preference.
+- The default installation language is English. The protected category and hero defaults are created in the chosen language. `content_language` remains stable when `site_language` changes.
+- Existing editorial records are not renamed when the administrator changes the interface language.
+- SEO editing lives in Site Health; color theme and visual composition live in Appearance; log retention lives in Activity Log.

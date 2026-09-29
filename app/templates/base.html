@@ -10,7 +10,7 @@
   {% if noindex | default(false) %}<meta name="robots" content="{{ robots_directive | default('noindex,follow') }}">{% endif %}
   {% if resolved_canonical %}<link rel="canonical" href="{{ resolved_canonical }}">{% endif %}
   <meta property="og:type" content="website">
-  <meta property="og:locale" content="{{ 'en_US' if ui_language(request) == 'en' else 'tr_TR' }}">
+  <meta property="og:locale" content="{{ og_locale(request) }}">
   <meta property="og:site_name" content="{{ site_name }}">
   <meta property="og:title" content="{{ resolved_title }}">
   <meta property="og:description" content="{{ resolved_description }}">

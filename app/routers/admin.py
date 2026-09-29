@@ -62,6 +62,7 @@ from app import crud
 from app.branding import SITE_ICON_COLORS
 from app.config import settings
 from app.content_security import normalize_navigation_url
+from app.default_content import HERO_TEXT
 from app.database import AsyncSessionLocal
 from app.health import get_admin_site_health
 from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
@@ -2053,7 +2054,6 @@ async def settings_appearance_update(
     clear_hero_image: bool = Form(False),
     component_type: List[str] = Form([]),
     component_text: List[str] = Form([]),
-    component_text_en: List[str] = Form([]),
 ):
     current = await crud.get_site_settings(session)
     logo_light = None if clear_logo_light else current.logo_light_path
@@ -2074,10 +2074,10 @@ async def settings_appearance_update(
             continue
         seen_singletons.add(kind)
         text = component_text[index] if index < len(component_text) else ""
-        text_en = component_text_en[index] if index < len(component_text_en) else ""
-        components.append({"type": kind, "text": text.strip()[:300], "text_en": text_en.strip()[:300]})
+        components.append({"type": kind, "text": text.strip()[:300]})
     if not components:
-        components = [{"type": "title", "text": "Güvenli ve Ücretsiz Yazılımlar", "text_en": "Safe and Free Software"}]
+        fallback_language = current.content_language if current.content_language in HERO_TEXT else "en"
+        components = [{"type": "title", "text": HERO_TEXT[fallback_language][1]}]
     payload = AppearanceSettingsUpdate(
         logo_mode=logo_mode if logo_mode in {"icon_text", "image_text", "image"} else "icon_text",
         hero_enabled=hero_enabled,

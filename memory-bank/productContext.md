@@ -1,25 +1,19 @@
 # Product Context
 
-## Why this project exists
-Kullanıcıların bir uygulama/dosya için "indirme sayfası" arayışında karşılaştığı reklam dolu, karmaşık indirme sitelerinin (adfly benzeri) yerine geçecek; sahibinin kendi dosyalarını (lokal upload) veya başka kaynaklara (dış link, örn. GitHub) yönlendiren linkleri tek, temiz bir arayüzde sunmasını sağlar.
+## Purpose
 
-## Problems it solves
-- Dağınık indirme linklerini tek bir kategorize edilmiş sitede toplamak.
-- Sürüm geçmişini (changelog benzeri) kullanıcıya şeffaf göstermek.
-- Kaynak şeffaflığı: dış linkse hangi domainden geldiğini (örn. `github.com`) açıkça belirtmek.
-- Basit spam/kötüye kullanım önleme (rate limiting) — karmaşık auth olmadan.
-- Site sahibine içerik/depo sorunlarını ve arama görünürlüğü için SEO eksiklerini tek admin sağlık ekranında gösterme.
-- Site sahibine ana sayfanın SEO başlığı ve açıklamasını yönetme, somut iyileştirme önerisi alma ve kritik sorunları görünür uyarıyla fark etme imkânı sağlama.
+Downloader provides a clean alternative to cluttered download pages. The site owner can publish local files or links to external sources in one searchable catalog while showing provenance and version information clearly.
 
-## How it should work
-- Ziyaretçi anasayfada arama + kategori/etiket filtreleriyle dosya bulur.
-- Detay sayfasında: boyut, sürüm, açıklama, ikon, kaynak domain, breadcrumb (`Anasayfa > Kategori > Dosya`), eski sürümler listesi.
-- `/dl/{slug}` indirmeyi tetikler, sayaç artar, log/rate-limit kaydı düşer.
-- Admin `/admin/login` ile giriş yapar, `/admin` panelinden dosya/kategori/etiket yönetir.
-- Genel Ayarlar'dan ana sayfa SEO metinlerini düzenler; Site Sağlığı hata/uyarıları, APP_BASE_URL gibi yapılandırmalar için çözüm adımları ve önerilen düzeltme bağlantılarını gösterir. Opsiyonel SEO metinleri girilmezse geçerli varsayılanlar kullanılmaya devam eder.
+## Main workflows
 
-## UX goals
-- "Tıkla ve indir" — az tıklamayla hedefe ulaşmak, gereksiz adım yok.
-- Minimal, yönetilebilir vurgu renkleri; açık/koyu/sistem temalarında tutarlı görünüm.
-- Responsive içerik + kategori/etiket sidebar düzeni; küçük ekranlarda tek sütuna düşer.
-- Sade hero alanı, abartısız karşılama.
+- Visitors search, filter by category or tag, review a detail page, and use `/dl/{slug}` to download or open a validated external destination.
+- Administrators manage content, drafts, categories, tags, media, menus, appearance, SEO metadata, and account security.
+- Site Health groups technical and SEO findings with actionable destinations. The Activity Log records changes and errors without secrets.
+- First-run setup verifies server ownership and deployment checks before opening the site. Maintenance supports settings-only reset, full reset, or returning to setup after deleting site data.
+
+## Experience goals
+
+- A short, trustworthy path from discovery to download.
+- Responsive layouts, accessible controls, and consistent light/dark/system themes.
+- Clear feedback after saving, publishing, deleting, or checking a link.
+- A single administrator-controlled interface language, selected from English, Spanish, French, or Turkish. System messages follow it, while installation-created defaults remain in their original language and editorial content is not silently machine-translated.

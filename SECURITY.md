@@ -1,21 +1,21 @@
-# Güvenli çalıştırma
+# Secure operation
 
-Parolalar rastgele salt içeren scrypt (N=131072, r=8, p=1) özetleri olarak saklanır. Eski bcrypt özeti başarılı girişte yükseltilir. Parola veya kullanıcı adı değiştiğinde mevcut yönetici oturumları reddedilir. APP_SECRET_KEY değişikliği tüm oturumları geçersiz kılar.
+Passwords are stored as randomly salted scrypt hashes (N=131072, r=8, p=1). A legacy bcrypt hash is upgraded after a successful sign-in. Changing the password or username invalidates existing administrator sessions. Rotating `APP_SECRET_KEY` invalidates all sessions.
 
-İlk kurulum SETUP_TOKEN ile sunucu sahipliği doğrulaması gerektirir. Anahtar URL'ye, çereze veya işlem günlüğüne yazılmaz. Yeni anahtar `make setup-key` ile üretilir; sunucu yeniden başlatılmalıdır. Kurulum tamamlanmadan içerik, yönetim ve yükleme adresleri kapalıdır. Mevcut sitelerin migration'ı kurulum durumunu korur.
+First-run setup requires a private `SETUP_TOKEN` to verify server ownership. The token is not written to URLs, cookies, or audit logs. Generate or rotate it with `make setup-key`, then restart the server. Public content, administration, and uploads stay closed until installation finishes. Migrations preserve the installed status of existing sites.
 
-Bakım işlemleri mevcut parola, oturuma bağlı beş dakikalık onay ve site adının birebir girilmesini gerektirir. Tüm kapsamlar yönetici oturumlarını yenileme kuşağıyla geçersiz kılar; eski oturum public sayfalarda da yönetici sayılmaz. Kurulum, giriş, hesap parolası doğrulama ve sıfırlama için SQLite tabanlı deneme sınırı vardır. Hassas formlar 16 KiB ile sınırlandırılır; uzunluk başlığı olmayan akışlar da sayılır.
+Maintenance actions require the current password, a session-bound confirmation valid for five minutes, and an exact match of the site name. Every scope invalidates old administrator sessions, including on public pages. SQLite-backed attempt limits protect setup, sign-in, password verification, and reset actions. Sensitive forms have a 16 KiB request-body limit, including streamed requests without a content-length header.
 
-Tek uygulama süreci işletim sistemi kilidiyle zorunludur. Sıfırlama süren isteklerin ve arka plan işlerinin bitmesini bekler; kalıcı temizleme işareti, kesinti sonrasında siteyi kapalı tutar. Yeniden başlatma temizliği sürdürür. Silme yalnız doğrulanmış iki veri kökü içindeki dosyaları kapsar; geniş/kod/veritabanı yolları, çakışan kökler ve sembolik bağ kökleri reddedilir. Harici sembolik bağ hedefleri silinmez.
+An operating-system lock enforces a single application process. A reset waits for active requests and background work. If cleanup is interrupted, a persistent maintenance marker keeps the site closed until cleanup resumes at startup. Deletion is limited to two validated data roots; broad, overlapping, code, database, or symlink roots are rejected. Targets outside those roots are not followed.
 
-SQLite secure_delete etkinleştirilmiştir; buna rağmen SSD, WAL, işletim sistemi snapshot'ları ve harici yedekler için adli düzeyde yok etme garantisi verilmez. Tam sıfırlama .env sırlarını, hosting hesabını veya harici yedekleri kaldırmaz. Kuruluma dönme de sunucudaki uygulama kodunu kaldırmaz.
+SQLite `secure_delete` is enabled, but SSD behavior, WAL files, operating-system snapshots, and external backups prevent a guarantee of forensic erasure. A full reset does not remove `.env` secrets, the hosting account, or external backups. Returning to setup does not remove the application code.
 
-Üretimde APP_BASE_URL=https://alan-adiniz şeklinde ayarlanmalı; HTTPS sonlandıran reverse proxy kullanılmalıdır. Bu ayar Secure çerezleri ve HSTS başlığını etkinleştirir. Uvicorn proxy güveni yalnız gerçek proxy adreslerine verilmelidir; herkese güvenen forwarded-allow-ips kullanılmamalıdır.
+In production, set `APP_BASE_URL=https://your-domain` and terminate HTTPS at a trusted reverse proxy. This enables Secure cookies and HSTS. Trust forwarded headers only from the real proxy addresses; do not use an unrestricted `forwarded-allow-ips`.
 
-.env ve SQLite dosyasını web kökünün dışında tutun ve yalnız servis hesabına erişim verin. .env sürüm kontrolüne eklenmemelidir. Daha önce paylaşılmış anahtarlar yenilenmelidir; git geçmişinden silmek tek başına yeterli değildir.
+Keep `.env` and the SQLite database outside the web root and accessible only to the service account. Never commit `.env`. Rotate previously disclosed keys; removing a key from Git history alone is insufficient.
 
-SQLite dosyası uygulama tarafından bütünüyle şifrelenmez. Disk ve yedeklerde şifreleme için işletim sistemi disk şifrelemesi ve şifreli yedekleme kullanılmalıdır. Parola özetleri ile veri şifrelemesi farklı korumalardır. Halka açık indirilebilir içerikler ziyaretçiler tarafından okunabilir.
+The application does not encrypt its entire SQLite database. Use operating-system disk encryption and encrypted backups where needed. Password hashing and data encryption address different risks. Published downloads remain readable by visitors.
 
-Giriş kayıtları güvenilir istemci IP adresini içerir; parolalar kaydedilmez. Hatalı giriş ve hız sınırı olayları Kritik olarak işaretlenir. Kayıtlar mevcut 50/100/200/500/800 saklama sınırına tabidir. Bu kayıtlar değiştirilemez bir harici güvenlik arşivi değildir.
+Sign-in logs include the trusted client IP, but not passwords. Failed sign-ins and rate-limit events are marked critical. Audit records are subject to the configured retention limit of 50, 100, 200, 500, or 800 records; they are not an immutable external security archive.
 
-Sunucuyu make dev çalıştırılan terminalde Ctrl+C ile durdurun. Yeniden başlatmak için make dev kullanın. .env değişikliğinden sonra sunucuyu yeniden başlatın.
+Stop the server with `Ctrl+C` in the terminal running `make dev`. Restart after changing `.env`.

@@ -1,29 +1,33 @@
-# Agent Görev ve Kuralları
+# Agent Rules
 
-Bu proje, FastAPI ve Tailwind CSS kullanılarak geliştirilen minimal bir indirme sitesidir. AI asistanı olarak aşağıdaki kurallara kesinlikle uymalısın.
+This project is a minimal download site built with FastAPI and Tailwind CSS. Follow these rules when changing it.
 
-## 1. Kodlama Standartları
-- **Dil:** Backend için modern Python (3.12+), tip belirteçleri (Type Hints) ve Pydantic v2 zorunludur.
-- **Asenkron Yapı:** FastAPI rotaları ve veritabanı sorguları (SQLAlchemy) asenkron (`async def`, `await`) olarak yazılmalıdır.
-- **Modülerlik:** Kodları tek bir `main.py` dosyasına yığmak yerine `routers`, `models`, `schemas`, `templates` klasörlerine böl.
-- **Tasarım Dili:** Tailwind CSS sınıflarında sadece `rounded-sm` kullan. Abartılı gölgelerden (shadow-2xl vb.) kaçın, minimalizmi koru.
+## Coding standards
 
-## 2. Çalışma Prensibi (Pacing)
-- Görevleri "Orta Ölçekli Parçalar" (Medium Chunks) halinde ele al.
-- "Her şeyi tek seferde yapma" ve "Satır satır onay bekleme" mantığının tam ortasını bul.
-- Tamamlanmış çalışan bir parça sunmadan diğer özelliğe geçme (Örn: Veritabanı bitmeden UI'a geçme).
-- Değişiklik yapmadan önce dosyanın mevcut durumunu analiz et.
+- Use Python 3.12+, type hints, and Pydantic v2 for backend code.
+- Keep FastAPI routes and SQLAlchemy database work asynchronous.
+- Preserve the separation between routers, models, schemas, and templates; do not concentrate features in `main.py`.
+- Use only `rounded-sm` for Tailwind corner-radius classes. Avoid exaggerated shadows and keep the interface minimal.
+- Write code identifiers, comments, docstrings, and project documentation in English. User-facing translations are maintained separately.
 
-## 3. Mimari Kurallar
-- **Veritabanı:** SQLite. migration işlemleri için Alembic kullanılacak.
-- **Frontend:** Jinja2 kullanılacak. JavaScript minimum düzeyde, sadece gerekli olduğunda (örn: mobil menü aç/kapat, admin paneli silme onayı) kullanılacak.
-- **İkonlar:** Lucide Icons SVG veya CDN üzerinden entegre edilecek.
-- **Sayfalandırma:** Dinamik içerikler her zaman `?page=x` query parametresi ile çalışacak. Path parametresi (`/page/2`) KULLANILMAYACAK.
+## Pace and safety
 
-## 4. Hata Yönetimi ve Loglama
-- Son kullanıcıya dönen hatalar (404, 500) için özel Jinja2 şablonları oluştur.
-- Backend tarafındaki hatalar net açıklamalarla loglanmalı. Python `logging` modülünü aktif kullan.
+- Work in medium-sized, independently working increments.
+- Inspect the current implementation before editing, verify each increment, and preserve existing user data and unrelated changes.
+- Do not move to another feature while the current increment is broken.
 
-## 5. İletişim Tonu
-- Yanıtlarında doğrudan ol, gereksiz nezaket ifadelerinden (özür dilemek, uzun giriş cümleleri) kaçın.
-- Sadece yapılan teknik değişikliği ve sıradaki adımı açıkla.
+## Architecture
+
+- Use SQLite and Alembic migrations for schema changes.
+- Use Jinja2 for frontend templates. Add JavaScript only when interaction requires it.
+- Use Lucide icons.
+- Paginate dynamic content with `?page=x`, never a `/page/2` path.
+
+## Errors and logging
+
+- Render custom Jinja2 pages for user-facing 404 and 500 errors.
+- Log backend failures clearly with Python's `logging` module without exposing secrets.
+
+## Communication
+
+- Be direct. Explain the technical change and the next step without unnecessary ceremony.

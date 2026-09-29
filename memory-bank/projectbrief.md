@@ -1,20 +1,21 @@
 # Project Brief
 
-**Download Sitesi** — minimal, "tıkla ve indir" mantığıyla çalışan bir FastAPI indirme (download) sitesi.
+Downloader is a minimal, self-hosted FastAPI download catalog. Visitors should find an application or file and reach its verified download destination without advertising detours or unnecessary steps.
 
-## Core Requirements
-- Kullanıcı yormayan, yalın ve güvenilir bir dosya/uygulama indirme portalı.
-- İki indirme türü: sunucuda barınan **lokal dosya** veya **dış link** (URL).
-- Kategori + etiket (tag) tabanlı organizasyon, sidebar'da arama ve anlık sayım.
-- Sürüm geçmişi: aynı uygulamanın eski sürümleri parent-child ilişkisiyle bağlı.
-- İndirme sayacı + IP başına saatlik rate limiting.
-- Şifre korumalı, yalın bir admin paneli (dosya/kategori/etiket CRUD).
-- Açık/koyu/sistem tema desteği; görünüm minimal kalmalı ve vurgu rengi admin ayarlarından yönetilebilmeli.
+## Core requirements
 
-## Scope Source
-Kaynak talimatlar [prompt.txt](../prompt.txt) ve [agents.md](../agents.md) dosyalarında; bu ikisi projenin orijinal "brief"idir ve değişmemesi beklenir.
+- Serve private local files or redirect to validated external HTTP(S) sources.
+- Organize content by categories, tags, versions, and searchable metadata.
+- Provide an administrator-only interface for content, media, navigation, appearance, site health, and audit records.
+- Keep draft publication explicit and destructive operations confirmable and recoverable where possible.
+- Offer light, dark, and system themes with a restrained, configurable accent color.
+- Use an owner-key-protected first-run setup. The first screen and default installation language are English; the installed site uses one administrator-selected language.
+- Keep system-provided default content aligned with the selected installation language. Preserve editorial content unless an administrator changes it.
 
-## Out of Scope
-- Kullanıcı kayıt/girişi (yalnızca tek admin hesabı var).
-- Path-parametre tabanlı sayfalama (`/page/2`) — sadece `?page=x` kullanılacak.
-- Abartılı gölge/animasyon içeren UI (minimalizm zorunlu, `rounded-sm` dışında köşe yuvarlama yok).
+## Constraints
+
+- Use asynchronous FastAPI and SQLAlchemy, SQLite, Alembic, Pydantic v2, Jinja2, and Tailwind CSS.
+- Paginate with `?page=x`. Use only `rounded-sm` Tailwind radius classes and avoid excessive visual effects.
+- Do not provide visitor accounts or registration.
+
+The original project brief is in `prompt.txt`; the working repository rules are in `agents.md`.

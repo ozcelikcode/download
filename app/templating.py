@@ -1,8 +1,4 @@
-"""
-Paylaşılan Jinja2Templates örneği ve özel filtreler/globals.
-
-Tüm router'lar bu modülden import eder — tek kaynak.
-"""
+"""Shared Jinja2 templates, filters, and globals for all routers."""
 
 from __future__ import annotations
 
@@ -20,7 +16,7 @@ from app.models import FileType, IconType, SiteSettings
 from app.seo import inspect_public_base_url
 
 from app.security import csrf_token
-from app.i18n import set_ui_language, translate, translate_format, ui_language, system_message
+from app.i18n import LANGUAGE_CHOICES, date_locale, og_locale, set_ui_language, translate, translate_format, ui_language, system_message
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -29,6 +25,9 @@ templates.env.globals["t"] = translate
 templates.env.globals["tf"] = translate_format
 templates.env.globals["system_message"] = system_message
 templates.env.globals["ui_language"] = ui_language
+templates.env.globals["og_locale"] = og_locale
+templates.env.globals["date_locale"] = date_locale
+templates.env.globals["language_choices"] = LANGUAGE_CHOICES
 templates.env.globals.update({
     "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",
     "theme_surface_light": "#eaf2fc", "theme_surface_dark": "#152033",
@@ -37,7 +36,7 @@ templates.env.globals.update({
 
 
 # ---------------------------------------------------------------------------
-# Özel filtreler
+# Custom filters.
 # ---------------------------------------------------------------------------
 
 def _format_date(value: Optional[datetime], fmt: str = "%d.%m.%Y") -> str:
@@ -78,10 +77,7 @@ _EXTENSION_ICON_MAP = {
 def _icon_name(
     icon_type: IconType, file_type: FileType, extension: Optional[str] = None
 ) -> str:
-    """
-    Lucide icon adını döndürür.
-    https://lucide.dev/icons/
-    """
+    """Return the matching Lucide icon name (https://lucide.dev/icons/)."""
     mapping = {
         IconType.zip: "archive",
         IconType.pdf: "file-text",
@@ -89,7 +85,7 @@ def _icon_name(
         IconType.image: "image",
         IconType.exe: "monitor",
         IconType.apk: "smartphone",
-        IconType.dmg: "apple",   # en yakın alternatif
+        IconType.dmg: "apple",   # Closest available icon.
         IconType.deb: "terminal",
         IconType.auto: "download",
     }
@@ -112,11 +108,7 @@ def _thousands(value: Optional[int]) -> str:
 
 
 def _pagination_range(current: int, total: int, edge: int = 2, around: int = 1) -> list:
-    """
-    Uzun sayfalama listelerinde taşmayı önlemek için "1 2 3 … 10 11 12" tarzı
-    kısaltılmış sayfa numarası listesi üretir. `None` değerleri "…" (ellipsis)
-    yer tutucusudur.
-    """
+    """Return a compact page range; ``None`` marks an ellipsis."""
     if total <= 1:
         return [1]
 
@@ -141,7 +133,7 @@ def _pagination_range(current: int, total: int, edge: int = 2, around: int = 1) 
 
 
 # ---------------------------------------------------------------------------
-# Filtre / global kayıt
+# Register filters and globals.
 # ---------------------------------------------------------------------------
 
 templates.env.filters["format_date"] = _format_date
@@ -156,12 +148,7 @@ templates.env.globals["pagination_range"] = _pagination_range
 
 
 def _qs_override(params: dict, **overrides) -> str:
-    """
-    Bir mevcut query-param sözlüğünü (`params`) verilen `overrides` ile
-    birleştirip `?a=1&b=2` biçiminde bir query-string üretir. Birden fazla
-    bağımsız filtre/sayfalama durumunu (ör. medya arşivinde resim/dosya
-    sekmeleri) aynı URL'de kaybetmeden yönetmek için kullanılır.
-    """
+    """Merge query parameters without dropping unrelated filter or page state."""
     merged = {**params, **overrides}
     parts = [
         f"{k}={quote(str(v))}" for k, v in merged.items() if v not in (None, "")
@@ -177,8 +164,7 @@ def _canonical_url(request) -> str:
     if base_url is None:
         return ""
     path = request.url.path
-    # Filtreleme/arama parametreleri aynı içerik için gereksiz canonical
-    # varyantlar üretmesin. Gerçek liste sayfaları kendi page numarasını korur.
+    # Exclude filter/search variants from canonical URLs; retain real page numbers.
     page = request.query_params.get("page")
     try:
         page_number = int(page or "")
@@ -190,9 +176,7 @@ def _canonical_url(request) -> str:
 
 templates.env.globals["canonical_url"] = _canonical_url
 
-# Global: statik CSS dosyalarının cache-busting sürüm numarası. Tarayıcının
-# `make css` sonrası eski tailwind.css/app.css'i önbellekten göstermeye devam
-# etmesini önler — dosya değiştikçe link'in sonuna eklenen ?v= değeri de değişir.
+# The asset version follows CSS modification times to prevent stale browser caches.
 def _css_asset_version() -> int:
     paths = ["app/static/css/tailwind.css", "app/static/css/app.css"]
     mtimes = [os.path.getmtime(p) for p in paths if os.path.exists(p)]
@@ -201,9 +185,9 @@ def _css_asset_version() -> int:
 
 templates.env.globals["css_asset_v"] = _css_asset_version()
 
-# Global: site başlığı (.env APP_NAME'den gelir) — SiteSettings yüklenene kadarki varsayılan.
+# Defaults used until SiteSettings has been loaded.
 templates.env.globals["site_name"] = settings.app_name
-templates.env.globals["site_language"] = "tr"
+templates.env.globals["site_language"] = "en"
 templates.env.globals["site_icon"] = "download-cloud"
 templates.env.globals["logo_mode"] = "icon_text"
 templates.env.globals["logo_light_path"] = None
@@ -218,14 +202,9 @@ templates.env.globals["admin_icon_color_light"], templates.env.globals["admin_ic
 
 
 def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
-    """SiteSettings veritabanı satırından Jinja global'lerini günceller.
+    """Refresh Jinja globals from SiteSettings without restarting the server.
 
-    Uygulama başlangıcında (main.py lifespan) ve admin site kimliği/profil
-    ikonu kaydedildiğinde çağrılır — böylece sunucu yeniden başlatılmadan
-    değişiklik anında yansır.
-    Not: çoklu worker'da (ör. `make prod`) her worker kendi bellek-içi kopyasını
-    tutar; diğer worker'lar bir sonraki isteklerinde eski değeri göstermeye devam
-    edebilir (bu proje ölçeğinde kabul edilebilir bir sınırlama).
+    This process-local cache assumes the supported single-worker deployment.
     """
     templates.env.globals["site_name"] = site_settings.site_name
     templates.env.globals["site_language"] = site_settings.site_language

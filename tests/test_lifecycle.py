@@ -1,6 +1,7 @@
 """Kurulum sahipliği, doğrulama ve yıkıcı işlemlerin güvenlik sınırları."""
 
 import asyncio
+import json
 import re
 import time
 
@@ -10,9 +11,9 @@ from sqlalchemy import func, select
 from app import crud
 from app.config import settings
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, hash_admin_password
-from app.lifecycle import RequestGate, finish_pending_reset, get_lifecycle, reset_storage_roots, single_worker_guard
+from app.lifecycle import RequestGate, finish_pending_reset, get_lifecycle, reset_site, reset_storage_roots, single_worker_guard
 from app.main import app
-from app.models import AuditLog, Download, MediaAsset
+from app.models import AuditLog, Category, Download, MediaAsset
 from app.schemas import DownloadCreate
 
 PASSWORD = "a unique test password 123!"
@@ -57,6 +58,7 @@ async def test_new_site_closed_until_owner_completes_setup(client, db_session, m
     assert "Disallow: /" in (await client.get("/robots.txt")).text
     page = await client.get("/setup?lang=en")
     assert "Site setup" in page.text
+    assert '<html lang="en">' in (await client.get("/setup")).text
     assert page.headers["cache-control"] == "no-store"
     assert SETUP_KEY not in page.text
     data = dict(setup_token=SETUP_KEY, site_name="Installed site", username="owner",
@@ -76,6 +78,79 @@ async def test_new_site_closed_until_owner_completes_setup(client, db_session, m
     account = await crud.get_site_settings(db_session)
     assert account.admin_password_hash.startswith("scrypt$")
     assert account.admin_username == "owner"
+    assert json.loads(account.hero_components)[1]["text"] == "Safe and Free Software"
+    category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+    assert category is not None
+    assert category.name == "General"
+    assert category.slug == "general"
+
+
+async def test_setup_uses_selected_turkish_for_required_category(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "setup_token", SETUP_KEY)
+    state = await get_lifecycle(db_session)
+    state.installed = False
+    await db_session.commit()
+
+    page = await client.get("/setup?lang=tr")
+    assert '<html lang="tr">' in page.text
+    assert 'name="language" value="tr"' in page.text
+    response = await client.post("/setup?lang=tr", data={
+        "setup_token": SETUP_KEY,
+        "site_name": "Türkçe Site",
+        "username": "owner",
+        "password": PASSWORD,
+        "password_confirm": PASSWORD,
+        "language": "tr",
+        "public_url": settings.app_base_url,
+        "deployment_confirmed": "yes",
+    })
+    assert response.status_code == 303
+    category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+    assert category is not None
+    assert category.name == "Genel"
+    account = await crud.get_site_settings(db_session)
+    assert json.loads(account.hero_components)[1]["text"] == "Güvenli ve Ücretsiz Yazılımlar"
+
+
+@pytest.mark.parametrize(
+    ("language", "category_name", "hero_title"),
+    [("es", "General", "Software seguro y gratuito"), ("fr", "Général", "Logiciels sûrs et gratuits")],
+)
+async def test_setup_seeds_selected_language_without_rewriting_it_later(
+    client, db_session, monkeypatch, language, category_name, hero_title
+):
+    monkeypatch.setattr(settings, "setup_token", SETUP_KEY)
+    state = await get_lifecycle(db_session)
+    state.installed = False
+    await db_session.commit()
+    page = await client.get(f"/setup?lang={language}")
+    assert page.status_code == 200
+    assert f'<html lang="{language}">' in page.text
+    assert f'name="language" value="{language}"' in page.text
+    response = await client.post(f"/setup?lang={language}", data={
+        "setup_token": SETUP_KEY, "site_name": "Test site", "username": "owner",
+        "password": PASSWORD, "password_confirm": PASSWORD, "language": language,
+        "public_url": settings.app_base_url, "deployment_confirmed": "yes",
+    })
+    assert response.status_code == 303
+    category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+    assert category is not None
+    assert category.name == category_name
+    account = await crud.get_site_settings(db_session)
+    assert account.site_language == language
+    assert account.content_language == language
+    assert json.loads(account.hero_components)[1]["text"] == hero_title
+    await crud.update_site_language(db_session, "en")
+    assert category.name == category_name
+    assert json.loads(account.hero_components)[1]["text"] == hero_title
+    db_session.expunge(category)
+    fresh = await reset_site(db_session, "full")
+    assert fresh.site_language == "en"
+    assert fresh.content_language == language
+    assert json.loads(fresh.hero_components)[1]["text"] == hero_title
+    restored_category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+    assert restored_category is not None
+    assert restored_category.name == category_name
 
 
 async def test_setup_key_missing_and_csrf_are_closed(client, db_session, monkeypatch):
@@ -187,6 +262,14 @@ async def test_reset_scopes_preserve_only_expected_data(
     assert (await get_lifecycle(db_session)).installed == (action != "uninstall")
     assert (fresh.admin_password_hash == password_hash) == (action != "uninstall")
     assert fresh.session_generation
+    expected_hero = "Safe and Free Software" if action == "uninstall" else "Güvenli ve Ücretsiz Yazılımlar"
+    assert json.loads(fresh.hero_components)[1]["text"] == expected_hero
+    if action == "full":
+        category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+        assert category is not None
+        assert category.name == "Genel"
+    elif action == "uninstall":
+        assert await db_session.scalar(select(func.count()).select_from(Category)) == 0
     admin_client.cookies.set(SESSION_COOKIE, old_token, domain="test.local", path="/")
     assert (await admin_client.get("/admin")).status_code in {302, 303}
     assert "/admin/downloads/" not in (await admin_client.get("/")).text
@@ -220,6 +303,9 @@ async def test_interrupted_cleanup_blocks_access_and_can_resume(admin_client, db
     await finish_pending_reset(db_session)
     assert (await admin_client.get("/")).status_code == 200
     assert not (settings.upload_path / "old.png").exists()
+    category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
+    assert category is not None
+    assert category.name == "Genel"
 
 
 def test_reset_rejects_broad_overlapping_and_symlink_roots(monkeypatch, tmp_path):

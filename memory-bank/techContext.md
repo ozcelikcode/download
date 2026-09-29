@@ -1,38 +1,31 @@
-# Tech Context
+# Technical Context
 
 ## Stack
 
 - Python 3.12+, FastAPI, Pydantic v2
-- Async SQLAlchemy + aiosqlite, SQLite, Alembic
-- Jinja2, Tailwind CSS, Lucide Icons
-- Küçük vanilla JavaScript modülleri: tema, erişilebilirlik, CSRF ve toast
-- pytest + pytest-asyncio
+- Async SQLAlchemy, aiosqlite, SQLite, Alembic
+- Jinja2, Tailwind CSS, locally served Lucide icons
+- Small vanilla JavaScript modules and pytest/pytest-asyncio tests
 
 ## Main paths
 
-- `app/routers/`: public, admin ve rapor rotaları
-- `app/health.py` ve `app/seo.py`: admin sağlık denetimleri ile ortak SEO adres doğrulaması
-- `app/models.py` / `app/routers/admin.py`: SiteSettings üzerinden admin tarafından yönetilen ana sayfa SEO başlığı ve meta açıklaması
-- `app/templates/`: public/admin Jinja şablonları
-- `app/static/css/app.css`: ortak bileşen stilleri
-- `app/static/js/`: ortak tarayıcı davranışları
-- `storage/downloads`: public statik kökün dışındaki özel indirme deposu
-- `tests/`: izole geçici SQLite ve yükleme dizinleri kullanan testler
+- `app/routers/`: public, admin, setup, and report routes
+- `app/models.py`, `app/crud.py`, `app/schemas.py`: persistence and validation
+- `app/i18n.py`: interface and system-message localization
+- `app/health.py`, `app/seo.py`: site-health and public URL checks
+- `app/templates/`, `app/static/`: Jinja pages and browser assets
+- `storage/downloads/`: private local downloads
+- `tests/`: isolated SQLite and upload-directory fixtures
 
-## Development commands
+## Development
 
 ```bash
 make install
 make migrate
 make dev
-make css
-pytest -q
+.venv/bin/pytest -q
 ```
 
-Model değişikliğinde Alembic migration üretilmeli. Python/JS sözdizimi, `pip check`, tam test paketi ve `git diff --check` teslim öncesi çalıştırılmalı.
+Use Alembic for schema changes. Before delivery, run the relevant and full test suites, `git diff --check`, and dependency or syntax checks when appropriate. Tests use temporary storage and never modify the working site's database.
 
-Ana sayfa SEO alanları `site_settings.seo_home_title` ve `site_settings.seo_meta_description` nullable sütunlarıdır; giriş uzunlukları sırasıyla 100 ve 320 karakterle sınırlanır. Sağlık ekranındaki 60/160 karakter kontrolleri yaklaşık editoryal eşiklerdir, sabit arama motoru sınırı olarak sunulmaz ve hata değil bilgi önerisi sayılır.
-
-## Environment note
-
-`.venv` daha önce bozuk Python 3.13 symlink'i içeriyordu; Python 3.12 ile yeniden oluşturuldu. Bu turda testler `.venv/bin/pytest` ile çalıştırıldı.
+The Python 3.12 virtual environment is local and ignored by Git. The development reload watcher is limited to `app/`.

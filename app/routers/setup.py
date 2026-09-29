@@ -1,4 +1,4 @@
-"""Sunucu sahibi doğrulamalı kurulum ve iki aşamalı veri sıfırlama."""
+"""Owner-verified setup and two-step site reset workflows."""
 
 from __future__ import annotations
 
@@ -18,9 +18,10 @@ from starlette.concurrency import run_in_threadpool
 from app import crud
 from app.config import settings
 from app.database import get_db
+from app.default_content import default_hero_components
 from app.dependencies import (SESSION_COOKIE, credential_stamp, get_request_ip,
                               hash_admin_password, require_admin, verify_admin_password)
-from app.i18n import translate
+from app.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from app.lifecycle import get_lifecycle, reset_site, reset_storage_roots
 from app.models import Download, MediaAsset, MenuItem
 from app.security import require_csrf, reserve_login_attempt, clear_successful_attempt
@@ -56,8 +57,8 @@ def deployment_checks(request: Request) -> list[tuple[str, bool]]:
 
 
 def setup_page(request: Request, error: str | None = None, status_code: int = 200):
-    language = request.query_params.get("lang", "tr")
-    request.state.ui_language = language if language in {"tr", "en"} else "tr"
+    language = request.query_params.get("lang", DEFAULT_LANGUAGE)
+    request.state.ui_language = language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
     return templates.TemplateResponse(request=request, name="setup.html", context={
         "public_url": settings.app_base_url, "checks": deployment_checks(request),
         "error": translate(request, error) if error else None,
@@ -93,11 +94,14 @@ async def install(request: Request, session: AsyncSession = Depends(get_db)):
     account = await crud.get_site_settings(session)
     account.site_name = data.site_name
     account.site_language = data.language
+    account.content_language = data.language
+    account.hero_components = default_hero_components(data.language)
     account.admin_username = data.username
     account.admin_password_hash = password_hash
     account.session_generation = secrets.token_hex(32)
-    # Eski başlangıç migration'ının örnek menüsü yeni kurulumda kalmasın.
+    # Discard menu items seeded by older migrations on a fresh installation.
     await session.execute(delete(MenuItem))
+    await crud.ensure_required_category(session, language=data.language, commit=False)
     state.installed = True
     await session.commit()
     await clear_successful_attempt(session, attempt)
@@ -105,7 +109,7 @@ async def install(request: Request, session: AsyncSession = Depends(get_db)):
     request.session.clear()
     response = RedirectResponse("/admin/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
-    logger.info("Site kurulumu tamamlandı")
+    logger.info("Site installation completed")
     return response
 
 
@@ -142,7 +146,7 @@ async def authorize_reset(request: Request, session: AsyncSession = Depends(get_
     account = await crud.get_site_settings(session)
     password_hash = account.admin_password_hash or settings.admin_password_hash
     if not await run_in_threadpool(verify_admin_password, data.password, password_hash):
-        logger.warning("Sıfırlama için parola doğrulanamadı")
+        logger.warning("Password verification failed for site reset")
         return await maintenance_page(request, session, "wrong_current_password", 403)
     if data.action == "uninstall" and not setup_available():
         return await maintenance_page(request, session, "reset_key_required", 422)
@@ -191,7 +195,7 @@ async def confirm_reset(request: Request, session: AsyncSession = Depends(get_db
         fresh = await reset_site(session, action)
     except (OSError, ValueError):
         await session.rollback()
-        logger.exception("Sıfırlama tamamlanamadı; veri temizliği durumu korunuyor")
+        logger.exception("Site reset did not complete; pending cleanup state is retained")
         return await maintenance_page(request, session, "reset_failed", 503)
     refresh_site_branding_globals(fresh)
     if action != "settings":
@@ -200,5 +204,5 @@ async def confirm_reset(request: Request, session: AsyncSession = Depends(get_db
     request.session.clear()
     response = RedirectResponse("/setup" if action == "uninstall" else "/admin/login?reset=done", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
-    logger.info("Site bakım işlemi tamamlandı: %s", action)
+    logger.info("Site maintenance action completed: %s", action)
     return response

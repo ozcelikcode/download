@@ -29,6 +29,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.default_content import default_hero_components
 
 
 # ---------------------------------------------------------------------------
@@ -169,8 +170,9 @@ class SiteSettings(Base):
     __tablename__ = "site_settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Download Sitesi")
-    site_language: Mapped[str] = mapped_column(String(2), nullable=False, default="tr")
+    site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Downloader")
+    site_language: Mapped[str] = mapped_column(String(2), nullable=False, default="en")
+    content_language: Mapped[str] = mapped_column(String(2), nullable=False, default="en")
     seo_home_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     seo_meta_description: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
     site_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="download-cloud")
@@ -186,7 +188,7 @@ class SiteSettings(Base):
     hero_components: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-        default='[{"type":"eyebrow","text":"İndirme Merkezi","text_en":"Download Center"},{"type":"title","text":"Güvenli ve Ücretsiz Yazılımlar","text_en":"Safe and Free Software"},{"type":"description","text":"Aradığınız yazılımı bulun, tek tıkla indirin.","text_en":"Find the software you need and download it in one click."},{"type":"search","text":"Yazılım, araç veya kategori ara…","text_en":"Search for software, tools, or categories…"},{"type":"stats","text":"","text_en":""}]',
+        default=default_hero_components,
     )
     navbar_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
     footer_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=8)

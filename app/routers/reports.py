@@ -15,6 +15,7 @@ from app.audit import ACTION_LABELS, ENTITY_LABELS, FIELD_LABELS
 from app.dependencies import get_db, require_admin
 from app.link_checks import check_link, save_link_result
 from app.i18n import ui_language
+from app.locales.report_labels import LABELS as LOCALIZED_REPORT_LABELS
 from app.models import AuditLog, Download, FileType, LinkCheck
 from app.security import require_csrf
 from app.templating import templates
@@ -33,7 +34,7 @@ FIELD_LABELS_EN = {
     "os_compatibility": "Operating systems", "category_id": "Category", "parent_id": "Related version", "is_active": "Published",
     "is_draft": "Draft", "is_featured": "Featured", "is_official_source": "Official source", "is_latest_version": "Latest version link", "deleted_at": "Deleted on",
     "label": "Label", "url": "URL", "icon": "Icon", "open_in_new_tab": "Open in new tab", "location": "Menu location",
-    "site_name": "Site name", "site_language": "Site language", "site_icon": "Site icon", "site_icon_color": "Icon color",
+    "site_name": "Site name", "site_language": "Site language", "content_language": "Initial content language", "site_icon": "Site icon", "site_icon_color": "Icon color",
     "sidebar_block_order": "Sidebar order", "theme_color": "Color theme", "logo_mode": "Logo layout", "logo_light_path": "Light logo",
     "logo_dark_path": "Dark logo", "hero_enabled": "Hero visibility", "hero_background": "Hero background", "hero_image_path": "Hero image",
     "hero_components": "Hero components", "navbar_limit": "Navbar limit", "footer_limit": "Footer limit",
@@ -42,6 +43,19 @@ FIELD_LABELS_EN = {
     "session_max_age_minutes": "Session duration (minutes)", "path": "Media path", "display_name": "Display name",
     "uploaded_by": "Uploaded by", "download_id": "Content", "changed_at": "Changed at",
 }
+
+
+def report_labels(language: str, group: str) -> dict[str, str]:
+    if language in LOCALIZED_REPORT_LABELS:
+        return LOCALIZED_REPORT_LABELS[language][group]
+    defaults = {
+        "statuses": (STATUSES, STATUSES_EN),
+        "entities": (ENTITY_LABELS, ENTITY_LABELS_EN),
+        "actions": (ACTION_LABELS, ACTION_LABELS_EN),
+        "fields": (FIELD_LABELS, FIELD_LABELS_EN),
+    }
+    turkish, english = defaults[group]
+    return english if language == "en" else turkish
 
 
 async def _check_downloads(session: AsyncSession, items: list[tuple[int, str]]) -> None:
@@ -71,7 +85,7 @@ async def links(request: Request, page: int = Query(1, ge=1), state: str = Query
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     rows = (await session.execute(query.order_by(Download.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
     return templates.TemplateResponse(request=request, name="admin/links.html", context={
-        "request": request, "admin_user": admin, "rows": rows, "statuses": STATUSES_EN if ui_language(request) == "en" else STATUSES,
+        "request": request, "admin_user": admin, "rows": rows, "statuses": report_labels(ui_language(request), "statuses"),
         "state": state, "page": page, "total": total, "total_pages": max(1, math.ceil(total/PAGE_SIZE)),
     })
 
@@ -109,9 +123,9 @@ async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str =
         "request": request, "admin_user": admin, "rows": rows,
         "site_settings": site_settings, "flash_message": flash_message,
         "changes": {row.id: json.loads(row.changes) for row in rows},
-        "entities": ENTITY_LABELS_EN if ui_language(request) == "en" else ENTITY_LABELS,
-        "actions": ACTION_LABELS_EN if ui_language(request) == "en" else ACTION_LABELS,
-        "fields": FIELD_LABELS_EN if ui_language(request) == "en" else FIELD_LABELS,
+        "entities": report_labels(ui_language(request), "entities"),
+        "actions": report_labels(ui_language(request), "actions"),
+        "fields": report_labels(ui_language(request), "fields"),
         "entity": entity, "level": level,
         "page": page, "total": total, "total_pages": max(1, math.ceil(total/PAGE_SIZE)),
     })

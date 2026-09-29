@@ -1,4 +1,4 @@
-"""Kurulum ve yüksek riskli bakım formlarının sınırları."""
+"""Validation boundaries for setup and high-risk maintenance forms."""
 
 from typing import Literal
 
@@ -10,7 +10,7 @@ from app.content_security import normalize_http_url
 
 class InstallationForm(BaseModel):
     site_name: str = Field(min_length=1, max_length=100)
-    language: Literal["tr", "en"] = "tr"
+    language: Literal["en", "es", "fr", "tr"] = "en"
     username: str = Field(min_length=3, max_length=50, pattern=r"^[A-Za-z0-9_.-]+$")
     password: str = Field(min_length=12, max_length=1024)
     password_confirm: str

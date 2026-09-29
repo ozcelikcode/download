@@ -1,9 +1,16 @@
-"""Public arayüz metinleri için küçük, sunucu taraflı çeviri katmanı."""
+"""Server-side translations shared by the public site and admin panel."""
 
 from fastapi import Request
 
-SUPPORTED_LANGUAGES = {"tr", "en"}
-_active_language = "tr"
+from app.locales.es import STRINGS as SPANISH_STRINGS
+from app.locales.fr import STRINGS as FRENCH_STRINGS
+
+LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
+SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
+DEFAULT_LANGUAGE = "en"
+OG_LOCALES = {"en": "en_US", "es": "es_ES", "fr": "fr_FR", "tr": "tr_TR"}
+DATE_LOCALES = {"en": "en-US", "es": "es-ES", "fr": "fr-FR", "tr": "tr-TR"}
+_active_language = DEFAULT_LANGUAGE
 
 TRANSLATIONS: dict[str, dict[str, str]] = {
     "tr": {
@@ -111,7 +118,8 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "confirm_action": "İşlemi onayla", "continue": "Devam et", "notice": "Bilgi", "ok": "Tamam",
         "notifications": "Bildirimler", "dismiss_notification": "Bildirimi kapat",
         "general": "Genel", "appearance": "Görünüm", "account": "Hesap", "menus": "Menüler",
-        "site_language": "Site ve Admin Dili", "site_language_help": "Site ve admin paneli bu dili birlikte kullanır. Ziyaretçiler dili değiştiremez.",
+        "site_language": "Site ve Admin Dili", "site_language_help": "Arayüz dili site ve admin panelinde birlikte değişir. Önceden oluşturulan içerikler etkilenmez; ziyaretçiler dili değiştiremez.",
+        "installed_content_language": "Başlangıç içerik dili", "installed_content_language_help": "Kurulumda seçilen dil. Ayar değişiklikleri bu dilde oluşturulan varsayılan içerikleri yeniden yazmaz.",
         "turkish": "Türkçe", "english": "İngilizce", "save_language": "Dili Kaydet",
         "language_updated": "Site ve admin paneli dili güncellendi.",
         "unsupported_language": "Desteklenmeyen dil seçimi.",
@@ -224,7 +232,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "session_duration": "Oturum Süresi", "minutes": "dakika", "session_help": "Admin oturumu 5 dakika ile 30 gün arasında açık kalır. Değişiklik sonraki girişte uygulanır.", "save_session": "Oturum Süresini Kaydet",
         "logo": "Logo", "logo_help": "İkon ve görsel logo aynı anda kullanılmaz. Site adı seçilen düzene göre logonun yanında gösterilebilir.",
         "icon_text": "İkon + yazı", "icon_text_help": "Mevcut site ikonu ve adı", "image_text": "Resim + yazı", "image_text_help": "Logo resmi ve site adı",
-        "image_only": "Yalnızca resim", "image_only_help": "Sadece logo resmi", "light_logo": "Aydınlık tema logosu", "dark_logo": "Karanlık tema logosu",
+        "logo_image_only": "Yalnızca resim", "image_only_help": "Sadece logo resmi", "light_logo": "Aydınlık tema logosu", "dark_logo": "Karanlık tema logosu",
         "remove_image": "Resmi kaldır", "dark_logo_fallback": "Boş bırakılırsa aydınlık logo kullanılır.", "hero_area": "Hero alanı",
         "hero_help": "Bileşenleri sürükleyerek sıralayın; gerekmeyenleri kaldırın.", "show": "Göster", "live_preview": "Canlı önizleme",
         "preview_help": "Metin, sıralama ve arka plan değişiklikleri kaydetmeden görünür. Önizleme sitenin seçili dilini otomatik izler.",
@@ -253,7 +261,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "menu_sort_help": "Sıralamak için önizlemedeki öğeleri sürükleyin, düzenlemek için tıklayın.", "empty_menu": "Menü boş. Yeni Ekle ile başlayın.",
         "category_menu": "Kategori Menüsü (Sidebar)", "manage_categories": "Kategorileri Yönet", "no_categories": "Henüz kategori yok.",
         "sidebar": "Kenar Çubuğu (Sidebar)", "footer_menu": "Alt Menü (Footer)", "menu_item": "Menü Öğesi", "link": "Bağlantı",
-        "icon": "İkon", "new_tab": "Yeni sekmede aç", "label_tr": "Etiket — Türkçe", "label_en": "Etiket — İngilizce",
+        "icon": "İkon", "new_tab": "Yeni sekmede aç", "primary_label": "Ana etiket", "label_en": "Etiket — İngilizce", "primary_text": "Ana metin",
         "records": "kayıt", "publish": "Yayınla", "unpublish": "Pasife al", "feature": "Öne çıkar", "unfeature": "Öne çıkarmayı kaldır",
         "external_short": "Dış Link", "local_short": "Lokal", "no_records": "Kayıt bulunamadı.",
         "bulk_completed": "{count} içerik için toplu işlem tamamlandı.", "application_added": "“{title}” uygulaması eklendi.",
@@ -283,14 +291,14 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "category_delete_dynamic": "siliniyor. İçerikler seçtiğiniz kategoriye aktarılacak.", "file_extension": "Dosya Uzantısı",
         "extension_help": "Uzantıya göre en uygun ikon otomatik seçilir; bilinmeyen uzantılarda genel dosya ikonu kullanılır.",
         "application_image": "Uygulama Görseli", "image_uploaded": "Görsel yüklendi.", "set_as_icon": "İkon Olarak Ayarla", "manual_edit": "Manuel Düzenle",
-        "image_file": "Görsel Dosyası", "image_upload_help": "PNG, JPG, SVG veya WebP. Seçildiğinde otomatik yüklenir.",
+        "image_file": "Görsel Dosyası", "image_upload_help": "PNG, JPG veya WebP. Seçildiğinde otomatik yüklenir.",
         "or_image_url": "veya Görsel URL", "image_url_help": "Bağlantıdaki görsel sisteme indirilip kaydedilir.", "short_description": "Ön Açıklama",
         "short_description_placeholder": "Ana sayfa kartında görünecek kısa özet…", "short_description_help": "Boş bırakılırsa açıklamanın kısaltılmış hâli gösterilir.",
         "parent_record": "Üst Kayıt (Eski Sürüm İçin)", "independent_record": "Bağımsız Kayıt", "parent_help": "Seçilirse bu kayıt, üst kaydın eski sürümü sayılır.",
         "upload_to_server": "Sunucuya yükle", "source_url_help": "Kaynak alan adı kullanıcıya gösterilir. Bilinen dosya uzantıları için ikon otomatik belirlenir.",
         "autosave_failed": "Otomatik kayıt başarısız", "retry_scheduled": "Tekrar denenecek.", "menu_edit": "Menü Öğesini Düzenle", "menu_new": "Yeni Menü Öğesi",
         "required_label_link": "Etiket ve bağlantı zorunludur.", "menu_delete_confirm": "Bu menü öğesi kalıcı olarak silinecek. Devam edilsin mi?",
-        "remove_icon": "İkonu kaldır", "english_label_fallback": "Boş bırakılırsa Türkçe etiket gösterilir.",
+        "remove_icon": "İkonu kaldır", "english_label_fallback": "Boş bırakılırsa ana etiket gösterilir.",
         "image_file_required": "Lütfen bir görsel dosyası seçin.", "image_uploading": "Görsel yükleniyor…", "image_compressing": "Görsel sıkıştırılıyor…",
         "upload_failed_status": "Yükleme başarısız oldu ({status}).", "network_upload_failed": "Ağ hatası nedeniyle yükleme başarısız oldu.",
         "image_downloading": "Görsel indiriliyor…", "download_start_failed": "İndirme başlatılamadı.", "image_upload_failed": "Görsel yüklenemedi.",
@@ -317,7 +325,8 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "confirm_action": "Confirm action", "continue": "Continue", "notice": "Information", "ok": "OK",
         "notifications": "Notifications", "dismiss_notification": "Dismiss notification",
         "general": "General", "appearance": "Appearance", "account": "Account", "menus": "Menus",
-        "site_language": "Site and Admin Language", "site_language_help": "The site and admin panel use this language together. Visitors cannot change it.",
+        "site_language": "Site and Admin Language", "site_language_help": "The site and admin interface change together. Existing content is unaffected; visitors cannot change the language.",
+        "installed_content_language": "Initial content language", "installed_content_language_help": "Chosen during installation. Changing the interface language does not rewrite the default content created in this language.",
         "turkish": "Turkish", "english": "English", "save_language": "Save Language",
         "language_updated": "The site and admin panel language was updated.",
         "unsupported_language": "Unsupported language selection.",
@@ -430,7 +439,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "session_duration": "Session Duration", "minutes": "minutes", "session_help": "The admin session remains open for 5 minutes to 30 days. The change applies at the next sign-in.", "save_session": "Save Session Duration",
         "logo": "Logo", "logo_help": "Icons and image logos are mutually exclusive. The site name can appear beside the logo in the selected layout.",
         "icon_text": "Icon + text", "icon_text_help": "Current site icon and name", "image_text": "Image + text", "image_text_help": "Logo image and site name",
-        "image_only": "Image only", "image_only_help": "Logo image only", "light_logo": "Light theme logo", "dark_logo": "Dark theme logo",
+        "logo_image_only": "Image only", "image_only_help": "Logo image only", "light_logo": "Light theme logo", "dark_logo": "Dark theme logo",
         "remove_image": "Remove image", "dark_logo_fallback": "The light logo is used when left empty.", "hero_area": "Hero Area",
         "hero_help": "Drag components to reorder them and remove any you do not need.", "show": "Show", "live_preview": "Live Preview",
         "preview_help": "Text, order, and background changes appear before saving. The preview follows the selected site language.",
@@ -459,7 +468,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "menu_sort_help": "Drag preview items to reorder them and click an item to edit it.", "empty_menu": "The menu is empty. Start with Add New.",
         "category_menu": "Category Menu (Sidebar)", "manage_categories": "Manage Categories", "no_categories": "No categories yet.",
         "sidebar": "Sidebar", "footer_menu": "Footer Menu", "menu_item": "Menu Item", "link": "Link",
-        "icon": "Icon", "new_tab": "Open in new tab", "label_tr": "Label — Turkish", "label_en": "Label — English",
+        "icon": "Icon", "new_tab": "Open in new tab", "primary_label": "Primary label", "label_en": "Label — English", "primary_text": "Primary text",
         "records": "records", "publish": "Publish", "unpublish": "Unpublish", "feature": "Feature", "unfeature": "Remove featured status",
         "external_short": "External", "local_short": "Local", "no_records": "No records found.",
         "bulk_completed": "Bulk action completed for {count} content items.", "application_added": "“{title}” was added.",
@@ -489,14 +498,14 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "category_delete_dynamic": "will be deleted. Content will be transferred to the category you select.", "file_extension": "File Extension",
         "extension_help": "The best icon is selected from the extension; unknown extensions use the generic file icon.",
         "application_image": "Application Image", "image_uploaded": "Image uploaded.", "set_as_icon": "Set as Icon", "manual_edit": "Manual Edit",
-        "image_file": "Image File", "image_upload_help": "PNG, JPG, SVG, or WebP. Upload starts automatically after selection.",
+        "image_file": "Image File", "image_upload_help": "PNG, JPG, or WebP. Upload starts automatically after selection.",
         "or_image_url": "or Image URL", "image_url_help": "The linked image is downloaded and stored in the system.", "short_description": "Short Description",
         "short_description_placeholder": "Short summary shown on the home page card…", "short_description_help": "A shortened version of the description is shown when left empty.",
         "parent_record": "Parent Record (for an Older Version)", "independent_record": "Independent Record", "parent_help": "When selected, this record is treated as an older version of the parent.",
         "upload_to_server": "Upload to server", "source_url_help": "The source domain is shown to users. Icons are detected automatically for known file extensions.",
         "autosave_failed": "Autosave failed", "retry_scheduled": "Will retry.", "menu_edit": "Edit Menu Item", "menu_new": "New Menu Item",
         "required_label_link": "Label and link are required.", "menu_delete_confirm": "This menu item will be permanently deleted. Continue?",
-        "remove_icon": "Remove icon", "english_label_fallback": "The Turkish label is shown when this is left empty.",
+        "remove_icon": "Remove icon", "english_label_fallback": "The primary label is shown when this is left empty.",
         "image_file_required": "Select an image file.", "image_uploading": "Uploading image…", "image_compressing": "Compressing image…",
         "upload_failed_status": "Upload failed ({status}).", "network_upload_failed": "Upload failed because of a network error.",
         "image_downloading": "Downloading image…", "download_start_failed": "Download could not be started.", "image_upload_failed": "Image upload failed.",
@@ -554,31 +563,43 @@ TRANSLATIONS["en"].update({
 
 def set_ui_language(language: str) -> None:
     global _active_language
-    _active_language = language if language in SUPPORTED_LANGUAGES else "tr"
+    _active_language = language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
 
 
 def ui_language(request: Request | None = None) -> str:
-    if request is not None and getattr(request.state, "ui_language", None) in {"tr", "en"}:
+    if request is not None and getattr(request.state, "ui_language", None) in SUPPORTED_LANGUAGES:
         return request.state.ui_language
     return _active_language
 
 
+def og_locale(request: Request | None = None) -> str:
+    return OG_LOCALES[ui_language(request)]
+
+
+def date_locale(request: Request | None = None) -> str:
+    return DATE_LOCALES[ui_language(request)]
+
+
 def translate(request: Request | None, key: str) -> str:
     language = ui_language(request)
-    return TRANSLATIONS.get(language, TRANSLATIONS["tr"]).get(key, TRANSLATIONS["tr"].get(key, key))
+    return TRANSLATIONS.get(language, TRANSLATIONS[DEFAULT_LANGUAGE]).get(key, TRANSLATIONS[DEFAULT_LANGUAGE].get(key, key))
 
 
 def translate_format(request: Request | None, key: str, **values: object) -> str:
     return translate(request, key).format(**values)
 
 
-# Kalıcı raporlar ve alt katmanlardan gelen tanımlı sistem mesajları.
-# Kullanıcı içeriğine uygulanmaz; eski kayıtlar da dil değişimini izler.
+# Recognized system messages from persisted reports and lower layers.
+# This mapping does not transform editorial content; old records follow UI changes.
 SYSTEM_MESSAGES: dict[str, tuple[str, str]] = {
     "maintenance": ("Bakım ve Sıfırlama", "Maintenance and Reset"),
     "request_too_large": ("İstek boyutu sınırını aşıyor.", "The request exceeds the size limit."),
+    "request_rejected": ("İstek reddedildi.", "Request rejected."),
+    "invalid_form": ("Geçersiz form.", "Invalid form."),
+    "maintenance_in_progress": ("Bakım sürüyor.", "Maintenance in progress."),
     "setup_title": ("Site kurulumu", "Site setup"),
     "setup_intro": ("Sunucu kontrollerini tamamlayın, yönetici hesabınızı oluşturun ve sitenizi açın.", "Complete the server checks, create your administrator account and open your site."),
+    "setup_language_help": ("Kurulum dili varsayılan içeriklerin dilini belirler. Daha sonra arayüz dili değiştirilebilir; oluşturulmuş içerikler değişmez.", "The setup language determines the language of default content. You can change the interface language later without changing existing content."),
     "setup_deployment": ("Sunucu ve alan adı", "Server and domain"),
     "setup_hosting_help": ("Python 3.12+ çalıştıran, kalıcı diskli bir sunucu kullanın. Alan adınızın DNS kaydını sunucuya yönlendirin ve reverse proxy üzerinde HTTPS sertifikasını etkinleştirin. Bu ekran hosting veya alan adı satın almaz; DNS ayarlarını değiştirmez.", "Use a server with Python 3.12+ and persistent storage. Point your domain's DNS record at the server and enable an HTTPS certificate on your reverse proxy. This screen does not purchase hosting or domains or change DNS records."),
     "setup_config_help": ("Yeni kurulum için terminalde make setup çalıştırın. Mevcut kurulumda anahtar gerekiyorsa make setup-key kullanın. APP_BASE_URL ve proxy ayarlarını .env üzerinden düzenleyip sunucuyu yeniden başlatın. Yayın yönergeleri README.md içindedir.", "Run make setup in the terminal for a new installation. Use make setup-key if an existing installation needs a key. Configure APP_BASE_URL and proxy settings in .env, then restart the server. See README.md for deployment instructions."),
@@ -691,10 +712,12 @@ _SYSTEM_MESSAGE_KEYS = {
 for key, (turkish, english) in SYSTEM_MESSAGES.items():
     TRANSLATIONS["tr"][key] = turkish
     TRANSLATIONS["en"][key] = english
+TRANSLATIONS["es"] = SPANISH_STRINGS
+TRANSLATIONS["fr"] = FRENCH_STRINGS
 
 
 def system_message(request: Request | None, message: str) -> str:
-    """Yalnızca tanımlı sistem metinlerini geçerli arayüz dilinde göster."""
+    """Translate only recognized system messages into the current UI language."""
     key = _SYSTEM_MESSAGE_KEYS.get(message)
     if key:
         return translate(request, key)

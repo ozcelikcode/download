@@ -3,7 +3,7 @@
 PYTHON ?= python3
 SITE_URL ?= http://127.0.0.1:8000
 
-# İlk kurulum: mevcut .env üzerine yazılmaz.
+# First-time setup never overwrites an existing .env file.
 setup:
 	.venv/bin/python -m app.manage prepare --url "$(SITE_URL)"
 	$(MAKE) migrate
@@ -30,25 +30,25 @@ else
   endif
 endif
 
-# Geliştirme sunucusu (hot-reload)
+# Development server with hot reload.
 dev:
 	.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
 
-# SQLite ve bellek-içi yükleme ilerlemesi için tek worker.
+# Use one worker for SQLite and in-memory upload progress.
 prod:
 	.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
-# Veritabanı migrasyonu
+# Apply database migrations.
 migrate:
 	.venv/bin/alembic upgrade head
 
-# Yeni migrasyon oluştur
+# Generate a new migration.
 migration:
 	.venv/bin/alembic revision --autogenerate -m "$(msg)"
 
-# Bağımlılıkları kur (+ Tailwind CLI indir ve CSS'i derle)
+# Install dependencies, download the Tailwind CLI, and build CSS.
 check-python:
-	@$(PYTHON) -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ gerekli'; print(f'Python {sys.version.split()[0]} doğrulandı')"
+	@$(PYTHON) -c "import sys; assert sys.version_info >= (3, 12), 'Python 3.12+ required'; print(f'Python {sys.version.split()[0]} verified')"
 
 install: check-python
 	$(PYTHON) -m venv .venv
@@ -57,34 +57,34 @@ install: check-python
 	$(MAKE) tailwind-cli
 	$(MAKE) css
 
-# Tailwind'in bağımsız CLI'ını indirir (Node/npm gerekmez)
+# Download the standalone Tailwind CLI (no Node/npm required).
 tailwind-cli:
 	mkdir -p .bin
 	curl -sL -o $(TAILWIND_BIN) "https://github.com/tailwindlabs/tailwindcss/releases/download/v$(TAILWIND_VERSION)/tailwindcss-$(TAILWIND_PLATFORM)"
 	chmod +x $(TAILWIND_BIN)
 
-# Tailwind CSS'i tek seferlik derler — şablonlarda class değişikliğinden sonra çalıştırın
+# Build Tailwind CSS once after changing classes in templates.
 css:
 	$(TAILWIND_BIN) -i app/static/css/tailwind_source.css -o app/static/css/tailwind.css --minify
 
-# Şablon değişikliklerini izleyerek Tailwind CSS'i otomatik yeniden derler (geliştirme sırasında)
+# Watch templates and rebuild Tailwind CSS during development.
 css-watch:
 	$(TAILWIND_BIN) -i app/static/css/tailwind_source.css -o app/static/css/tailwind.css --watch
 
-# Test bağımlılıkları dahil kur (geliştirme ortamı)
+# Install development and test dependencies.
 install-dev: check-python
 	$(PYTHON) -m venv .venv
 	.venv/bin/pip install -U pip
 	.venv/bin/pip install -r requirements-dev.txt
 
-# requirements.txt güncelle
+# Update requirements.txt.
 freeze:
 	.venv/bin/pip freeze > requirements.txt
 
-# Test paketini çalıştır (tests/ — izole, geçici SQLite; download.db'ye dokunmaz)
+# Run tests with isolated temporary SQLite databases; download.db is untouched.
 test:
 	.venv/bin/pytest -v
 
-# Admin şifre özeti üret; parola terminalde gizli olarak sorulur.
+# Generate an administrator password hash; the terminal prompts privately.
 hash:
-	.venv/bin/python3 -c "from getpass import getpass; from app.dependencies import hash_admin_password; print(hash_admin_password(getpass('Yeni parola: ')))"
+	.venv/bin/python3 -c "from getpass import getpass; from app.dependencies import hash_admin_password; print(hash_admin_password(getpass('New password: ')))"

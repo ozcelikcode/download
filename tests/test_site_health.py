@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from xml.etree import ElementTree
 
+from sqlalchemy import select
+
 from app.config import settings
 from app.models import Category, Download, FileType, LinkCheck, SiteSettings, Tag
 
@@ -81,10 +83,9 @@ async def test_site_health_recommends_homepage_seo_metadata(admin_client):
 
 
 async def test_site_health_flags_long_homepage_metadata(admin_client, db_session):
-    db_session.add(SiteSettings(
-        seo_home_title="Uzun başlık " * 7,
-        seo_meta_description="Örnek açıklama. " * 14,
-    ))
+    site_settings = await db_session.scalar(select(SiteSettings))
+    site_settings.seo_home_title = "Uzun başlık " * 7
+    site_settings.seo_meta_description = "Örnek açıklama. " * 14
     await db_session.commit()
 
     response = await admin_client.get("/admin/site-health")

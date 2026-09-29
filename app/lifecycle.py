@@ -1,4 +1,4 @@
-"""Kurulum durumu ve yalnız uygulama verilerini kapsayan sıfırlama."""
+"""Installation state and resets limited to application-owned data."""
 
 from __future__ import annotations
 
@@ -24,15 +24,26 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import settings
 from app.database import AsyncSessionLocal, Base
+from app.default_content import default_hero_components
+from app.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from app.models import SiteLifecycle, SiteSettings, MenuItem
 
 logger = logging.getLogger(__name__)
 ResetAction = Literal["settings", "full", "uninstall"]
 
 
+def gate_message(scope: Scope, key: str) -> str:
+    """Translate middleware errors, including the language selected on setup."""
+    request = Request(scope)
+    if scope["path"] == "/setup":
+        language = request.query_params.get("lang", DEFAULT_LANGUAGE)
+        request.state.ui_language = language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    return translate(request, key)
+
+
 @contextmanager
 def single_worker_guard() -> Iterator[None]:
-    """Aynı SQLite dosyası için ikinci uygulama sürecini başlatma."""
+    """Prevent a second application process from using the same SQLite file."""
     import fcntl
 
     database = Path(make_url(settings.database_url).database or "download.db").resolve()
@@ -41,7 +52,7 @@ def single_worker_guard() -> Iterator[None]:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise RuntimeError("Bu veritabanı zaten kullanılıyor. Uygulamayı tek worker ile çalıştırın.") from exc
+            raise RuntimeError("This database is already in use. Run the application with one worker.") from exc
         try:
             yield
         finally:
@@ -51,12 +62,12 @@ def single_worker_guard() -> Iterator[None]:
 async def get_lifecycle(session: AsyncSession) -> SiteLifecycle:
     state = await session.get(SiteLifecycle, 1)
     if state is None:
-        raise RuntimeError("Kurulum durumu bulunamadı; make migrate çalıştırılmalıdır.")
+        raise RuntimeError("Installation state is missing; run make migrate.")
     return state
 
 
 class RequestGate:
-    """Tek worker'da indirmeler/arka plan işleri bitmeden sıfırlama başlamaz."""
+    """Wait for downloads and background work before starting a reset."""
 
     def __init__(self) -> None:
         self.condition = asyncio.Condition()
@@ -100,8 +111,8 @@ class LifecycleMiddleware:
         path = scope["path"]
         exclusive = scope["method"] == "POST" and path in {"/setup", "/admin/settings/maintenance/confirm"}
         if exclusive:
-            # Kimliksiz/yavaş bir POST bütün siteyi kilitleyemez. Küçük onay
-            # gövdesini kilitten önce, boyut ve süre sınırıyla al.
+            # Read the small confirmation body before taking the exclusive lock,
+            # so an unauthenticated or slow POST cannot block the whole site.
             original_receive = receive
             body = bytearray()
             try:
@@ -116,7 +127,7 @@ class LifecycleMiddleware:
                         if not message.get("more_body", False):
                             break
             except (TimeoutError, HTTPException) as exc:
-                response = PlainTextResponse("Request rejected", status_code=408 if isinstance(exc, TimeoutError) else 413)
+                response = PlainTextResponse(gate_message(scope, "request_rejected"), status_code=408 if isinstance(exc, TimeoutError) else 413)
                 await response(scope, original_receive, send)
                 return
             delivered = False
@@ -136,7 +147,7 @@ class LifecycleMiddleware:
                     try:
                         form = await request.form(max_files=0, max_fields=32)
                     except StarletteHTTPException:
-                        response = PlainTextResponse("Invalid form", status_code=400)
+                        response = PlainTextResponse(gate_message(scope, "invalid_form"), status_code=400)
                         await response(scope, original_receive, send)
                         return
                     supplied = str(form.get("setup_token", ""))
@@ -164,7 +175,7 @@ class LifecycleMiddleware:
                 body_limit = 16 * 1024
             bundled_asset = posixpath.normpath(path).startswith(("/static/css/", "/static/js/", "/static/vendor/"))
             if pending:
-                response = PlainTextResponse("Bakım sürüyor / Maintenance in progress", status_code=503,
+                response = PlainTextResponse(gate_message(scope, "maintenance_in_progress"), status_code=503,
                                              headers={"Retry-After": "30", "Cache-Control": "no-store"})
                 await response(scope, receive, send)
                 return
@@ -182,7 +193,7 @@ class LifecycleMiddleware:
             except ValueError:
                 length = body_limit + 1
             if length < 0 or length > body_limit:
-                response = PlainTextResponse("İstek çok büyük / Request too large", status_code=413,
+                response = PlainTextResponse(gate_message(scope, "request_too_large"), status_code=413,
                                              headers={"Cache-Control": "no-store"})
                 await response(scope, receive, send)
                 return
@@ -194,14 +205,14 @@ class LifecycleMiddleware:
                 if message["type"] == "http.request":
                     received += len(message.get("body", b""))
                     if received > body_limit:
-                        raise HTTPException(413, "İstek boyutu sınırını aşıyor.")
+                        raise HTTPException(413, gate_message(scope, "request_too_large"))
                 return message
 
             await self.app(scope, limited_receive, send)
 
 
 def reset_storage_roots() -> list[Path]:
-    """Yanlış yapılandırılmış geniş/kod/veritabanı dizinlerini silmeyi reddet."""
+    """Reject broad, code, or database paths as reset storage roots."""
     project = Path(__file__).resolve().parent.parent
     database = Path(make_url(settings.database_url).database or "download.db").resolve()
     roots = [Path(settings.upload_dir).absolute(), Path(settings.download_dir).absolute()]
@@ -218,7 +229,7 @@ def reset_storage_roots() -> list[Path]:
             raise ValueError("reset_storage_unsafe")
         if root == Path(root.anchor) or any(item == root or item.is_relative_to(root) for item in protected):
             raise ValueError("reset_storage_unsafe")
-        # Checkout içindeki yalnız iki standart veri kökü silinebilir.
+        # Only the two standard data roots inside the checkout may be purged.
         if root.is_relative_to(project) and root not in {
             project / "app/static/uploads", project / "storage/downloads",
         }:
@@ -232,7 +243,7 @@ def reset_storage_roots() -> list[Path]:
 
 
 def purge_storage(roots: list[Path]) -> None:
-    # Sadece doğrulanmış iki veri dizininin çocukları; sembolik bağ hedefi izlenmez.
+    # Purge only children of validated data roots; do not follow symlink targets.
     for root in roots:
         root.mkdir(parents=True, exist_ok=True)
         for child in root.iterdir():
@@ -245,7 +256,7 @@ def purge_storage(roots: list[Path]) -> None:
 
 
 async def finish_pending_reset(session: AsyncSession) -> None:
-    """DB temizliği commit edilmiştir; kesilen dosya temizliği yeniden denenir."""
+    """Resume file cleanup after database cleanup has been committed."""
     state = await get_lifecycle(session)
     if not state.pending_reset:
         return
@@ -253,11 +264,15 @@ async def finish_pending_reset(session: AsyncSession) -> None:
     if json.loads(state.purge_roots or "[]") != [str(root) for root in roots]:
         raise ValueError("reset_storage_unsafe")
     await run_in_threadpool(purge_storage, roots)
+    if state.pending_reset == "full":
+        from app.crud import ensure_required_category
+
+        await ensure_required_category(session, commit=False)
     state.installed = state.pending_reset != "uninstall"
     state.pending_reset = None
     state.purge_roots = None
     await session.commit()
-    logger.info("Site verilerinin sıfırlanması tamamlandı")
+    logger.info("Site data reset completed")
 
 
 async def reset_site(session: AsyncSession, action: ResetAction) -> SiteSettings:
@@ -270,6 +285,7 @@ async def reset_site(session: AsyncSession, action: ResetAction) -> SiteSettings
     username = current.admin_username or settings.admin_username
     password_hash = current.admin_password_hash or settings.admin_password_hash
     language = current.site_language
+    content_language = current.content_language
     if action == "settings":
         await session.execute(delete(MenuItem))
     else:
@@ -283,7 +299,9 @@ async def reset_site(session: AsyncSession, action: ResetAction) -> SiteSettings
     fresh = SiteSettings(
         admin_username=username if action != "uninstall" else None,
         admin_password_hash=password_hash if action != "uninstall" else None,
-        site_language=language if action != "uninstall" else "tr",
+        site_language=language if action != "uninstall" else "en",
+        content_language=content_language if action != "uninstall" else "en",
+        hero_components=default_hero_components(content_language if action != "uninstall" else "en"),
         session_generation=secrets.token_hex(32),
     )
     session.add(fresh)

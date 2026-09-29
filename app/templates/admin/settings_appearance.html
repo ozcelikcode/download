@@ -36,7 +36,7 @@
     <h2 class="text-sm font-semibold flex items-center gap-2"><i data-lucide="image" class="w-4 h-4 text-slate-400"></i>{{ t(request, 'logo') }}</h2>
     <p class="form-hint mb-4">{{ t(request, 'logo_help') }}</p>
     <div class="grid sm:grid-cols-3 gap-2 mb-4">
-      {% for value, label, help in [('icon_text',t(request, 'icon_text'),t(request, 'icon_text_help')),('image_text',t(request, 'image_text'),t(request, 'image_text_help')),('image',t(request, 'image_only'),t(request, 'image_only_help'))] %}
+      {% for value, label, help in [('icon_text',t(request, 'icon_text'),t(request, 'icon_text_help')),('image_text',t(request, 'image_text'),t(request, 'image_text_help')),('image',t(request, 'logo_image_only'),t(request, 'image_only_help'))] %}
       <label class="choice-card p-3">
         <input class="choice-input" type="radio" name="logo_mode" value="{{ value }}" {% if site_settings.logo_mode == value %}checked{% endif %} required>
         <span class="block text-sm font-medium">{{ label }}</span><span class="block text-xs text-slate-500 mt-1">{{ help }}</span>
@@ -85,8 +85,8 @@
         <i data-lucide="grip-vertical" class="w-4 h-4 text-slate-400 cursor-grab shrink-0"></i>
         <input type="hidden" name="component_type" value="{{ component.type }}">
         <div class="min-w-0"><span class="block text-xs font-medium text-slate-500 mb-1">{{ {'eyebrow':t(request, 'eyebrow'),'title':t(request, 'title'),'description':t(request, 'description'),'search':t(request, 'search'),'stats':t(request, 'stats')}.get(component.type, component.type) }}</span>
-          {% if component.type == 'stats' %}<p class="form-hint py-1.5">{{ t(request, 'stats_auto') }}</p><input type="hidden" name="component_text" value=""><input type="hidden" name="component_text_en" value="">
-          {% else %}<div class="grid sm:grid-cols-2 gap-2"><label class="text-[11px] text-slate-400">{{ t(request, 'turkish') }}<input name="component_text" value="{{ component.text }}" maxlength="300" class="form-input py-1.5 mt-1"></label><label class="text-[11px] text-slate-400">{{ t(request, 'english') }}<input name="component_text_en" value="{{ component.text_en|default('') }}" maxlength="300" class="form-input py-1.5 mt-1"></label></div>{% endif %}
+          {% if component.type == 'stats' %}<p class="form-hint py-1.5">{{ t(request, 'stats_auto') }}</p><input type="hidden" name="component_text" value="">
+          {% else %}<label class="text-[11px] text-slate-400">{{ t(request, 'primary_text') }}<input name="component_text" value="{{ component.text }}" maxlength="300" class="form-input py-1.5 mt-1"></label>{% endif %}
         </div>
         <button type="button" data-remove-hero class="p-2 text-red-500" aria-label="{{ t(request, 'remove_component') }}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
       </div>
@@ -106,10 +106,8 @@
   const enabled = document.querySelector('[name="hero_enabled"]');
   const imageInput = document.getElementById('hero-image');
   const labels = {eyebrow:{{ t(request, 'eyebrow')|tojson }},title:{{ t(request, 'title')|tojson }},description:{{ t(request, 'description')|tojson }},search:{{ t(request, 'search')|tojson }},stats:{{ t(request, 'stats')|tojson }}};
-  const defaults = {tr:{eyebrow:'İndirme Merkezi',title:'Güvenli ve Ücretsiz Yazılımlar',description:'Aradığınız yazılımı bulun, tek tıkla indirin.',search:'Yazılım, araç veya kategori ara…'},en:{eyebrow:'Download Center',title:'Safe and Free Software',description:'Find the software you need and download it in one click.',search:'Search for software, tools, or categories…'}};
-  const previewLanguage = {{ ui_language(request) | tojson }};
   function element(tag, className, text) { const node = document.createElement(tag); node.className = className; if (text) node.textContent = text; return node; }
-  function componentText(row) { const field = row.querySelector('[name="component_text' + (previewLanguage === 'en' ? '_en' : '') + '"]'); const fallback = row.querySelector('[name="component_text"]'); return (field && field.value.trim()) || (fallback && fallback.value.trim()) || defaults[previewLanguage][row.dataset.type] || ''; }
+  function componentText(row) { const field = row.querySelector('[name="component_text"]'); return field ? field.value.trim() : ''; }
   function renderPreview() {
     previewContent.replaceChildren();
     list.querySelectorAll('.hero-component').forEach(function (row) {
@@ -118,7 +116,7 @@
       if (type === 'title') node = element('h2', 'text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1', value);
       if (type === 'description') node = element('p', 'text-sm text-slate-500 dark:text-slate-400 mb-5', value);
       if (type === 'search') { node = element('div', 'hero-search-wrap my-4'); const input = element('input', 'hero-search-input'); input.disabled = true; input.placeholder = value; node.appendChild(input); }
-      if (type === 'stats') { node = element('div', 'flex items-center justify-center gap-2 my-4 flex-wrap'); [['12', previewLanguage === 'en' ? 'downloads' : 'indirme'],['4', previewLanguage === 'en' ? 'categories' : 'kategori'],['9', previewLanguage === 'en' ? 'tags' : 'etiket']].forEach(function (item) { node.appendChild(element('span', 'stat-pill', item.join(' '))); }); }
+      if (type === 'stats') { node = element('div', 'flex items-center justify-center gap-2 my-4 flex-wrap'); [['12', {{ t(request, 'downloads')|tojson }}],['4', {{ t(request, 'categories')|lower|tojson }}],['9', {{ t(request, 'tags')|lower|tojson }}]].forEach(function (item) { node.appendChild(element('span', 'stat-pill', item.join(' '))); }); }
       if (node) previewContent.appendChild(node);
     });
     document.getElementById('hero-preview-hidden').classList.toggle('hidden', enabled.checked);
@@ -133,7 +131,7 @@
       const row = document.createElement('div');
       row.className = 'hero-component grid grid-cols-[auto_1fr_auto] gap-2 p-2 border border-slate-200 dark:border-slate-800 rounded-sm';
       row.draggable = true; row.dataset.type = type;
-      const fields = type === 'stats' ? '<p class="form-hint py-1.5">' + {{ t(request, 'stats_auto')|tojson }} + '</p><input type="hidden" name="component_text" value=""><input type="hidden" name="component_text_en" value="">' : '<div class="grid sm:grid-cols-2 gap-2"><label class="text-[11px] text-slate-400">' + {{ t(request, 'turkish')|tojson }} + '<input name="component_text" maxlength="300" class="form-input py-1.5 mt-1"></label><label class="text-[11px] text-slate-400">' + {{ t(request, 'english')|tojson }} + '<input name="component_text_en" maxlength="300" class="form-input py-1.5 mt-1"></label></div>';
+      const fields = type === 'stats' ? '<p class="form-hint py-1.5">' + {{ t(request, 'stats_auto')|tojson }} + '</p><input type="hidden" name="component_text" value="">' : '<label class="text-[11px] text-slate-400">' + {{ t(request, 'primary_text')|tojson }} + '<input name="component_text" maxlength="300" class="form-input py-1.5 mt-1"></label>';
       row.innerHTML = '<i data-lucide="grip-vertical" class="w-4 h-4 text-slate-400 cursor-grab shrink-0"></i><input type="hidden" name="component_type" value="' + type + '"><div class="min-w-0"><span class="block text-xs font-medium text-slate-500 mb-1">' + labels[type] + '</span>' + fields + '</div><button type="button" data-remove-hero class="p-2 text-red-500" aria-label="' + {{ t(request, 'remove_component')|tojson }} + '"><i data-lucide="trash-2" class="w-4 h-4"></i></button>';
       list.appendChild(row); bind(row); sync(); renderPreview(); lucide.createIcons();
     });

@@ -69,10 +69,11 @@
     {{ t(request, 'site_language') }}
   </h2>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_language_help') }}</p>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'installed_content_language') }}: {{ dict(language_choices).get(site_settings.content_language, 'English') }} · {{ t(request, 'installed_content_language_help') }}</p>
   <form method="post" action="/admin/settings/language" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="grid grid-cols-2 gap-2 max-w-sm">
-      {% for language_code, language_label in [('tr', t(request, 'turkish')), ('en', t(request, 'english'))] %}
+      {% for language_code, language_label in language_choices %}
       <label class="theme-color-choice cursor-pointer">
         <input type="radio" name="language" value="{{ language_code }}" class="peer sr-only" {% if site_settings.site_language == language_code %}checked{% endif %}>
         <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">

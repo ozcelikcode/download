@@ -24,7 +24,7 @@ from app.config import settings
 from app.database import Base
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, get_db
 from app.main import app
-from app.models import SiteLifecycle
+from app.models import SiteLifecycle, SiteSettings
 from app.i18n import set_ui_language
 from app.templating import templates
 
@@ -45,6 +45,8 @@ def isolated_branding_globals():
     değeri yedekleyip geri yükler."""
     keys = ["site_name", "site_language", "site_icon", "site_icon_color_light", "site_icon_color_dark", "logo_mode", "logo_light_path", "logo_dark_path", "theme_color", "theme_accent_light", "theme_accent_dark", "theme_surface_light", "theme_surface_dark", "theme_border_light", "theme_border_dark"]
     snapshot = {k: templates.env.globals.get(k) for k in keys}
+    templates.env.globals.update(site_name="Download Sitesi", site_language="tr")
+    set_ui_language("tr")
     yield
     templates.env.globals.update(snapshot)
     set_ui_language(snapshot.get("site_language") or "tr")
@@ -71,7 +73,10 @@ async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
     monkeypatch.setattr(link_checks, "AsyncSessionLocal", session_factory)
     monkeypatch.setattr(lifecycle, "AsyncSessionLocal", session_factory)
     async with session_factory() as session:
-        session.add(SiteLifecycle(id=1, installed=True))
+        session.add_all([
+            SiteLifecycle(id=1, installed=True),
+            SiteSettings(site_name="Download Sitesi", site_language="tr", content_language="tr"),
+        ])
         await session.commit()
 
     async def skip_network_check(download_id: int, url: str) -> None:

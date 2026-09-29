@@ -12,7 +12,12 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen p-4">
 <main class="max-w-2xl mx-auto py-8 space-y-6">
   <header>
-    <nav class="flex gap-3 text-sm mb-5" aria-label="Language"><a href="/setup?lang=tr" lang="tr">Türkçe</a><a href="/setup?lang=en" lang="en">English</a></nav>
+    <nav class="flex gap-3 text-sm mb-5" aria-label="{{ t(request, 'language') }}">
+      {% for language_code, language_label in language_choices %}
+      <a href="/setup?lang={{ language_code }}" lang="{{ language_code }}" class="{% if ui_language(request) == language_code %}font-semibold text-blue-700 underline{% else %}text-slate-500{% endif %}" {% if ui_language(request) == language_code %}aria-current="page"{% endif %}>{{ language_label }}</a>
+      {% endfor %}
+    </nav>
+    <p class="text-xs text-slate-500 mb-4">{{ t(request, 'setup_language_help') }}</p>
     <p class="text-sm text-blue-700 mb-2">Downloader</p>
     <h1 class="text-2xl font-bold">{{ t(request, 'setup_title') }}</h1>
     <p class="text-sm text-slate-500 mt-2">{{ t(request, 'setup_intro') }}</p>
@@ -39,7 +44,7 @@
       <h2 class="font-semibold">3. {{ t(request, 'setup_site') }}</h2>
       <div><label for="setup-name" class="form-label">{{ t(request, 'site_name') }}</label><input id="setup-name" name="site_name" required maxlength="100" class="form-input"></div>
       <div><label for="setup-url" class="form-label">{{ t(request, 'setup_domain') }}</label><input id="setup-url" name="public_url" type="url" value="{{ public_url }}" required class="form-input"><p class="form-hint">{{ t(request, 'setup_domain_help') }}</p></div>
-      <div><label for="setup-language" class="form-label">{{ t(request, 'site_language') }}</label><select id="setup-language" name="language" class="form-input"><option value="tr" {% if ui_language(request) == 'tr' %}selected{% endif %}>Türkçe</option><option value="en" {% if ui_language(request) == 'en' %}selected{% endif %}>English</option></select></div>
+      <input type="hidden" name="language" value="{{ ui_language(request) }}">
       <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="deployment_confirmed" value="yes" required class="mt-1">{{ t(request, 'setup_acknowledge') }}</label>
       <button type="submit" class="btn-primary">{{ t(request, 'setup_finish') }}</button>
     </section>

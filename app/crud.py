@@ -20,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from app.audit import add_event
+from app.default_content import REQUIRED_CATEGORY_NAMES
+from app.i18n import SUPPORTED_LANGUAGES
 from app.models import (
     AuditLog,
     Category,
@@ -96,16 +98,23 @@ async def get_category_by_id(session: AsyncSession, category_id: int) -> Optiona
     return result.scalar_one_or_none()
 
 
-async def ensure_required_category(session: AsyncSession) -> Category:
-    """Korunan kategoriyi döndürür; eski ya da boş kurulumlarda oluşturur."""
+async def ensure_required_category(
+    session: AsyncSession, *, language: str | None = None, commit: bool = True
+) -> Category:
+    """Return the protected category, creating a localized one when absent."""
     category = await session.scalar(select(Category).where(Category.is_required.is_(True)).order_by(Category.id))
     if category is not None:
         return category
-    slug = await _unique_slug(session, Category, _make_slug("Genel"))
-    category = Category(name="Genel", slug=slug, is_required=True)
+    selected_language = language or (await get_site_settings(session)).content_language
+    name = REQUIRED_CATEGORY_NAMES.get(selected_language, REQUIRED_CATEGORY_NAMES["en"])
+    slug = await _unique_slug(session, Category, _make_slug(name))
+    category = Category(name=name, slug=slug, is_required=True)
     session.add(category)
-    await session.commit()
-    await session.refresh(category)
+    if commit:
+        await session.commit()
+        await session.refresh(category)
+    else:
+        await session.flush()
     return category
 
 
@@ -395,7 +404,7 @@ async def update_seo_settings(
 async def update_site_language(
     session: AsyncSession, language: str
 ) -> SiteSettings:
-    if language not in {"tr", "en"}:
+    if language not in SUPPORTED_LANGUAGES:
         raise ValueError("Desteklenmeyen dil.")
     settings_row = await get_site_settings(session)
     settings_row.site_language = language

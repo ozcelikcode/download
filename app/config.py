@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     # Genel
-    app_name: str = "Download Sitesi"
+    app_name: str = "Downloader"
     app_secret_key: str = "change-me-in-production"
     app_base_url: str = "http://localhost:8000"
     debug: bool = False

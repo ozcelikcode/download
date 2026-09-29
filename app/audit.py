@@ -25,7 +25,7 @@ FIELD_LABELS = {
     "is_active": "Yayında", "is_draft": "Taslak", "is_featured": "Öne çıkan", "is_official_source": "Resmî kaynak",
     "is_latest_version": "Güncel sürüm bağlantısı", "deleted_at": "Silinme tarihi",
     "label": "Başlık", "url": "Adres", "icon": "İkon", "open_in_new_tab": "Yeni sekmede aç",
-    "location": "Menü konumu", "site_name": "Site adı", "site_language": "Site dili", "site_icon": "Site ikonu",
+    "location": "Menü konumu", "site_name": "Site adı", "site_language": "Site dili", "content_language": "Başlangıç içerik dili", "site_icon": "Site ikonu",
     "site_icon_color": "İkon rengi", "sidebar_block_order": "Yan menü sırası",
     "theme_color": "Renk teması",
     "logo_mode": "Logo düzeni", "logo_light_path": "Aydınlık logo", "logo_dark_path": "Karanlık logo",
