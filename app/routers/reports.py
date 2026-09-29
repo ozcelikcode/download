@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import crud
 from app.audit import ACTION_LABELS, ENTITY_LABELS, FIELD_LABELS
 from app.dependencies import get_db, require_admin
 from app.link_checks import check_link, save_link_result
@@ -102,8 +103,11 @@ async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str =
         query = query.where(AuditLog.level == level)
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     rows = (await session.scalars(query.order_by(AuditLog.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
+    site_settings = await crud.get_site_settings(session)
+    flash_message = request.session.pop("flash_message", None)
     return templates.TemplateResponse(request=request, name="admin/audit.html", context={
         "request": request, "admin_user": admin, "rows": rows,
+        "site_settings": site_settings, "flash_message": flash_message,
         "changes": {row.id: json.loads(row.changes) for row in rows},
         "entities": ENTITY_LABELS_EN if ui_language(request) == "en" else ENTITY_LABELS,
         "actions": ACTION_LABELS_EN if ui_language(request) == "en" else ACTION_LABELS,

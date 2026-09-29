@@ -19,56 +19,7 @@
 
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-    <i data-lucide="languages" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-    {{ t(request, 'site_language') }}
-  </h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_language_help') }}</p>
-  <form method="post" action="/admin/settings/language" class="space-y-4">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <div class="grid grid-cols-2 gap-2 max-w-sm">
-      {% for language_code, language_label in [('tr', t(request, 'turkish')), ('en', t(request, 'english'))] %}
-      <label class="theme-color-choice cursor-pointer">
-        <input type="radio" name="language" value="{{ language_code }}" class="peer sr-only" {% if site_settings.site_language == language_code %}checked{% endif %}>
-        <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">
-          <span class="inline-flex h-5 w-7 items-center justify-center rounded-sm bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase">{{ language_code }}</span>
-          {{ language_label }}
-        </span>
-      </label>
-      {% endfor %}
-    </div>
-    <button type="submit" class="btn-primary py-2 px-4 text-sm">
-      <i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save_language') }}
-    </button>
-  </form>
-</div>
-
-<div id="seo-settings" class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
-  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-    <i data-lucide="search-check" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
-    {{ t(request, 'seo_settings') }}
-  </h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'seo_settings_help') }}</p>
-  <form method="post" action="/admin/settings/seo" class="space-y-4 max-w-2xl">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <div>
-      <label for="seo-home-title" class="form-label">{{ t(request, 'seo_home_title') }}</label>
-      <input id="seo-home-title" name="seo_home_title" type="text" maxlength="100" value="{{ site_settings.seo_home_title or '' }}" class="form-input">
-      <p class="form-hint">{{ t(request, 'seo_home_title_help') }}</p>
-    </div>
-    <div>
-      <label for="seo-meta-description" class="form-label">{{ t(request, 'seo_meta_description') }}</label>
-      <textarea id="seo-meta-description" name="seo_meta_description" maxlength="320" rows="3" class="form-input">{{ site_settings.seo_meta_description or '' }}</textarea>
-      <p class="form-hint">{{ t(request, 'seo_meta_description_help') }}</p>
-    </div>
-    <button type="submit" class="btn-primary py-2 px-4 text-sm">
-      <i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save_seo_settings') }}
-    </button>
-  </form>
-</div>
-
-<div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
-  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    <i data-lucide="badge-check" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
     {{ t(request, 'site_identity') }}
   </h2>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_identity_help') }}</p>
@@ -105,22 +56,6 @@
       </p>
     </div>
 
-    <div>
-      <label class="form-label">{{ t(request, 'color_theme') }}</label>
-      <p class="form-hint mb-2">{{ t(request, 'color_theme_help') }}</p>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
-        {% for color, label, hex in [('blue', t(request, 'blue'), '#356fd4'), ('green', t(request, 'green'), '#247a4d'), ('red', t(request, 'red'), '#bf4f58'), ('yellow', t(request, 'yellow'), '#9a6a0c'), ('cream', t(request, 'cream'), '#8a6735'), ('amoled', t(request, 'amoled'), '#a1a1aa')] %}
-        <label class="theme-color-choice cursor-pointer">
-          <input type="radio" name="theme_color" value="{{ color }}" class="peer sr-only"
-            {% if site_settings.theme_color == color %}checked{% endif %}>
-          <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-2.5 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">
-            <span class="w-4 h-4 rounded-sm border border-black/10 dark:border-white/10" style="background: {{ hex }};"></span>{{ label }}
-          </span>
-        </label>
-        {% endfor %}
-      </div>
-    </div>
-
     <button type="submit" class="btn-primary py-2 px-4 text-sm">
       <i data-lucide="save" class="w-3.5 h-3.5"></i>
       {{ t(request, 'save_identity') }}
@@ -129,13 +64,27 @@
 </div>
 
 <div class="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
-  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i> {{ t(request, 'audit_history') }}</h2>
-  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'audit_help') }}</p>
-  <form method="post" action="/admin/settings/audit-log-limit" class="grid grid-cols-1 sm:grid-cols-[minmax(10rem,14rem)_auto] gap-3 items-end max-w-md">
+  <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+    <i data-lucide="languages" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
+    {{ t(request, 'site_language') }}
+  </h2>
+  <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_language_help') }}</p>
+  <form method="post" action="/admin/settings/language" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <label class="block"><span class="form-label">{{ t(request, 'maximum_records') }}</span><select name="max_records" class="form-input">{% for value in [50, 100, 200, 500, 800] %}<option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
-    <button type="submit" class="btn-primary py-2 px-4 text-sm justify-center"><i data-lucide="save" class="w-3.5 h-3.5"></i> {{ t(request, 'save') }}</button>
-    <a href="/admin/audit" class="sm:col-span-2 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"><i data-lucide="history" class="w-3.5 h-3.5"></i>{{ t(request, 'view_records') }}</a>
+    <div class="grid grid-cols-2 gap-2 max-w-sm">
+      {% for language_code, language_label in [('tr', t(request, 'turkish')), ('en', t(request, 'english'))] %}
+      <label class="theme-color-choice cursor-pointer">
+        <input type="radio" name="language" value="{{ language_code }}" class="peer sr-only" {% if site_settings.site_language == language_code %}checked{% endif %}>
+        <span class="theme-color-card flex items-center gap-2 border border-slate-200 dark:border-slate-800 rounded-sm px-3 py-2 text-sm text-slate-600 dark:text-slate-300 transition-colors">
+          <span class="inline-flex h-5 w-7 items-center justify-center rounded-sm bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase">{{ language_code }}</span>
+          {{ language_label }}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn-primary py-2 px-4 text-sm">
+      <i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save_language') }}
+    </button>
   </form>
 </div>
 

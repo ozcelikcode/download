@@ -20,6 +20,19 @@ async def test_admin_changes_record_actor_and_old_new_values(admin_client, db_se
     assert json.loads(logs[-1].changes)["name"] == ["Önce", "Sonra"]
     page = await admin_client.get("/admin/audit")
     assert "Önce" in page.text and "Sonra" in page.text
+    assert 'id="audit-density-toggle"' in page.text
+    assert 'id="audit-list"' in page.text
+    assert 'action="/admin/settings/audit-log-limit"' in page.text
+
+
+async def test_audit_retention_update_returns_to_log(admin_client):
+    response = await admin_client.post(
+        "/admin/settings/audit-log-limit", data={"max_records": "100"}
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/admin/audit"
+    page = await admin_client.get("/admin/audit")
+    assert "Maksimum kayıt · 100" in page.text
 
 
 async def test_rolled_back_changes_leave_no_history(db_session):

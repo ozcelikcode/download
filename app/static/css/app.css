@@ -485,6 +485,32 @@ input[type="radio"]:not(.sr-only):not(.choice-input):disabled { cursor: not-allo
 .admin-nav-group[open] .admin-nav-chevron, .admin-mobile-menu[open] .admin-nav-chevron { transform: rotate(180deg); }
 .dark .admin-nav-link.is-active { background: var(--theme-panel-muted, #111111); color: var(--theme-accent, #d4d4d8); }
 .dark .admin-nav-summary.is-active { color: var(--theme-accent, #d4d4d8); }
+
+/* İşlem geçmişi: aynı kayıtlar rahat veya sıkı yoğunlukta gösterilir. */
+.audit-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+.audit-heading { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.audit-count { padding: .2rem .5rem; border: 1px solid var(--theme-neutral-border, #e2e8f0); border-radius: 2px; color: #64748b; font-size: .75rem; white-space: nowrap; }
+.audit-filter-bar { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; padding: .75rem; border: 1px solid var(--theme-neutral-border, #e2e8f0); border-radius: 2px; }
+.audit-filter-bar .form-label { margin: 0 .25rem 0 0; }
+.audit-filter-bar .form-input { width: auto; min-width: 10rem; max-width: 100%; }
+.audit-list { display: grid; gap: .75rem; }
+.audit-entry { padding: 1rem; }
+.audit-entry-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.audit-entry-main { min-width: 0; }
+.audit-entry-meta { margin-top: .35rem; }
+.audit-entry-time { flex-shrink: 0; white-space: nowrap; }
+.audit-entry-changes { margin-top: .75rem; }
+.audit-list.is-compact { gap: .35rem; }
+.audit-list.is-compact .audit-entry { padding: .55rem .75rem; }
+.audit-list.is-compact .audit-entry-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
+.audit-list.is-compact .audit-entry-meta, .audit-list.is-compact .audit-entry-changes { margin-top: 0; }
+.audit-list.is-compact .audit-entry-changes { padding-top: .25rem; }
+@media (max-width: 639px) {
+  .audit-filter-bar .form-input { width: 100%; }
+  .audit-filter-bar .form-label { width: 100%; }
+  .audit-entry-line { flex-wrap: wrap; gap: .25rem; }
+}
+
 .btn-danger {
   display: inline-flex; align-items: center; gap: 0.375rem;
   padding: 0.375rem 0.75rem; font-size: 0.8125rem; font-weight: 500;

@@ -76,7 +76,8 @@ async def test_site_health_recommends_homepage_seo_metadata(admin_client):
     assert response.status_code == 200
     assert "Ana sayfa SEO alanları kişiselleştirilmemiş" in response.text
     assert "Mevcut varsayılan metinler çalışmaya devam eder" in response.text
-    assert "/admin/settings/general#seo-settings" in response.text
+    assert 'id="seo-settings"' in response.text
+    assert 'action="/admin/settings/seo"' in response.text
 
 
 async def test_site_health_flags_long_homepage_metadata(admin_client, db_session):
@@ -118,7 +119,7 @@ async def test_manual_homepage_seo_settings_are_saved_and_used(admin_client, cli
     )
 
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/settings/general#seo-settings"
+    assert response.headers["location"] == "/admin/site-health#seo-settings"
     homepage = await client.get("/")
     assert "<title>Özel Ana Sayfa Başlığı</title>" in homepage.text
     assert '<meta name="description" content="Sitemiz için arama sonuçlarında kullanılacak özel açıklama.">' in homepage.text
@@ -133,10 +134,10 @@ async def test_invalid_homepage_seo_settings_notify_without_saving(admin_client)
     )
 
     assert response.status_code == 302
-    settings_page = await admin_client.get("/admin/settings/general")
-    assert 'data-toast-type="error"' in settings_page.text
-    assert "SEO başlığı en fazla 100" in settings_page.text
-    assert 'value="" class="form-input"' in settings_page.text
+    health_page = await admin_client.get("/admin/site-health")
+    assert 'data-toast-type="error"' in health_page.text
+    assert "SEO başlığı en fazla 100" in health_page.text
+    assert 'value="" class="form-input"' in health_page.text
 
 
 async def test_site_health_requires_admin(client):

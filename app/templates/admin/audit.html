@@ -2,17 +2,130 @@
 {% block title %}{{ t(request, 'audit_history') }}{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-5">
-  <div><h1 class="text-xl font-semibold">{{ t(request, 'audit_history') }}</h1><p class="text-sm text-slate-500 mt-1">{{ tf(request, 'audit_page_help', count=total) }}</p></div>
-  <form method="get" action="/admin/audit" class="flex flex-wrap items-center gap-2"><label class="text-sm whitespace-nowrap" for="audit-entity">{{ t(request, 'record_type') }}</label><select class="form-input w-auto" name="entity" id="audit-entity"><option value="">{{ t(request, 'all') }}</option>{% for key, label in entities.items() %}<option value="{{ key }}" {% if key == entity %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><select class="form-input w-auto" name="level"><option value="">{{ t(request, 'all_statuses') }}</option><option value="success" {% if level == 'success' %}selected{% endif %}>{{ t(request, 'successful_action') }}</option><option value="error" {% if level == 'error' %}selected{% endif %}>{{ t(request, 'error') }}</option><option value="critical" {% if level == 'critical' %}selected{% endif %}>{{ t(request, 'critical') }}</option></select><button class="btn-primary" type="submit">{{ t(request, 'filter') }}</button></form>
-  <div class="space-y-3">
-  {% for row in rows %}
-    <article class="p-4 border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
-      <div class="flex flex-wrap justify-between gap-2 text-xs text-slate-500"><span>{{ row.actor }} · {{ entities.get(row.entity, row.entity) }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</span><time>{{ row.created_at.strftime('%d.%m.%Y %H:%M:%S') }} UTC</time></div>
-      <p class="text-sm font-medium mt-2 break-all">{{ system_message(request, row.label) if row.entity == 'login' else row.label }} <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span> {% if row.level == 'critical' %}<strong class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'critical') }}</strong>{% elif row.level == 'error' %}<span class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'error') }}</span>{% endif %}</p>
-      {% if changes[row.id] %}<details class="mt-3 text-xs"><summary class="cursor-pointer text-blue-600 dark:text-blue-400">{{ t(request, 'show_changes') }}</summary><div class="overflow-x-auto mt-2"><table class="w-full text-left"><thead><tr class="text-slate-500"><th class="p-2">{{ t(request, 'field') }}</th><th class="p-2">{{ t(request, 'before') }}</th><th class="p-2">{{ t(request, 'after') }}</th></tr></thead><tbody>{% for field, values in changes[row.id].items() %}<tr class="border-t border-slate-100 dark:border-slate-800"><th class="p-2 font-medium">{{ fields.get(field, field) }}</th><td class="p-2 break-all">{{ values[0] if values[0] is not none else '—' }}</td><td class="p-2 break-all">{{ values[1] if values[1] is not none else '—' }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+  <header class="audit-header">
+    <div>
+      <div class="audit-heading">
+        <h1 class="text-xl font-semibold">{{ t(request, 'audit_history') }}</h1>
+        <span class="audit-count">{{ tf(request, 'audit_record_count', count=total) }}</span>
+      </div>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        {{ t(request, 'audit_intro') }} <span class="text-xs text-slate-400 dark:text-slate-500">· {{ t(request, 'audit_private_note') }}</span>
+      </p>
+    </div>
+    <button id="audit-density-toggle" type="button" class="btn-secondary text-xs" aria-label="{{ t(request, 'audit_view_mode') }}" aria-controls="audit-list" aria-pressed="false">
+      <i data-lucide="list-filter" class="w-3.5 h-3.5" aria-hidden="true"></i>
+      <span id="audit-density-label">{{ t(request, 'compact_view') }}</span>
+    </button>
+  </header>
+
+  <form method="get" action="/admin/audit" class="audit-filter-bar" aria-label="{{ t(request, 'filter') }}">
+    <label for="audit-entity" class="form-label">{{ t(request, 'record_type') }}</label>
+    <select class="form-input" name="entity" id="audit-entity">
+      <option value="">{{ t(request, 'all') }}</option>
+      {% for key, label in entities.items() %}
+      <option value="{{ key }}" {% if key == entity %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="audit-level" class="sr-only">{{ t(request, 'all_statuses') }}</label>
+    <select class="form-input" name="level" id="audit-level">
+      <option value="">{{ t(request, 'all_statuses') }}</option>
+      <option value="success" {% if level == 'success' %}selected{% endif %}>{{ t(request, 'successful_action') }}</option>
+      <option value="error" {% if level == 'error' %}selected{% endif %}>{{ t(request, 'error') }}</option>
+      <option value="critical" {% if level == 'critical' %}selected{% endif %}>{{ t(request, 'critical') }}</option>
+    </select>
+    <button class="btn-primary" type="submit">{{ t(request, 'filter') }}</button>
+  </form>
+
+  <div id="audit-list" class="audit-list">
+    {% for row in rows %}
+    <article class="audit-entry border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
+      <div class="audit-entry-line">
+        <div class="audit-entry-main">
+          <p class="audit-entry-title text-sm font-medium break-all">
+            {{ system_message(request, row.label) if row.entity == 'login' else row.label }}
+            <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span>
+            {% if row.level == 'critical' %}
+            <strong class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'critical') }}</strong>
+            {% elif row.level == 'error' %}
+            <span class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'error') }}</span>
+            {% endif %}
+          </p>
+          <p class="audit-entry-meta text-xs text-slate-500 dark:text-slate-400">{{ row.actor }} · {{ entities.get(row.entity, row.entity) }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</p>
+        </div>
+        <time class="audit-entry-time text-xs text-slate-500 dark:text-slate-400" datetime="{{ row.created_at.isoformat() }}">{{ row.created_at.strftime('%d.%m.%Y %H:%M:%S') }} UTC</time>
+      </div>
+      {% if changes[row.id] %}
+      <details class="audit-entry-changes text-xs">
+        <summary class="cursor-pointer text-blue-600 dark:text-blue-400">{{ t(request, 'show_changes') }}</summary>
+        <div class="overflow-x-auto mt-2">
+          <table class="w-full text-left">
+            <thead><tr class="text-slate-500"><th class="p-2">{{ t(request, 'field') }}</th><th class="p-2">{{ t(request, 'before') }}</th><th class="p-2">{{ t(request, 'after') }}</th></tr></thead>
+            <tbody>
+              {% for field, values in changes[row.id].items() %}
+              <tr class="border-t border-slate-100 dark:border-slate-800">
+                <th class="p-2 font-medium">{{ fields.get(field, field) }}</th>
+                <td class="p-2 break-all">{{ values[0] if values[0] is not none else '—' }}</td>
+                <td class="p-2 break-all">{{ values[1] if values[1] is not none else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      {% endif %}
     </article>
-  {% else %}<div class="p-8 border border-slate-200 dark:border-slate-800 rounded-sm text-center text-slate-500">{{ t(request, 'no_audit') }}</div>{% endfor %}
+    {% else %}
+    <div class="p-8 border border-slate-200 dark:border-slate-800 rounded-sm text-center text-slate-500">{{ t(request, 'no_audit') }}</div>
+    {% endfor %}
   </div>
-  <nav class="flex gap-4 text-sm" aria-label="{{ t(request, 'page') }}">{% if page > 1 %}<a href="?page={{ page-1 }}&entity={{ entity|urlencode }}&level={{ level|urlencode }}">← {{ t(request, 'previous') }}</a>{% endif %}<span>{{ page }} / {{ total_pages }}</span>{% if page < total_pages %}<a href="?page={{ page+1 }}&entity={{ entity|urlencode }}&level={{ level|urlencode }}">{{ t(request, 'next') }} →</a>{% endif %}</nav>
+
+  <nav class="flex gap-4 text-sm" aria-label="{{ t(request, 'page') }}">
+    {% if page > 1 %}<a href="?page={{ page-1 }}&entity={{ entity|urlencode }}&level={{ level|urlencode }}">← {{ t(request, 'previous') }}</a>{% endif %}
+    <span>{{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="?page={{ page+1 }}&entity={{ entity|urlencode }}&level={{ level|urlencode }}">{{ t(request, 'next') }} →</a>{% endif %}
+  </nav>
+
+  <details class="audit-retention border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
+    <summary class="cursor-pointer p-4 text-sm font-medium">{{ t(request, 'maximum_records') }} · {{ site_settings.audit_log_max_records }}</summary>
+    <div class="px-4 pb-4">
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ t(request, 'audit_help') }}</p>
+      <form method="post" action="/admin/settings/audit-log-limit" class="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+        <label class="block">
+          <span class="form-label">{{ t(request, 'maximum_records') }}</span>
+          <select name="max_records" class="form-input">
+            {% for value in [50, 100, 200, 500, 800] %}
+            <option value="{{ value }}" {% if site_settings.audit_log_max_records == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="btn-primary"><i data-lucide="save" class="w-3.5 h-3.5"></i>{{ t(request, 'save') }}</button>
+      </form>
+    </div>
+  </details>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const list = document.getElementById('audit-list');
+    const button = document.getElementById('audit-density-toggle');
+    const label = document.getElementById('audit-density-label');
+    const key = 'admin-audit-compact';
+    function render(compact) {
+      list.classList.toggle('is-compact', compact);
+      button.setAttribute('aria-pressed', String(compact));
+      label.textContent = compact ? {{ t(request, 'comfortable_view') | tojson }} : {{ t(request, 'compact_view') | tojson }};
+    }
+    let compact = false;
+    try { compact = localStorage.getItem(key) === '1'; } catch (_) {}
+    render(compact);
+    button.addEventListener('click', function () {
+      compact = !compact;
+      render(compact);
+      try { localStorage.setItem(key, compact ? '1' : '0'); } catch (_) {}
+    });
+  })();
+</script>
 {% endblock %}

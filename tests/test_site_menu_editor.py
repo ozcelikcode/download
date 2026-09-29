@@ -50,6 +50,40 @@ async def test_theme_color_is_reflected_in_public_and_admin_pages(
     assert 'data-theme-color="green"' in admin_login.text
 
 
+async def test_theme_is_managed_from_appearance_without_changing_site_identity(
+    admin_client: AsyncClient, client: AsyncClient
+):
+    appearance = await admin_client.get("/admin/settings/appearance")
+    general = await admin_client.get("/admin/settings/general")
+    assert 'action="/admin/settings/theme"' in appearance.text
+    assert 'name="theme_color"' not in general.text
+    assert 'action="/admin/settings/seo"' not in general.text
+    assert 'action="/admin/settings/audit-log-limit"' not in general.text
+
+    response = await admin_client.post(
+        "/admin/settings/theme", data={"theme_color": "amoled"}
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == "/admin/settings/appearance"
+    home = await client.get("/")
+    assert 'data-theme-color="amoled"' in home.text
+    assert "Download Sitesi" in home.text
+
+    await admin_client.post(
+        "/admin/settings/branding",
+        data={"site_name": "Yeni İsim", "site_icon": "star"},
+    )
+    updated = await client.get("/")
+    assert 'data-theme-color="amoled"' in updated.text
+    assert "Yeni İsim" in updated.text
+
+    invalid = await admin_client.post(
+        "/admin/settings/theme", data={"theme_color": "unknown"}
+    )
+    assert invalid.status_code == 422
+    assert 'data-theme-color="amoled"' in (await client.get("/")).text
+
+
 async def test_amoled_admin_navigation_receives_neutral_theme_palette(admin_client: AsyncClient):
     response = await admin_client.post(
         "/admin/settings/branding",

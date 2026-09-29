@@ -954,6 +954,9 @@ async def site_health(
     _admin: str = Depends(require_admin),
 ):
     report = await get_admin_site_health(session)
+    site_settings = await crud.get_site_settings(session)
+    flash_message = request.session.pop("flash_message", None)
+    flash_type = request.session.pop("flash_type", "success")
     return templates.TemplateResponse(
         request=request,
         name="admin/site_health.html",
@@ -961,6 +964,9 @@ async def site_health(
             "request": request,
             "admin_user": _admin,
             "site_health": report,
+            "site_settings": site_settings,
+            "flash_message": flash_message,
+            "flash_type": flash_type,
         },
     )
 
@@ -2124,15 +2130,37 @@ async def settings_branding_update(
     theme_color: Optional[str] = Form(None),
     site_icon_color: Optional[str] = Form(None),
 ):
-    selected_theme = theme_color if theme_color in {"blue", "green", "red", "yellow", "cream", "amoled"} else "blue"
+    current = await crud.get_site_settings(session)
+    selected_theme = theme_color if theme_color in {"blue", "green", "red", "yellow", "cream", "amoled"} else current.theme_color
     data = SiteSettingsUpdate(
         site_name=site_name, site_icon=site_icon,
-        site_icon_color=site_icon_color or selected_theme, theme_color=selected_theme,
+        site_icon_color=site_icon_color or (selected_theme if theme_color else current.site_icon_color), theme_color=selected_theme,
     )
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "branding_updated")
     return _redirect("/admin/settings/general")
+
+
+@router.post("/settings/theme", name="admin_settings_theme")
+async def settings_theme_update(
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    _admin: str = Depends(require_admin),
+    theme_color: str = Form(...),
+):
+    if theme_color not in {"blue", "green", "red", "yellow", "cream", "amoled"}:
+        raise HTTPException(status_code=422, detail=translate(request, "unsupported_theme"))
+    current = await crud.get_site_settings(session)
+    updated = await crud.update_site_settings(session, SiteSettingsUpdate(
+        site_name=current.site_name,
+        site_icon=current.site_icon,
+        site_icon_color=theme_color,
+        theme_color=theme_color,
+    ))
+    refresh_site_branding_globals(updated)
+    request.session["flash_message"] = translate(request, "branding_updated")
+    return _redirect("/admin/settings/appearance")
 
 
 @router.post("/settings/seo", name="admin_settings_seo")
@@ -2155,7 +2183,7 @@ async def settings_seo_update(
         await crud.update_seo_settings(session, data)
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "seo_settings_updated")
-    return _redirect("/admin/settings/general#seo-settings")
+    return _redirect("/admin/site-health#seo-settings")
 
 
 @router.post("/settings/language", name="admin_settings_language")
@@ -2188,7 +2216,7 @@ async def settings_audit_log_limit_update(
         request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_message"] = translate(request, "audit_limit_updated")
-    return _redirect("/admin/settings/general")
+    return _redirect("/admin/audit")
 
 
 @router.post("/settings/account", name="admin_settings_account")

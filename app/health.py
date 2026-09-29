@@ -332,7 +332,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_home_metadata_missing",
             severity="info",
             count=missing_home_metadata,
-            href="/admin/settings/general#seo-settings",
+            href="/admin/site-health#seo-settings",
             recommendation_key="health_recommendation_seo_home_missing",
         ))
 
@@ -343,7 +343,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
                 key="seo_home_title_long",
                 severity="info",
                 count=1,
-                href="/admin/settings/general#seo-settings",
+                href="/admin/site-health#seo-settings",
                 recommendation_key="health_recommendation_seo_home_title",
             ))
 
@@ -354,7 +354,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
                 key="seo_home_description_long",
                 severity="info",
                 count=1,
-                href="/admin/settings/general#seo-settings",
+                href="/admin/site-health#seo-settings",
                 recommendation_key="health_recommendation_seo_home_description",
             ))
 
