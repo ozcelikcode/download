@@ -5,9 +5,10 @@
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
 {% endblock %}
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 <div class="max-w-5xl">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-    <div><a href="/admin/pages" class="text-xs text-slate-500 hover:underline">{{ t(request, 'pages') }}</a><h1 class="text-lg font-bold mt-1">{{ t(request, 'edit_page') if page else t(request, 'new_page') }}</h1></div>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    {{ page_heading(request, t(request, 'edit_page') if page else t(request, 'new_page'), t(request, 'pages_help'), t(request, 'pages'), '/admin/pages') }}
     {% if page and page.id %}<a href="/page/{{ page.slug }}" target="_blank" rel="noopener noreferrer" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'view') }}</a>{% endif %}
   </div>
   {% if error %}<p role="alert" class="mb-4 p-3 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-sm">{{ error }}</p>{% endif %}
@@ -22,7 +23,7 @@
       <p class="form-label mb-2">{{ t(request, 'page_access') }}</p>
       <div class="grid sm:grid-cols-2 gap-2">
         <label class="choice-card p-3"><input class="choice-input" type="radio" name="visibility" value="public" {% if not page or page.visibility == 'public' %}checked{% endif %}><span class="block font-medium text-sm">{{ t(request, 'public_page') }}</span><span class="form-hint">{{ t(request, 'public_page_help') }}</span></label>
-        <label class="choice-card p-3"><input class="choice-input" type="radio" name="visibility" value="private" {% if page and page.visibility == 'private' %}checked{% endif %}><span class="block font-medium text-sm">{{ t(request, 'private_page') }}</span><span class="form-hint">{{ t(request, 'private_page_help') }}</span></label>
+        {% if request.state.admin_role == 'admin' %}<label class="choice-card p-3"><input class="choice-input" type="radio" name="visibility" value="private" {% if page and page.visibility == 'private' %}checked{% endif %}><span class="block font-medium text-sm">{{ t(request, 'private_page') }}</span><span class="form-hint">{{ t(request, 'private_page_help') }}</span></label>{% endif %}
       </div>
     </div>
     <div class="flex flex-wrap justify-end gap-2">

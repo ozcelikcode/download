@@ -58,10 +58,10 @@ def _storage_files(root: Path) -> list[Path]:
                 if resolved.is_relative_to(root) and resolved.is_file():
                     files.append(resolved)
             except (OSError, RuntimeError) as exc:
-                logger.warning("Depolama girdisi okunamadı: path=%s error=%s", candidate, exc)
+                logger.warning("Storage entry could not be read: error_type=%s", type(exc).__name__)
         return files
     except (OSError, RuntimeError) as exc:
-        logger.warning("Depolama dizini taranamadı: path=%s error=%s", root, exc)
+        logger.warning("Storage directory could not be scanned: error_type=%s", type(exc).__name__)
         return []
 
 
@@ -89,7 +89,7 @@ def _scan_filesystem(
         try:
             private_storage_bytes += path.stat().st_size
         except OSError as exc:
-            logger.warning("Dosya boyutu okunamadı: path=%s error=%s", path, exc)
+            logger.warning("File size could not be read: error_type=%s", type(exc).__name__)
 
     return (
         missing_local_files,

@@ -2,11 +2,9 @@
 {% block title %}{{ t(request, 'trash') }}{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-  <div>
-    <h1 class="text-lg font-bold">{{ t(request, 'trash') }}</h1>
-    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t(request, 'trash_help') }}</p>
-  </div>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  {{ page_heading(request, t(request, 'trash'), t(request, 'trash_help'), t(request, 'contents'), '/admin/downloads') }}
   <div class="flex gap-2"><a href="/admin/pages/trash" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'pages') }}</a><a href="/admin/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a></div>
 </div>
 

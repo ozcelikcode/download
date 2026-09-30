@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "console": {
+      "()": "app.logging_config.ConsoleFormatter",
+      "format": "%(asctime)sZ | %(levelname)-8s | %(name)s | %(message)s",
+      "datefmt": "%Y-%m-%dT%H:%M:%S"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "formatter": "console",
+      "stream": "ext://sys.stderr"
+    }
+  },
+  "root": {"level": "INFO", "handlers": ["console"]},
+  "loggers": {
+    "uvicorn": {"level": "INFO", "handlers": [], "propagate": true},
+    "uvicorn.error": {"level": "INFO", "handlers": [], "propagate": true},
+    "uvicorn.access": {"level": "WARNING", "handlers": [], "propagate": false},
+    "watchfiles": {"level": "WARNING", "handlers": [], "propagate": true},
+    "watchfiles.main": {"level": "WARNING", "handlers": [], "propagate": true},
+    "httpx": {"level": "WARNING", "handlers": [], "propagate": true},
+    "httpcore": {"level": "WARNING", "handlers": [], "propagate": true}
+  }
+}

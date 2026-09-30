@@ -9,6 +9,7 @@ FastAPI bağımlılıkları (Dependencies).
 from __future__ import annotations
 
 import logging
+import asyncio
 import hashlib
 import hmac
 import secrets
@@ -19,10 +20,12 @@ from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.database import get_db  # noqa: F401 — re-export
 from app.models import SiteSettings, User
+from app.i18n import translate
 from app import audit  # noqa: F401 — işlem geçmişi olaylarını kaydeder
 
 logger = logging.getLogger(__name__)
@@ -38,24 +41,23 @@ def credential_stamp(username: str, password_hash: str) -> str:
     return hmac.new(settings.app_secret_key.encode(), (username + "\0" + password_hash).encode(), hashlib.sha256).hexdigest()
 
 
-def create_admin_session_token(username: str, password_hash: str | None = None, generation: str = "", *, user_id: int) -> str:
-    stamp = credential_stamp(username, settings.admin_password_hash if password_hash is None else password_hash)
+def create_admin_session_token(username: str, password_hash: str, generation: str = "", *, user_id: int) -> str:
+    stamp = credential_stamp(username, password_hash)
     return _serializer.dumps({"id": user_id, "u": username, "v": stamp, "g": generation, "nonce": secrets.token_urlsafe(16)}, salt="admin-session")
 
 
 # ---------------------------------------------------------------------------
 # Admin kimlik doğrulama
 # ---------------------------------------------------------------------------
-def verify_admin_password(plain: str, stored_hash: Optional[str] = None) -> bool:
+def verify_admin_password(plain: str, stored_hash: str) -> bool:
     """
     Verilen plain şifreyi bcrypt hash ile karşılaştırır.
-    `stored_hash` verilmezse (ör. eski çağrı yerleri) .env'deki
-    ADMIN_PASSWORD_HASH kullanılır. Hash yoksa (placeholder) her zaman False döner.
+    Reject missing or placeholder hashes rather than falling back to configuration.
     """
-    effective_hash = (stored_hash or settings.admin_password_hash).strip()
+    effective_hash = stored_hash.strip()
     if not effective_hash or "placeholder" in effective_hash:
         logger.warning(
-            "Admin şifre hash'i ayarlanmamış! Admin girişi devre dışı."
+            "Administrator password hash is missing; sign-in is disabled"
         )
         return False
     try:
@@ -69,14 +71,14 @@ def verify_admin_password(plain: str, stored_hash: Optional[str] = None) -> bool
             return False
         return bcrypt.checkpw(plain.encode(), effective_hash.encode())
     except (ValueError, TypeError):
-        logger.error("Yönetici parola özeti doğrulanamadı")
+        logger.error("Password hash verification failed")
         return False
 
 
 def hash_admin_password(plain: str) -> str:
-    """Rastgele salt ile bellek maliyetli scrypt parola özeti üretir."""
+    """Generate a memory-hard scrypt password hash with a random salt."""
     if len(plain.encode()) > 1024:
-        raise ValueError("Parola çok uzun")
+        raise ValueError("Password is too long")
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(plain.encode(), salt=salt, n=131072, r=8, p=1, maxmem=256*1024*1024)
     return f"scrypt${salt.hex()}${digest.hex()}"
@@ -84,6 +86,17 @@ def hash_admin_password(plain: str) -> str:
 
 # Unknown usernames perform the same expensive check as known accounts.
 DUMMY_PASSWORD_HASH = hash_admin_password(secrets.token_urlsafe(32))
+_password_work_slots = asyncio.Semaphore(2)
+
+
+async def verify_password_async(plain: str, stored_hash: str) -> bool:
+    async with _password_work_slots:
+        return await run_in_threadpool(verify_admin_password, plain, stored_hash)
+
+
+async def hash_password_async(plain: str) -> str:
+    async with _password_work_slots:
+        return await run_in_threadpool(hash_admin_password, plain)
 
 
 async def require_admin(
@@ -109,7 +122,7 @@ async def require_admin(
             headers={"Location": "/admin/login"},
         )
     if not role_allows(user.role, request.url.path, request.method):
-        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz yok.")
+        raise HTTPException(status_code=403, detail=translate(request, "permission_denied"))
     session.info["audit_actor"] = user.username
     request.state.admin_user = user.username
     request.state.admin_role = user.role
@@ -160,20 +173,6 @@ def role_allows(role: str, path: str, method: str) -> bool:
     if path == "/admin/settings" or path.startswith("/admin/settings/"):
         return not path.startswith(("/admin/settings/session-duration", "/admin/settings/audit-log-limit", "/admin/settings/maintenance"))
     return False
-
-
-async def get_optional_admin_username(request: Request, account: SiteSettings, session: AsyncSession) -> Optional[str]:
-    """
-    `require_admin`'in aksine hiçbir şeyi zorunlu kılmaz — sadece geçerli bir
-    admin oturumu varsa kullanıcı adını, yoksa None döndürür. Herkese açık
-    sayfalarda (navbar'da admin durumu, indirme sayfasında admin aksiyonları)
-    kullanılır. İmza, süre, güncel hesap bilgileri ve oturum kuşağı doğrulanır.
-    """
-    token = request.cookies.get(SESSION_COOKIE)
-    if not token:
-        return None
-    user = await authenticated_user(token, account, session)
-    return user.username if user is not None and user.role == "admin" else None
 
 
 # ---------------------------------------------------------------------------

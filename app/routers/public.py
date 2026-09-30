@@ -31,7 +31,7 @@ from app import crud
 from app.config import settings
 from app.checksums import file_checksum
 from app.content_security import normalize_http_url, rich_text_to_plain_text
-from app.dependencies import get_db, get_optional_admin_username, get_request_ip
+from app.dependencies import SESSION_COOKIE, authenticated_user, get_db, get_request_ip
 from app.i18n import translate
 from app.link_checks import check_clicked_link
 from app.models import Category, Download, DownloadTag, FileType, Page, SiteSettings, Tag
@@ -195,7 +195,9 @@ async def _sidebar_context(
     sidebar_block_order = [
         b for b in site_settings.sidebar_block_order.split(",") if b
     ] or ["search", "categories", "tags"]
-    admin_username = await get_optional_admin_username(request, site_settings, session)
+    staff = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), site_settings, session)
+    admin_username = staff.username if staff is not None and staff.role == "admin" else None
+    staff_username = staff.username if staff is not None else None
     try:
         hero_components = json.loads(site_settings.hero_components)
     except (TypeError, json.JSONDecodeError):
@@ -211,6 +213,8 @@ async def _sidebar_context(
         "sidebar_block_order": sidebar_block_order,
         "is_admin": bool(admin_username),
         "admin_username": admin_username,
+        "is_staff": bool(staff_username),
+        "staff_username": staff_username,
         "site_settings": site_settings,
         "hero_components": hero_components,
     }
@@ -551,23 +555,22 @@ async def do_download(
     if download_type == FileType.local:
         file_path = _private_download_file(download.file_path)
         if file_path is None:
-            logger.error("Dosya bulunamadı: %s", download.file_path)
+            logger.error("Download file not found: download_id=%d", download_id)
             raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadı.")
     else:
         try:
             external_url = normalize_http_url(download.external_url)
         except ValueError:
-            logger.error("Güvensiz dış bağlantı engellendi: download_id=%d", download_id)
+            logger.error("Unsafe external link blocked: download_id=%d", download_id)
             raise HTTPException(status_code=404, detail="İndirme bağlantısı geçersiz.")
         if external_url is None:
-            logger.error("Dış bağlantı bulunamadı: download_id=%d", download_id)
+            logger.error("External link not found: download_id=%d", download_id)
             raise HTTPException(status_code=404, detail="İndirme bağlantısı bulunamadı.")
 
     allowed = await crud.record_download_if_allowed(
         session,
         download_id,
         ip,
-        None,
         max_per_hour=settings.rate_limit_downloads_per_hour,
     )
     if not allowed:

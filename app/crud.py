@@ -135,7 +135,7 @@ async def create_category(session: AsyncSession, data: CategoryCreate) -> Catego
     session.add(category)
     await session.commit()
     await session.refresh(category)
-    logger.info("Kategori oluşturuldu: id=%d slug=%r", category.id, category.slug)
+    logger.info("Category created: id=%d", category.id)
     return category
 
 
@@ -160,7 +160,7 @@ async def update_category(
         await _replace_category_menu_urls(session, old_slug, category.slug)
     await session.commit()
     await session.refresh(category)
-    logger.info("Kategori güncellendi: id=%d", category.id)
+    logger.info("Category updated: id=%d", category.id)
     return category
 
 
@@ -169,7 +169,7 @@ async def delete_category(session: AsyncSession, category: Category) -> None:
         raise ValueError("Zorunlu kategori silinemez.")
     await session.delete(category)
     await session.commit()
-    logger.info("Kategori silindi: id=%d", category.id)
+    logger.info("Category deleted: id=%d", category.id)
 
 
 async def transfer_and_delete_categories(
@@ -257,7 +257,7 @@ async def get_or_create_tag(session: AsyncSession, name: str) -> Tag:
         session.add(tag)
         await session.commit()
         await session.refresh(tag)
-        logger.info("Tag oluşturuldu: id=%d name=%r", tag.id, tag.name)
+        logger.info("Tag created: id=%d", tag.id)
     return tag
 
 
@@ -326,7 +326,7 @@ async def create_menu_item(session: AsyncSession, data: MenuItemCreate) -> MenuI
     session.add(item)
     await session.commit()
     await session.refresh(item)
-    logger.info("Menü öğesi oluşturuldu: id=%d label=%r location=%r", item.id, item.label, item.location)
+    logger.info("Menu item created: id=%d", item.id)
     return item
 
 
@@ -338,14 +338,14 @@ async def update_menu_item(
         setattr(item, field, value)
     await session.commit()
     await session.refresh(item)
-    logger.info("Menü öğesi güncellendi: id=%d", item.id)
+    logger.info("Menu item updated: id=%d", item.id)
     return item
 
 
 async def delete_menu_item(session: AsyncSession, item: MenuItem) -> None:
     await session.delete(item)
     await session.commit()
-    logger.info("Menü öğesi silindi: id=%d", item.id)
+    logger.info("Menu item deleted: id=%d", item.id)
 
 
 async def reorder_menu_items(session: AsyncSession, ordered_ids: List[int]) -> None:
@@ -384,8 +384,7 @@ async def update_site_settings(
     settings_row.theme_color = data.theme_color
     await session.commit()
     await session.refresh(settings_row)
-    logger.info("Site kimliği güncellendi: name=%r icon=%r color=%r",
-                settings_row.site_name, settings_row.site_icon, settings_row.site_icon_color)
+    logger.info("Site identity updated")
     return settings_row
 
 
@@ -397,7 +396,7 @@ async def update_seo_settings(
     settings_row.seo_meta_description = data.seo_meta_description
     await session.commit()
     await session.refresh(settings_row)
-    logger.info("SEO ana sayfa metaverileri güncellendi")
+    logger.info("Homepage SEO metadata updated")
     return settings_row
 
 
@@ -466,20 +465,6 @@ async def update_menu_limits(
     settings_row.footer_limit = max(3, min(footer_limit, 12))
     settings_row.sidebar_category_limit = max(3, min(sidebar_category_limit, 20))
     settings_row.sidebar_tag_limit = max(5, min(sidebar_tag_limit, 25))
-    await session.commit()
-    await session.refresh(settings_row)
-    return settings_row
-
-
-async def update_admin_credentials(
-    session: AsyncSession, username: Optional[str], password_hash: Optional[str]
-) -> SiteSettings:
-    """Admin kullanıcı adı/şifre hash'ini DB'ye kaydeder (None → değiştirme)."""
-    settings_row = await get_site_settings(session)
-    if username:
-        settings_row.admin_username = username
-    if password_hash:
-        settings_row.admin_password_hash = password_hash
     await session.commit()
     await session.refresh(settings_row)
     return settings_row
@@ -965,7 +950,7 @@ async def create_download(
 
     await session.commit()
     await session.refresh(download)
-    logger.info("Download oluşturuldu: id=%d slug=%r", download.id, download.slug)
+    logger.info("Download created: id=%d", download.id)
     return download
 
 
@@ -1065,7 +1050,7 @@ async def update_download(
 
     await session.commit()
     await session.refresh(download)
-    logger.info("Download güncellendi: id=%d", download.id)
+    logger.info("Download updated: id=%d", download.id)
     return download
 
 
@@ -1079,7 +1064,7 @@ async def delete_download(session: AsyncSession, download: Download) -> None:
     )
     add_event(session, "trash", "downloads", download.title, entity_id=download.id)
     await session.commit()
-    logger.info("Download silinenlere taşındı: id=%d slug=%r", download.id, download.slug)
+    logger.info("Download moved to trash: id=%d", download.id)
 
 
 async def get_trashed_downloads(session: AsyncSession, page: int, page_size: int = 20) -> tuple[list[Download], int]:
@@ -1196,55 +1181,18 @@ async def increment_download_count(
 # DownloadLog CRUD (Rate Limiting)
 # ===========================================================================
 
-async def create_download_log(
-    session: AsyncSession,
-    download_id: int,
-    ip_address: str,
-    user_agent: Optional[str] = None,
-) -> DownloadLog:
-    from app.security import client_key
-    log = DownloadLog(
-        download_id=download_id,
-        client_key=client_key(ip_address, context="download"),
-    )
-    session.add(log)
-    await session.commit()
-    return log
-
-
-async def check_rate_limit(
-    session: AsyncSession,
-    ip_address: str,
-    max_per_hour: int,
-) -> bool:
-    from app.security import client_key
-    """
-    True → indirmeye izin ver.
-    False → rate limit aşıldı.
-    """
-    window_start = datetime.now(timezone.utc) - timedelta(hours=1)
-    stmt = select(func.count()).where(
-        DownloadLog.client_key == client_key(ip_address, context="download"),
-        DownloadLog.downloaded_at >= window_start,
-    )
-    result = await session.execute(stmt)
-    count = result.scalar_one()
-    return count < max_per_hour
-
-
 async def record_download_if_allowed(
     session: AsyncSession,
     download_id: int,
     ip_address: str,
-    user_agent: Optional[str],
     max_per_hour: int,
 ) -> bool:
-    from app.security import client_key
     """Kotayı, indirme kaydını ve sayacı tek bir SQLite işlemi içinde günceller.
 
     `BEGIN IMMEDIATE` eşzamanlı isteklerin aynı eski sayımı görmesini engeller.
     Bu fonksiyon çağrılmadan önce sunulacak hedefin varlığı doğrulanmış olmalıdır.
     """
+    from app.security import client_key
     await session.rollback()
     await session.execute(text("BEGIN IMMEDIATE"))
     try:

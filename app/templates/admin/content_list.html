@@ -2,16 +2,10 @@
 {% block title %}{{ t(request, 'contents') }}{% endblock %}
 
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 
 <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-  <div>
-    <div class="breadcrumb mb-1">
-      <a href="/admin">{{ t(request, 'management') }}</a>
-      <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'contents') }}</span>
-    </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'contents') }}</h1>
-  </div>
+  {{ page_heading(request, t(request, 'contents'), t(request, 'contents_page_help')) }}
   <div class="flex flex-wrap items-center gap-2">
     <a href="/admin/downloads/trash" class="btn-secondary py-2 px-3 text-sm shrink-0"><i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i><span>{{ t(request, 'trash') }}</span></a>
     <a href="/admin/downloads/new" class="btn-primary shrink-0 whitespace-nowrap"><i data-lucide="plus" class="w-4 h-4 shrink-0"></i>{{ t(request, 'new_file') }}</a>

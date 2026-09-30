@@ -35,6 +35,7 @@ import asyncio
 import json
 import logging
 import math
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -74,9 +75,9 @@ from app.dependencies import (
     DUMMY_PASSWORD_HASH,
     get_db,
     get_request_ip,
-    hash_admin_password,
+    hash_password_async,
     require_admin,
-    verify_admin_password,
+    verify_password_async,
     SESSION_COOKIE,
 )
 from app.models import FileType, IconType, Page, User
@@ -98,7 +99,6 @@ from app.templating import refresh_site_branding_globals, templates
 from app.uploads import save_upload
 from app.audit import add_event
 from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
-from starlette.concurrency import run_in_threadpool
 import secrets
 
 logger = logging.getLogger(__name__)
@@ -260,7 +260,7 @@ async def _save_upload(file: UploadFile) -> str:
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / _unique_upload_filename(file.filename)
     await save_upload(file, dest)
-    logger.info("Dosya yüklendi: %s", dest)
+    logger.info("File uploaded")
     return str(dest)
 
 
@@ -289,7 +289,7 @@ async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if compress:
         compress_image_file(dest)
-    logger.info("İkon yüklendi: %s (sıkıştırma=%s)", dest, compress)
+    logger.info("Icon uploaded: compressed=%s", compress)
     return f"/static/uploads/icons/{filename}"
 
 
@@ -312,7 +312,7 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
         await save_upload(file, dest, validator=validate_raster_image_file)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    logger.info("İkon yerinde güncellendi (link değişmedi): %s", dest)
+    logger.info("Icon replaced in place")
     return existing_path
 
 
@@ -384,7 +384,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
         _icon_fetch_progress[token].update(
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
-        logger.info("Dış görsel indirildi: %s -> %s", url, dest)
+        logger.info("Remote image downloaded")
     except asyncio.CancelledError:
         if dest is not None:
             dest.unlink(missing_ok=True)
@@ -392,7 +392,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
     except Exception as exc:
         if dest is not None:
             dest.unlink(missing_ok=True)
-        logger.error("Dış görsel indirme hatası (%s): %s", url, exc)
+        logger.error("Remote image download failed: error_type=%s", type(exc).__name__)
         _icon_fetch_progress[token].update({"done": True, "error": str(exc)})
 
 
@@ -659,7 +659,7 @@ async def media_upload_file(
     await save_upload(file, dest)
     web_path = f"/admin/media/files/{quote(filename)}"
     await crud.record_media_upload(session, web_path, _admin)
-    logger.info("Dosya arşivine yüklendi: %s", dest)
+    logger.info("File added to media library")
     return {"path": web_path, "storage_path": str(dest), "name": filename}
 
 
@@ -704,7 +704,7 @@ async def media_replace_file(
     _ensure_safe_public_upload(dest.name, file.content_type)
     _ensure_safe_public_upload(file.filename, file.content_type)
     await save_upload(file, dest)
-    logger.info("Dosya yerinde güncellendi (link değişmedi): %s", dest)
+    logger.info("File replaced in place")
     add_event(session, "replace", "media_assets", path)
     await session.commit()
     return {"path": path}
@@ -723,7 +723,7 @@ async def media_delete_file(
         try:
             full.unlink()
         except OSError as exc:
-            logger.exception("Dosya silme hatası: %s", exc)
+            logger.exception("File deletion failed")
             raise HTTPException(status_code=500, detail="Dosya silinemedi.") from exc
     await crud.delete_media_asset(session, path)
     return {"deleted": True}
@@ -804,7 +804,7 @@ async def delete_icon_image(
         try:
             full.unlink()
         except OSError as exc:
-            logger.exception("İkon silme hatası: %s", exc)
+            logger.exception("Icon deletion failed")
             raise HTTPException(status_code=500, detail="Görsel silinemedi.") from exc
     await crud.delete_media_asset(session, path)
     return {"deleted": True}
@@ -836,7 +836,7 @@ async def upload_icon_auto_crop(
     try:
         make_square_icon(src, dest, size=max(32, min(int(size), 1024)))
     except Exception as exc:
-        logger.error("Otomatik ikon kırpma hatası (%s): %s", src, exc)
+        logger.error("Automatic icon cropping failed: error_type=%s", type(exc).__name__)
         raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
 
     add_event(session, "crop", "media_assets", f"/static/uploads/icons/{dest.name}")
@@ -874,7 +874,7 @@ async def login_post(
     user = await session.scalar(select(User).where(User.username == username, User.is_active.is_(True), User.deleted_at.is_(None)))
     # Always perform a memory-hard check, including for unknown accounts.
     effective_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
-    password_valid = await run_in_threadpool(verify_admin_password, password, effective_hash)
+    password_valid = await verify_password_async(password, effective_hash)
     if user is None or not password_valid:
         logger.warning("Failed staff login attempt")
         add_event(session, "error", "login", "Failed staff login attempt", actor="anonymous", level="critical")
@@ -886,7 +886,7 @@ async def login_post(
         )
 
     if not user.password_hash.startswith("scrypt$"):
-        user.password_hash = await run_in_threadpool(hash_admin_password, password)
+        user.password_hash = await hash_password_async(password)
         await session.commit()
     await clear_successful_attempt(session, attempt_id)
     request.session.clear()
@@ -1277,7 +1277,7 @@ async def download_new_post(
         download = await crud.create_download(session, data)
     except Exception as exc:
         await session.rollback()
-        logger.error("Download oluşturma hatası: %s", exc)
+        logger.error("Download creation failed: error_type=%s", type(exc).__name__)
         error_message = _download_form_error(request, exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
@@ -1393,7 +1393,7 @@ async def download_draft_autosave(
         return JSONResponse({"ok": False, "message": _download_form_error(request, exc)}, status_code=422)
     except Exception:
         await session.rollback()
-        logger.exception("Taslak otomatik kaydedilemedi")
+        logger.exception("Draft autosave failed")
         return JSONResponse(
             {"ok": False, "message": translate(request, "draft_failed")}, status_code=500
         )
@@ -1548,7 +1548,7 @@ async def download_edit_post(
         await crud.update_download(session, download, data)
     except Exception as exc:
         await session.rollback()
-        logger.error("Download güncelleme hatası: %s", exc)
+        logger.error("Download update failed: error_type=%s", type(exc).__name__)
         error_message = _download_form_error(request, exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
@@ -2243,7 +2243,7 @@ async def settings_account_update(
     current_user = await session.get(User, request.state.admin_id)
     effective_hash = current_user.password_hash
 
-    if not await run_in_threadpool(verify_admin_password, current_password, effective_hash):
+    if not await verify_password_async(current_password, effective_hash):
         request.session["flash_message"] = translate(request, "wrong_current_password")
         return _redirect("/admin/settings/account")
 
@@ -2253,6 +2253,10 @@ async def settings_account_update(
     new_password = new_password or ""
     new_password_confirm = new_password_confirm or ""
 
+    if new_username and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{2,49}", new_username):
+        request.session["flash_message"] = translate(request, "user_invalid")
+        return _redirect("/admin/settings/account")
+
     if new_password and new_password != new_password_confirm:
         request.session["flash_message"] = translate(request, "passwords_mismatch")
         return _redirect("/admin/settings/account")
@@ -2261,7 +2265,7 @@ async def settings_account_update(
         request.session["flash_message"] = translate(request, "password_policy_failed")
         return _redirect("/admin/settings/account")
 
-    password_hash = await run_in_threadpool(hash_admin_password, new_password) if new_password else None
+    password_hash = await hash_password_async(new_password) if new_password else None
     if new_username and new_username != current_user.username:
         existing = await session.scalar(select(User).where(User.username == new_username))
         if existing:
@@ -2270,16 +2274,14 @@ async def settings_account_update(
         current_user.username = new_username
     if password_hash:
         current_user.password_hash = password_hash
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        request.session["flash_message"] = translate(request, "username_taken")
+        return _redirect("/admin/settings/account")
 
-    changed = []
-    if new_username:
-        changed.append("kullanıcı adı")
-    if new_password:
-        changed.append("şifre")
-    request.session["flash_message"] = (
-        f"{' ve '.join(changed).capitalize()} güncellendi." if changed else "Değişiklik yapılmadı."
-    )
+    request.session["flash_message"] = translate(request, "account_updated" if new_username or new_password else "no_changes")
     return _redirect("/admin/settings/account")
 
 

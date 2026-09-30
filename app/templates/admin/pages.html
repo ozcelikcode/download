@@ -1,8 +1,9 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'pages') }}{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-  <div><h1 class="text-lg font-bold">{{ t(request, 'pages') }}</h1><p class="form-hint">{{ t(request, 'pages_help') }}</p></div>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  {{ page_heading(request, t(request, 'pages'), t(request, 'pages_help'), t(request, 'contents'), '/admin/downloads') }}
   <div class="flex items-center gap-2"><a href="/admin/pages/trash" class="btn-secondary"><i data-lucide="trash-2" class="w-4 h-4"></i>{{ t(request, 'trash') }}</a><a href="/admin/pages/new" class="btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>{{ t(request, 'new_page') }}</a></div>
 </div>
 <div class="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden bg-white dark:bg-slate-900">

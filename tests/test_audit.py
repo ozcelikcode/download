@@ -46,10 +46,12 @@ async def test_rolled_back_changes_leave_no_history(db_session):
 
 async def test_sensitive_values_are_redacted(db_session):
     db_session.info["audit_actor"] = "admin"
-    await crud.update_admin_credentials(db_session, "admin", "secret-hash-not-for-history")
+    account = await crud.get_site_settings(db_session)
+    account.session_generation = "secret-generation-not-for-history"
+    await db_session.commit()
     logs = (await db_session.scalars(select(AuditLog))).all()
     assert logs
-    assert all("secret-hash-not-for-history" not in log.changes for log in logs)
+    assert all("secret-generation-not-for-history" not in log.changes for log in logs)
     assert any("[gizli]" in log.changes for log in logs)
 
 

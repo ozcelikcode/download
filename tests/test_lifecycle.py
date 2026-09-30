@@ -28,8 +28,6 @@ def password_hash():
 async def owner(client, session, password_hash):
     account = await crud.get_site_settings(session)
     account.site_name = "Doğrulanacak Site"
-    account.admin_username = "admin"
-    account.admin_password_hash = password_hash
     user = await session.scalar(select(User).where(User.username == "admin"))
     user.password_hash = password_hash
     await session.commit()
@@ -78,8 +76,8 @@ async def test_new_site_closed_until_owner_completes_setup(client, db_session, m
     assert (await client.get("/setup")).headers["location"] == "/admin/login"
     db_session.expire_all()
     account = await crud.get_site_settings(db_session)
-    assert account.admin_password_hash.startswith("scrypt$")
-    assert account.admin_username == "owner"
+    owner_user = await db_session.scalar(select(User).where(User.username == "owner"))
+    assert owner_user.password_hash.startswith("scrypt$")
     assert json.loads(account.hero_components)[1]["text"] == "Safe and Free Software"
     category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
     assert category is not None
@@ -146,7 +144,8 @@ async def test_setup_seeds_selected_language_without_rewriting_it_later(
     assert category.name == category_name
     assert json.loads(account.hero_components)[1]["text"] == hero_title
     db_session.expunge(category)
-    fresh = await reset_site(db_session, "full")
+    owner_user = await db_session.scalar(select(User).where(User.username == "owner"))
+    fresh = await reset_site(db_session, "full", preserve_user_id=owner_user.id)
     assert fresh.site_language == "en"
     assert fresh.content_language == language
     assert json.loads(fresh.hero_components)[1]["text"] == hero_title
@@ -262,7 +261,7 @@ async def test_reset_scopes_preserve_only_expected_data(
     assert local.exists() == (action == "settings")
     assert (await db_session.scalar(select(func.count()).select_from(Download))) == (1 if action == "settings" else 0)
     assert (await get_lifecycle(db_session)).installed == (action != "uninstall")
-    assert (fresh.admin_password_hash == password_hash) == (action != "uninstall")
+    assert bool(await db_session.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True)))) == (action != "uninstall")
     assert fresh.session_generation
     expected_hero = "Safe and Free Software" if action == "uninstall" else "Güvenli ve Ücretsiz Yazılımlar"
     assert json.loads(fresh.hero_components)[1]["text"] == expected_hero

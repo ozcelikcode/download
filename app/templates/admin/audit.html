@@ -1,16 +1,12 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'audit_history') }}{% endblock %}
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 <div class="max-w-6xl mx-auto space-y-5">
   <header class="audit-header">
     <div>
-      <div class="audit-heading">
-        <h1 class="text-xl font-semibold">{{ t(request, 'audit_history') }}</h1>
-        <span class="audit-count">{{ tf(request, 'audit_record_count', count=total) }}</span>
-      </div>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-        {{ t(request, 'audit_intro') }} <span class="text-xs text-slate-400 dark:text-slate-500">· {{ t(request, 'audit_private_note') }}</span>
-      </p>
+      {{ page_heading(request, t(request, 'audit_history'), t(request, 'audit_intro') ~ ' · ' ~ t(request, 'audit_private_note')) }}
+      <span class="audit-count mt-2 inline-flex">{{ tf(request, 'audit_record_count', count=total) }}</span>
     </div>
     <button id="audit-density-toggle" type="button" class="btn-secondary text-xs" aria-label="{{ t(request, 'audit_view_mode') }}" aria-controls="audit-list" aria-pressed="false">
       <i data-lucide="list-filter" class="w-3.5 h-3.5" aria-hidden="true"></i>
@@ -42,7 +38,7 @@
       <div class="audit-entry-line">
         <div class="audit-entry-main">
           <p class="audit-entry-title text-sm font-medium break-all">
-            {{ system_message(request, row.label) if row.entity == 'login' else row.label }}
+            {{ system_message(request, row.label) if row.entity in ['login', 'users'] else row.label }}
             <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span>
             {% if row.level == 'critical' %}
             <strong class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'critical') }}</strong>

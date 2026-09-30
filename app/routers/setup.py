@@ -13,14 +13,13 @@ from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.concurrency import run_in_threadpool
 
 from app import crud
 from app.config import settings
 from app.database import get_db
 from app.default_content import default_hero_components
 from app.dependencies import (SESSION_COOKIE, credential_stamp, get_request_ip,
-                              hash_admin_password, require_admin, verify_admin_password)
+                              hash_password_async, require_admin, verify_password_async)
 from app.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from app.lifecycle import get_lifecycle, reset_site, reset_storage_roots
 from app.models import Download, MediaAsset, MenuItem, User
@@ -89,18 +88,17 @@ async def install(request: Request, session: AsyncSession = Depends(get_db)):
         data = InstallationForm.model_validate(dict(form))
     except ValidationError:
         return setup_page(request, "setup_invalid", 422)
-    password_hash = await run_in_threadpool(hash_admin_password, data.password)
+    password_hash = await hash_password_async(data.password)
     state = await get_lifecycle(session)
     account = await crud.get_site_settings(session)
     account.site_name = data.site_name
     account.site_language = data.language
     account.content_language = data.language
     account.hero_components = default_hero_components(data.language)
-    account.admin_username = data.username
-    account.admin_password_hash = password_hash
     account.session_generation = secrets.token_hex(32)
+    next_user_id = (await session.scalar(select(func.max(User.id))) or 0) + 1
     await session.execute(delete(User))
-    session.add(User(username=data.username, password_hash=password_hash, role="admin"))
+    session.add(User(id=next_user_id, username=data.username, password_hash=password_hash, role="admin"))
     # Discard menu items seeded by older migrations on a fresh installation.
     await session.execute(delete(MenuItem))
     await crud.ensure_required_category(session, language=data.language, commit=False)
@@ -120,7 +118,7 @@ async def maintenance_page(request: Request, session: AsyncSession, error: str |
     account = await crud.get_site_settings(session)
     return templates.TemplateResponse(request=request, name="admin/settings_maintenance.html", context={
         "site_settings": account, "public_url": settings.app_base_url,
-        "admin_user": getattr(request.state, "admin_user", account.admin_username or settings.admin_username),
+        "admin_user": request.state.admin_user,
         "content_count": await session.scalar(select(func.count()).select_from(Download)),
         "media_count": await session.scalar(select(func.count()).select_from(MediaAsset)),
         "error": translate(request, error) if error else None,
@@ -148,7 +146,7 @@ async def authorize_reset(request: Request, session: AsyncSession = Depends(get_
     account = await crud.get_site_settings(session)
     current_user = await session.get(User, request.state.admin_id)
     password_hash = current_user.password_hash
-    if not await run_in_threadpool(verify_admin_password, data.password, password_hash):
+    if not await verify_password_async(data.password, password_hash):
         logger.warning("Password verification failed for site reset")
         return await maintenance_page(request, session, "wrong_current_password", 403)
     if data.action == "uninstall" and not setup_available():

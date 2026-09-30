@@ -86,7 +86,7 @@
       {% endfor %}
     </nav>
 
-    {% if is_admin %}
+    {% if is_staff %}
     {# Admin oturum durumu #}
     <div class="relative ml-auto md:ml-0 shrink-0" id="admin-menu-wrap">
       <button type="button" id="admin-toggle-btn"
@@ -94,7 +94,7 @@
         class="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors">
         <i data-lucide="{{ admin_icon }}" class="w-4 h-4 site-icon-color"
           style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
-        <span class="hidden sm:inline">{{ admin_username }}</span>
+        <span class="hidden sm:inline">{{ staff_username }}</span>
         <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
       </button>
       <div id="admin-menu" role="menu" class="hidden absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
@@ -112,7 +112,7 @@
     {% endif %}
 
     {# Tema seçici: Aydınlık / Karanlık / Sistem #}
-    <div class="relative {% if not is_admin %}ml-auto md:ml-0{% endif %} shrink-0" id="theme-menu-wrap">
+    <div class="relative {% if not is_staff %}ml-auto md:ml-0{% endif %} shrink-0" id="theme-menu-wrap">
       <button type="button" id="theme-toggle-btn"
         data-disclosure-button aria-controls="theme-menu" aria-expanded="false" aria-haspopup="menu"
         class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"

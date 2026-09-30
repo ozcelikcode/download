@@ -6,6 +6,7 @@ from app.locales.es import STRINGS as SPANISH_STRINGS
 from app.locales.fr import STRINGS as FRENCH_STRINGS
 from app.locales.pages import STRINGS as PAGE_STRINGS
 from app.locales.users import STRINGS as USER_STRINGS
+from app.locales.admin_layout import STRINGS as ADMIN_LAYOUT_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -46,7 +47,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_versions": "Bu içerik için henüz bir sürüm geçmişi yok.", "delete_failed": "İçerik silinemedi. Lütfen tekrar deneyin.",
         "not_found": "Sayfa Bulunamadı", "not_found_text": "Aradığınız sayfa taşınmış, silinmiş ya da hiç var olmamış olabilir.",
         "search_anything": "Bir şey arayın…", "too_many": "Çok Fazla İstek", "limit_reached": "Saatlik indirme limitinize ulaştınız.",
-        "limit_text": "Spam'i önlemek amacıyla her IP adresi için saatlik indirme sınırı uygulanmaktadır. Lütfen bir süre bekleyip tekrar deneyin.",
+        "limit_text": "Spam'i önlemek için ziyaretçi başına saatlik indirme sınırı uygulanır. Lütfen bir süre bekleyip tekrar deneyin.",
         "limit_reset": "Limit 1 saat içinde sıfırlanacaktır.", "server_error": "Sunucu Hatası",
         "server_error_text": "Beklenmedik bir hata oluştu. Sunucumuz bu hatayı kayıt altına aldı. Lütfen birkaç saniye bekleyip tekrar deneyin.",
         "refresh": "Yenile", "filter_clear": "Filtreyi temizle", "search_results": "için arama sonuçları",
@@ -93,7 +94,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "no_versions": "This content does not have any version history yet.", "delete_failed": "Content could not be deleted. Please try again.",
         "not_found": "Page Not Found", "not_found_text": "The page may have been moved, deleted, or never existed.",
         "search_anything": "Search for something…", "too_many": "Too Many Requests", "limit_reached": "You have reached the hourly download limit.",
-        "limit_text": "An hourly download limit is applied per IP address to prevent spam. Please wait and try again.",
+        "limit_text": "An hourly download limit is applied per visitor to prevent spam. Please wait and try again.",
         "limit_reset": "The limit will reset within 1 hour.", "server_error": "Server Error",
         "server_error_text": "An unexpected error occurred and was logged. Please wait a few seconds and try again.",
         "refresh": "Refresh", "filter_clear": "Clear filter", "search_results": "search results",
@@ -720,6 +721,10 @@ for language, strings in PAGE_STRINGS.items():
     TRANSLATIONS[language].update(strings)
 for language, strings in USER_STRINGS.items():
     TRANSLATIONS[language].update(strings)
+for language, strings in ADMIN_LAYOUT_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for key in ("staff_session_opened", "staff_login_failed", "staff_login_limited", "staff_auth_rejected"):
+    _SYSTEM_MESSAGE_KEYS[TRANSLATIONS["en"][key]] = key
 
 
 def system_message(request: Request | None, message: str) -> str:

@@ -32,11 +32,11 @@ endif
 
 # Development server with hot reload.
 dev:
-	.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
+	.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app --no-access-log --log-config app/logging.json --no-use-colors
 
 # Use one worker for SQLite and in-memory upload progress.
 prod:
-	.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+	.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --no-access-log --log-config app/logging.json --no-use-colors
 
 # Apply database migrations.
 migrate:

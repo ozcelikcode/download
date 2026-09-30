@@ -44,7 +44,7 @@ FIELD_LABELS = {
 
 
 def _safe_value(key: str, value: object) -> object:
-    if "password" in key or "secret" in key or "ip_address" in key or "client_key" in key:
+    if "password" in key or "secret" in key or key == "session_generation" or "ip_address" in key or "client_key" in key:
         return "[gizli]"
     if isinstance(value, enum.Enum):
         return value.value

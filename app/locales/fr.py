@@ -88,7 +88,7 @@ STRINGS: dict[str, str] = {
     'search_anything': 'Rechercher quelque chose…',
     'too_many': 'Trop de demandes',
     'limit_reached': 'Vous avez atteint la limite horaire de téléchargement.',
-    'limit_text': 'Une limite de téléchargement horaire est appliquée par adresse IP pour éviter le spam. Veuillez patienter et réessayer.',
+    'limit_text': 'Une limite de téléchargement horaire par visiteur évite les abus. Veuillez patienter et réessayer.',
     'limit_reset': 'La limite sera réinitialisée dans 1 heure.',
     'server_error': 'Erreur de serveur',
     'server_error_text': "Une erreur inattendue s'est produite et a été enregistrée. Veuillez patienter quelques secondes et réessayer.",

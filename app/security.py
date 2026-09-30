@@ -76,7 +76,8 @@ async def require_csrf(request: Request) -> None:
         if content_type.startswith(("application/x-www-form-urlencoded", "multipart/form-data")):
             submitted = (await request.form()).get("csrf_token")
     if not expected or not isinstance(submitted, str) or not secrets.compare_digest(expected, submitted):
-        raise HTTPException(status_code=403, detail="Güvenlik doğrulaması başarısız. Sayfayı yenileyip tekrar deneyin.")
+        from app.i18n import translate
+        raise HTTPException(status_code=403, detail=translate(request, "csrf_failed"))
 
 
 async def reserve_login_attempt(session: AsyncSession, ip: str) -> int:

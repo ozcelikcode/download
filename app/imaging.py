@@ -86,9 +86,9 @@ def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:
             img.save(path, format="PNG", optimize=True)
 
         after = path.stat().st_size
-        logger.info("Görsel sıkıştırıldı: %s (%.1f KB)", path.name, after / 1024)
+        logger.info("Image compressed: size_kb=%.1f", after / 1024)
     except Exception as exc:
-        logger.warning("Görsel sıkıştırılamadı (%s): %s", path, exc)
+        logger.warning("Image compression failed: error_type=%s", type(exc).__name__)
 
 
 def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
@@ -113,4 +113,4 @@ def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
 
     # `with` bloğu kapandı (kaynak handle serbest) — artık aynı yola güvenle yazabiliriz.
     img.save(dest_path, format="PNG", optimize=True)
-    logger.info("Otomatik ikon oluşturuldu: %s (%dx%d)", dest_path.name, size, size)
+    logger.info("Automatic icon created: width=%d height=%d", size, size)

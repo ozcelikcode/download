@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import AsyncIterator, Iterator, Literal
 
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.engine import make_url
 from starlette.concurrency import run_in_threadpool
@@ -284,8 +284,9 @@ async def reset_site(session: AsyncSession, action: ResetAction, preserve_user_i
     roots = reset_storage_roots() if action != "settings" else []
     session.info["audit_suppressed"] = True
     preserved_user = await session.get(User, preserve_user_id) if preserve_user_id is not None else None
-    username = preserved_user.username if preserved_user else current.admin_username or settings.admin_username
-    password_hash = preserved_user.password_hash if preserved_user else current.admin_password_hash or settings.admin_password_hash
+    if action == "full" and (preserved_user is None or preserved_user.role != "admin" or not preserved_user.is_active):
+        raise ValueError("An active administrator must be selected for a full reset")
+    next_user_id = (await session.scalar(select(func.max(User.id))) or 0) + 1 if action == "full" else None
     language = current.site_language
     content_language = current.content_language
     if action == "settings":
@@ -299,8 +300,6 @@ async def reset_site(session: AsyncSession, action: ResetAction, preserve_user_i
     await session.delete(current)
     await session.flush()
     fresh = SiteSettings(
-        admin_username=username if action != "uninstall" else None,
-        admin_password_hash=password_hash if action != "uninstall" else None,
         site_language=language if action != "uninstall" else "en",
         content_language=content_language if action != "uninstall" else "en",
         hero_components=default_hero_components(content_language if action != "uninstall" else "en"),
@@ -308,7 +307,7 @@ async def reset_site(session: AsyncSession, action: ResetAction, preserve_user_i
     )
     session.add(fresh)
     if action == "full":
-        session.add(User(username=username, password_hash=password_hash, role="admin"))
+        session.add(User(id=next_user_id, username=preserved_user.username, password_hash=preserved_user.password_hash, role="admin"))
     await session.commit()
     if action != "settings":
         await finish_pending_reset(session)

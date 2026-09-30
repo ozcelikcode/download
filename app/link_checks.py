@@ -72,7 +72,7 @@ async def check_clicked_link(download_id: int, url: str) -> None:
             await save_link_result(session, download_id, url, result, started_at)
             await session.commit()
     except Exception:
-        logger.exception("Tıklama sonrası bağlantı kontrolü başarısız: download_id=%d", download_id)
+        logger.exception("Link check after click failed: download_id=%d", download_id)
     finally:
         _click_checks_in_flight.discard(download_id)
 

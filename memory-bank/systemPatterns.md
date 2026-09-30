@@ -9,7 +9,8 @@
 
 ## Security and lifecycle
 
-- Signed administrator sessions, CSRF checks, throttling, request-size limits, sanitized rich text, and validated URLs protect application boundaries.
+- Signed per-user sessions, server-side role checks, CSRF checks, throttling, request-size limits, sanitized rich text, and validated URLs protect application boundaries.
+- The `users` table stores roles and password hashes. An active administrator must remain; manager requests to delete editors require administrator approval. Raw client IPs and user-agent strings are not persisted by application tables.
 - Local downloads are stored outside the public static root and served only through controlled routes.
 - Standalone pages use a dedicated `pages` table and `/page/{slug}` route. Private and draft pages return 404 to visitors, omit indexing and caching, and require the existing signed administrator session.
 - Page HTML is sanitized on save and render. Audit records note content changes without recording the private body. Public menus and sitemap omit private, draft, and deleted pages.

@@ -163,7 +163,7 @@ async def test_english_admin_pages_render_from_the_shared_setting(
         "/admin/media": "All images and files uploaded",
         "/admin/links": "Latest check results",
         "/admin/audit": "Admin changes and errors",
-        "/admin/settings/account": "Admin Account",
+        "/admin/settings/account": "Your account",
         "/admin/settings/appearance": "Live Preview",
         "/admin/settings/menu": "Visibility Limits",
     }

@@ -1,0 +1,36 @@
+"""Shared administration navigation and page heading smoke tests."""
+
+import re
+
+import pytest
+from httpx import AsyncClient
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/admin/downloads", "/admin/downloads/trash", "/admin/pages",
+        "/admin/pages/trash", "/admin/categories", "/admin/tags",
+        "/admin/media", "/admin/links", "/admin/audit", "/admin/users",
+        "/admin/settings/maintenance",
+    ],
+)
+async def test_admin_pages_share_breadcrumb_and_description(admin_client: AsyncClient, path: str):
+    response = await admin_client.get(path)
+    assert response.status_code == 200
+    assert '<nav class="breadcrumb' in response.text
+    assert 'href="/admin"' in response.text
+    assert re.search(r"<h1\b[^>]*>.+?</h1>", response.text, re.S)
+
+
+async def test_user_page_keeps_management_navigation_open(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/users")
+    assert response.status_code == 200
+    assert re.search(r'<details class="admin-nav-group" open>\s*<summary[^>]*>.*?/admin/users', response.text, re.S)
+    assert 'href="/admin/users" class="admin-nav-link is-active"' in response.text
+
+
+async def test_account_page_renders_without_redirect(admin_client: AsyncClient):
+    response = await admin_client.get("/admin/settings/account", follow_redirects=False)
+    assert response.status_code == 200
+    assert 'href="/admin/settings/account" class="admin-nav-link is-active"' in response.text

@@ -85,7 +85,7 @@ async def migrate_legacy_local_downloads(session: AsyncSession) -> int:
         await anyio.to_thread.run_sync(shutil.move, str(source), str(target))
         migrated[source] = target
         await _update_media_asset_path(session, source, target, public_root)
-        logger.info("Eski arşiv dosyası özel depoya taşındı: %s -> %s", source, target)
+        logger.info("Legacy archive moved to private storage")
 
     for download in downloads:
         source = Path(download.file_path or "").resolve()
@@ -97,7 +97,7 @@ async def migrate_legacy_local_downloads(session: AsyncSession) -> int:
             # Dosya daha önce taşınmış, fakat DB yolu eski kalmış olabilir.
             target = private_root / source.name
             if not target.is_file():
-                logger.warning("Eski yerel indirme dosyası bulunamadı: %s", source)
+                logger.warning("Legacy download file not found")
                 continue
             migrated[source] = target
 

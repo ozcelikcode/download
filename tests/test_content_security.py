@@ -1,13 +1,14 @@
 """Zengin metin ve yönetilen URL güvenlik sınırları."""
 
 import pytest
+from html.parser import HTMLParser
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.content_security import normalize_http_url, normalize_navigation_url, sanitize_rich_text
 from app.models import Download, FileType, IconType
-from app.schemas import DownloadCreate, MenuItemCreate
+from app.schemas import CategoryCreate, DownloadCreate, MenuItemCreate
 
 
 def test_rich_text_sanitizer_preserves_editor_formatting_and_removes_active_content():
@@ -100,3 +101,23 @@ async def test_legacy_unsafe_download_redirect_is_blocked(client, db_session: As
 
     response = await client.get("/dl/riskli-yonlendirme")
     assert response.status_code == 404
+
+
+async def test_category_name_cannot_become_an_inline_script(admin_client, db_session: AsyncSession):
+    payload = "O'Reilly');alert(1);//"
+    category = await crud.create_category(db_session, CategoryCreate(name=payload))
+
+    class ButtonParser(HTMLParser):
+        attributes = None
+
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if tag == "button" and values.get("data-category-delete") == str(category.id):
+                self.attributes = values
+
+    response = await admin_client.get("/admin/categories")
+    parser = ButtonParser()
+    parser.feed(response.text)
+    assert parser.attributes is not None
+    assert parser.attributes["data-category-name"] == payload
+    assert "onclick" not in parser.attributes

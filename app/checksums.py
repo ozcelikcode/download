@@ -46,7 +46,7 @@ async def file_checksum(session: AsyncSession, value: str | None) -> str | None:
             return asset.sha256
         digest, size, mtime_ns = await anyio.to_thread.run_sync(_hash_file, path)
     except OSError:
-        logger.exception("Dosya özeti hesaplanamadı: %s", path)
+        logger.exception("File checksum calculation failed")
         return None
     values = {"sha256": digest, "checksum_size": size, "checksum_mtime_ns": mtime_ns}
     statement = insert(MediaAsset).values(path=asset.path if asset else url, **values)

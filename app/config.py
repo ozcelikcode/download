@@ -52,7 +52,7 @@ class Settings(BaseSettings):
         """Bilinen örnek değerlerin üretimde oturum imzalamasını engelle."""
         if len(value) < 32 or value in _INSECURE_SECRET_KEYS:
             raise ValueError(
-                "APP_SECRET_KEY en az 32 karakterlik rastgele bir sır olmalıdır."
+                "APP_SECRET_KEY must contain at least 32 random characters."
             )
         return value
 

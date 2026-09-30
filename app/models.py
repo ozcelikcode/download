@@ -209,10 +209,6 @@ class SiteSettings(Base):
     sidebar_block_order: Mapped[str] = mapped_column(
         String(100), nullable=False, default="search,categories,tags"
     )
-    # Admin hesabı — boşsa .env'deki ADMIN_USERNAME/ADMIN_PASSWORD_HASH kullanılır
-    # (ilk kurulum varsayılanı). Ayarlar'dan değiştirilince burada saklanır.
-    admin_username: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    admin_password_hash: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     session_generation: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     admin_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="user-circle")
     admin_icon_color: Mapped[str] = mapped_column(String(20), nullable=False, default="slate")

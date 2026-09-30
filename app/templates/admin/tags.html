@@ -2,9 +2,10 @@
 {% block title %}{{ t(request, 'tags') }}{% endblock %}
 
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'tags') }}</h1>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  {{ page_heading(request, t(request, 'tags'), t(request, 'tags_page_help')) }}
   <span class="text-xs text-slate-400 dark:text-slate-500">{{ tags | length }} {{ t(request, 'items_count') }}</span>
 </div>
 

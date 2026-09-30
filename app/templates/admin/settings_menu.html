@@ -2,17 +2,8 @@
 {% block title %}{{ t(request, 'settings') }} — {{ t(request, 'menus') }}{% endblock %}
 
 {% block content %}
-
-<div class="flex items-center justify-between mb-6">
-  <div>
-    <div class="breadcrumb mb-1">
-      <a href="/admin">{{ t(request, 'management') }}</a>
-      <span class="breadcrumb-sep">›</span>
-      <span class="text-slate-700 dark:text-slate-300">{{ t(request, 'settings') }}</span>
-    </div>
-    <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'settings') }}</h1>
-  </div>
-</div>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="mb-6">{{ page_heading(request, t(request, 'menus'), t(request, 'menu_page_help'), t(request, 'settings'), '/admin/settings') }}</div>
 
 {% set active_settings_tab = 'menu' %}
 {% include "admin/_settings_tabs.html" %}
@@ -450,7 +441,10 @@
 
     function setIconPreview(name) {
       const wrap = document.getElementById('menu-item-icon-preview-wrap');
-      wrap.innerHTML = '<i data-lucide="' + (name || 'link').trim() + '" class="w-4 h-4 text-slate-500 dark:text-slate-400"></i>';
+      const glyph = document.createElement('i');
+      glyph.setAttribute('data-lucide', (name || 'link').trim());
+      glyph.className = 'w-4 h-4 text-slate-500 dark:text-slate-400';
+      wrap.replaceChildren(glyph);
       if (window.lucide) lucide.createIcons();
     }
 

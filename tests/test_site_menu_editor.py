@@ -169,7 +169,7 @@ async def test_settings_general_page_renders(admin_client: AsyncClient):
 async def test_settings_account_page_renders(admin_client: AsyncClient):
     response = await admin_client.get("/admin/settings/account")
     assert response.status_code == 200
-    assert "Admin Hesabı" in response.text
+    assert "Hesabınız" in response.text
 
 
 async def test_settings_appearance_page_renders(admin_client: AsyncClient):

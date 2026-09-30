@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.audit import add_event
 from app.content_security import rich_text_to_plain_text, sanitize_rich_text
-from app.dependencies import get_db, get_optional_admin_username, require_admin
+from app.dependencies import SESSION_COOKIE, authenticated_user, get_db, require_admin
 from app.i18n import translate
 from app.models import MenuItem, Page
 from app.page_schemas import PageInput
@@ -53,12 +53,14 @@ async def view_page(
     if page is None or page.deleted_at is not None:
         raise HTTPException(status_code=404, headers={"Cache-Control": "no-store"})
     settings = await crud.get_site_settings(session)
-    admin = await get_optional_admin_username(request, settings, session)
-    if (page.visibility == "private" or not page.is_published) and not admin:
+    user = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), settings, session)
+    can_preview = user is not None and (user.role == "admin" or (user.role == "manager" and page.visibility == "public"))
+    if (page.visibility == "private" or not page.is_published) and not can_preview:
         raise HTTPException(status_code=404, headers={"Cache-Control": "no-store"})
     body = sanitize_rich_text(page.body_html) or ""
     context = await _sidebar_context(request, session, settings)
     context.update({
+        "is_admin": can_preview,
         "page": page,
         "safe_body": body,
         "page_title": page.title,
@@ -81,9 +83,12 @@ async def list_pages(
     page: int = Query(1, ge=1),
     session: AsyncSession = Depends(get_db),
 ):
-    total = await session.scalar(select(func.count(Page.id)).where(Page.deleted_at.is_(None))) or 0
+    allowed = [Page.deleted_at.is_(None)]
+    if request.state.admin_role != "admin":
+        allowed.append(Page.visibility == "public")
+    total = await session.scalar(select(func.count(Page.id)).where(*allowed)) or 0
     rows = (await session.scalars(
-        select(Page).where(Page.deleted_at.is_(None)).order_by(Page.updated_at.desc(), Page.id.desc())
+        select(Page).where(*allowed).order_by(Page.updated_at.desc(), Page.id.desc())
         .offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE)
     )).all()
     response = templates.TemplateResponse(request=request, name="admin/pages.html", context={
@@ -121,6 +126,8 @@ async def create_page(
     is_published: bool = Form(False),
     session: AsyncSession = Depends(get_db),
 ):
+    if visibility == "private" and request.state.admin_role != "admin":
+        raise HTTPException(status_code=403, detail=translate(request, "permission_denied"))
     raw = dict(title=title, slug=slug, body_html=sanitize_rich_text(body_html) or "", visibility=visibility, is_published=is_published)
     try:
         data = PageInput.model_validate(raw)
@@ -144,7 +151,7 @@ async def edit_page(
     page_id: int, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
-    if page is None or page.deleted_at is not None:
+    if page is None or page.deleted_at is not None or (page.visibility == "private" and request.state.admin_role != "admin"):
         raise HTTPException(status_code=404)
     return _editor_response(request, page)
 
@@ -161,8 +168,10 @@ async def update_page(
     session: AsyncSession = Depends(get_db),
 ):
     page = await session.get(Page, page_id)
-    if page is None or page.deleted_at is not None:
+    if page is None or page.deleted_at is not None or (page.visibility == "private" and request.state.admin_role != "admin"):
         raise HTTPException(status_code=404)
+    if visibility == "private" and request.state.admin_role != "admin":
+        raise HTTPException(status_code=403, detail=translate(request, "permission_denied"))
     raw = dict(title=title, slug=slug, body_html=sanitize_rich_text(body_html) or "", visibility=visibility, is_published=is_published)
     try:
         data = PageInput.model_validate(raw)
@@ -194,7 +203,7 @@ async def delete_page(
     page_id: int, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
-    if page is None or page.deleted_at is not None:
+    if page is None or page.deleted_at is not None or (page.visibility == "private" and request.state.admin_role != "admin"):
         raise HTTPException(status_code=404)
     for item in (await session.scalars(select(MenuItem).where(MenuItem.url == f"/page/{page.slug}"))).all():
         item.is_active = False
@@ -211,9 +220,12 @@ async def delete_page(
 async def page_trash(
     request: Request, page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)
 ):
-    total = await session.scalar(select(func.count(Page.id)).where(Page.deleted_at.is_not(None))) or 0
+    allowed = [Page.deleted_at.is_not(None)]
+    if request.state.admin_role != "admin":
+        allowed.append(Page.visibility == "public")
+    total = await session.scalar(select(func.count(Page.id)).where(*allowed)) or 0
     rows = (await session.scalars(
-        select(Page).where(Page.deleted_at.is_not(None)).order_by(Page.deleted_at.desc(), Page.id.desc())
+        select(Page).where(*allowed).order_by(Page.deleted_at.desc(), Page.id.desc())
         .offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE)
     )).all()
     response = templates.TemplateResponse(request=request, name="admin/page_trash.html", context={
@@ -230,7 +242,7 @@ async def restore_page(
     page_id: int, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
-    if page is None or page.deleted_at is None:
+    if page is None or page.deleted_at is None or (page.visibility == "private" and request.state.admin_role != "admin"):
         raise HTTPException(status_code=404)
     session.info["audit_suppressed"] = True
     page.deleted_at = None
@@ -245,7 +257,7 @@ async def purge_page(
     page_id: int, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
-    if page is None or page.deleted_at is None:
+    if page is None or page.deleted_at is None or (page.visibility == "private" and request.state.admin_role != "admin"):
         raise HTTPException(status_code=404)
     session.info["audit_suppressed"] = True
     add_event(session, "purge", "pages", page.title, entity_id=page.id)

@@ -34,13 +34,10 @@
 {% endmacro %}
 
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 <div class="max-w-7xl mx-auto space-y-6">
   <header class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <div class="breadcrumb mb-1"><a href="/admin">{{ t(request, 'dashboard') }}</a><span class="breadcrumb-sep">›</span><span class="text-slate-700 dark:text-slate-300">{{ t(request, 'site_health') }}</span></div>
-      <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ t(request, 'site_health') }}</h1>
-      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ t(request, 'site_health_help') }}</p>
-    </div>
+    {{ page_heading(request, t(request, 'site_health'), t(request, 'site_health_help')) }}
     <a href="/" target="_blank" rel="noopener" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'go_to_site') }}</a>
   </header>
 

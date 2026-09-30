@@ -1,12 +1,8 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'settings') }} — {{ t(request, 'appearance') }}{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <div>
-    <div class="breadcrumb mb-1"><a href="/admin">{{ t(request, 'management') }}</a><span class="breadcrumb-sep">›</span><span>{{ t(request, 'appearance') }}</span></div>
-    <h1 class="text-lg font-bold">{{ t(request, 'appearance') }}</h1>
-  </div>
-</div>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="mb-6">{{ page_heading(request, t(request, 'appearance'), t(request, 'appearance_page_help'), t(request, 'settings'), '/admin/settings') }}</div>
 {% set active_settings_tab = 'appearance' %}
 {% include "admin/_settings_tabs.html" %}
 

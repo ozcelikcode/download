@@ -1,6 +1,4 @@
-"""
-FastAPI uygulama fabrikası.
-"""
+"""FastAPI application and lifecycle configuration."""
 
 from __future__ import annotations
 
@@ -23,16 +21,13 @@ from app.routers import admin, pages, public, reports, setup, users
 from app.lifecycle import LifecycleMiddleware, finish_pending_reset, single_worker_guard, reset_storage_roots
 from app.storage import migrate_legacy_local_downloads
 from app.security import SecurityHeadersMiddleware
+from app.logging_config import configure_logging
 from app.templating import refresh_site_branding_globals, templates
 
 # ---------------------------------------------------------------------------
-# Logging yapılandırması
+# Console logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 _recent_public_errors: dict[tuple[str, int], float] = {}
 
@@ -41,11 +36,11 @@ async def _record_public_error(request: Request, code: int, error_type: str = ""
     """Bound anonymous diagnostics without storing URLs, addresses, or request bodies."""
     route = request.scope.get("route")
     pattern = getattr(route, "path", "<unmatched>")
-    if pattern.startswith("/static/"):
+    if request.url.path.startswith("/static/"):
         return
     key = (f"{request.method} {pattern}", code)
     now = time.monotonic()
-    if code != 500 and now - _recent_public_errors.get(key, 0) < 300:
+    if now - _recent_public_errors.get(key, 0) < 300:
         return
     if len(_recent_public_errors) > 100:
         _recent_public_errors.clear()
@@ -73,15 +68,15 @@ async def lifespan(app: FastAPI):
             await finish_pending_reset(session)
             migrated = await migrate_legacy_local_downloads(session)
             if migrated:
-                logger.info("%d eski yerel indirme özel depoya taşındı", migrated)
+                logger.info("Legacy downloads moved to private storage: count=%d", migrated)
             site_settings = await crud.get_site_settings(session)
             refresh_site_branding_globals(site_settings)
-        logger.info("✅ %s başlatıldı", settings.app_name)
+        logger.info("Application started")
         try:
             yield
         finally:
             await engine.dispose()
-            logger.info("⛔ Uygulama kapatıldı.")
+            logger.info("Application stopped")
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +126,8 @@ app.include_router(users.router)
 # ---------------------------------------------------------------------------
 @app.exception_handler(HTTPException)
 async def localized_http_error(request: Request, exc: HTTPException):
+    if exc.status_code >= 400 and exc.status_code not in {401, 404, 429}:
+        await _record_public_error(request, exc.status_code)
     detail = exc.detail
     if isinstance(detail, str):
         detail = system_message(request, detail)
@@ -183,6 +180,8 @@ async def server_error_handler(request: Request, exc):
 
 @app.exception_handler(429)
 async def rate_limit_handler(request: Request, exc):
+    if request.url.path != "/admin/login":
+        await _record_public_error(request, 429)
     if request.url.path == "/admin/login":
         return templates.TemplateResponse(
             request=request, name="admin/login.html",

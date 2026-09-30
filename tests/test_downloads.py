@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 
 from httpx import AsyncClient
@@ -125,10 +126,42 @@ async def test_download_log_rejects_content_hidden_before_recording(
     await db_session.commit()
 
     allowed = await crud.record_download_if_allowed(
-        db_session, download.id, "127.0.0.1", "test", 100
+        db_session, download.id, "127.0.0.1", 100
     )
     assert allowed is False
     assert await db_session.scalar(select(func.count()).select_from(DownloadLog)) == 0
+
+
+async def test_download_log_does_not_store_client_address(db_session: AsyncSession):
+    download = await _create_external(db_session, title="Privacy check")
+    download_id = download.id
+    assert await crud.record_download_if_allowed(db_session, download_id, "192.0.2.42", 100)
+
+    log = await db_session.scalar(select(DownloadLog).where(DownloadLog.download_id == download_id))
+    assert log is not None
+    assert len(log.client_key) == 64
+    assert "192.0.2.42" not in log.client_key
+    assert not hasattr(log, "ip_address")
+    assert not hasattr(log, "user_agent")
+
+
+async def test_editor_keeps_optional_fields_available_without_crowding_new_form(
+    admin_client: AsyncClient, db_session: AsyncSession,
+):
+    new_form = await admin_client.get("/admin/downloads/new")
+    assert new_form.status_code == 200
+    icon_section = re.search(r'<details id="icon-options"[^>]*>', new_form.text)
+    assert icon_section is not None and " open" not in icon_section.group()
+    assert 'name="icon_type"' in new_form.text
+    assert 'name="parent_id"' in new_form.text
+    assert 'name="os_tags"' in new_form.text
+    assert 'id="application-publish-button"' in new_form.text
+    assert 'id="application-save-button"' in new_form.text
+
+    download = await _create_external(db_session, title="Icon settings", icon_type="zip")
+    edit_form = await admin_client.get(f"/admin/downloads/{download.id}/edit")
+    icon_section = re.search(r'<details id="icon-options"[^>]*>', edit_form.text)
+    assert icon_section is not None and " open" in icon_section.group()
 
 
 async def test_active_draft_is_not_publicly_visible_or_downloadable(

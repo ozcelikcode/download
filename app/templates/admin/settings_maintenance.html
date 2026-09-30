@@ -1,7 +1,8 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'maintenance') }}{% endblock %}
 {% block content %}
-<h1 class="text-lg font-bold mb-6">{{ t(request, 'maintenance') }}</h1>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="mb-6">{{ page_heading(request, t(request, 'maintenance'), t(request, 'maintenance_page_help'), t(request, 'settings'), '/admin/settings/general') }}</div>
 {% set active_settings_tab = 'maintenance' %}
 {% include "admin/_settings_tabs.html" %}
 <div class="max-w-2xl space-y-5">
@@ -38,7 +39,7 @@
     </fieldset>
     {% if not can_uninstall %}<p class="text-sm text-amber-700 dark:text-amber-400">{{ t(request, 'reset_key_required') }}</p>{% endif %}
     <div><label for="reset-password" class="form-label">{{ t(request, 'current_password') }}</label><input id="reset-password" name="password" type="password" required autocomplete="current-password" maxlength="1024" class="form-input"></div>
-    <button type="submit" class="btn-secondary">{{ t(request, 'reset_review') }}</button>
+    <button type="submit" class="btn-secondary max-w-full whitespace-normal text-left leading-snug">{{ t(request, 'reset_review') }}</button>
   </form>
   {% endif %}
 </div>

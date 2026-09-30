@@ -1,8 +1,9 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'pages') }} — {{ t(request, 'trash') }}{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-  <div><a href="/admin/pages" class="text-xs text-slate-500 hover:underline">{{ t(request, 'pages') }}</a><h1 class="text-lg font-bold mt-1">{{ t(request, 'trash') }}</h1></div>
+{% from "admin/_page_heading.html" import render as page_heading %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  {{ page_heading(request, t(request, 'trash'), t(request, 'trash_help'), t(request, 'pages'), '/admin/pages') }}
   <a href="/admin/pages" class="btn-secondary">{{ t(request, 'pages') }}</a>
 </div>
 <div class="border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden bg-white dark:bg-slate-900">

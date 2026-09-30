@@ -1,9 +1,10 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'link_report') }}{% endblock %}
 {% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
 <div class="max-w-6xl mx-auto space-y-5">
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <div><h1 class="text-xl font-semibold">{{ t(request, 'link_report') }}</h1><p class="text-sm text-slate-500 mt-1">{{ tf(request, 'link_report_help', count=total) }}</p></div>
+    {{ page_heading(request, t(request, 'link_report'), tf(request, 'link_report_help', count=total)) }}
     {% if state == 'all' and rows %}
     <form method="post" action="/admin/links/check?page={{ page }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent={{ t(request, 'checking')|tojson }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">

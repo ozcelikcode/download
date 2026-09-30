@@ -9,7 +9,9 @@ async def test_download_moves_to_trash_then_permanent_delete_cascades_logs(admin
     download = await crud.create_download(
         db_session, DownloadCreate(title="Silinecek", external_url="https://example.com/archive.zip")
     )
-    await crud.create_download_log(db_session, download.id, "127.0.0.1", "test")
+    from app.security import client_key
+    db_session.add(DownloadLog(download_id=download.id, client_key=client_key("127.0.0.1", context="download")))
+    await db_session.commit()
 
     response = await admin_client.post(
         f"/admin/downloads/{download.id}/delete?return_to=/admin/downloads?page=2"
