@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     upload_dir: str = "app/static/uploads"
     download_dir: str = "storage/downloads"
     max_upload_size_mb: int = 500
+    backup_dir: str = "storage/backups"
+    max_backup_size_mb: int = 1024
 
     # Veritabanı
     database_url: str = "sqlite+aiosqlite:///./download.db"

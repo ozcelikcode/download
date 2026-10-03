@@ -12,6 +12,8 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - Bulk content operations and safe category deletion with content transfer
 - Automatic application drafts with live save status and manual finalization
 - Media archive, link health reports, and paginated audit logs
+- Administrator-only encrypted backups with browser-held recovery keys, manual export/import, optional 1/3/5/7/14-day schedules, and a protected latest backup plus seven historical archives
+- Opt-in trash expiry (15/30/60/90/120/240/360 days), protected editorial deletion requests, and single/bulk publication hiding
 - Administrator, manager, and editor accounts with server-side permissions, reviewed editor-deletion requests, and a last-administrator safeguard
 - Scrypt password hashing, signed sessions, CSRF protection, login throttling, and anonymous visitor-error logs
 - Owner-key protected first-run setup, deployment checks, and two-step maintenance/reset controls
@@ -25,6 +27,7 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - SQLite 3
 - GNU Make
 - `curl` for downloading the standalone Tailwind CSS compiler during setup
+- Node.js is optional for the browser Web Crypto compatibility regression test; `BACKUP_TEST_NODE` may point to a non-PATH executable. The application itself does not require Node.js.
 
 ## Quick start
 

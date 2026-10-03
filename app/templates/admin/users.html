@@ -1,5 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'users') }}{% endblock %}
+{% from "_publisher.html" import render as publisher_badge %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
 <div class="mb-6">{{ page_heading(request, t(request, 'users'), t(request, 'users_help')) }}</div>
@@ -24,9 +25,12 @@
   {% for user in users %}
     <article class="p-4">
       <div class="min-w-0">
-        <p class="font-medium">{{ user.username }}</p>
+        <p class="font-medium">{{ publisher_badge(request, user) }}</p>
         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'role_' ~ user.role) }} · {% if not user.is_active %}{{ t(request, 'user_inactive') }}{% elif user.deletion_requested_by %}{{ t(request, 'user_pending_delete') }}{% else %}{{ t(request, 'user_active') }}{% endif %}</p>
       </div>
+      {% if user.is_active and user.role == 'editor' %}
+      <details class="mt-3"><summary class="cursor-pointer text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'verified_editor') }}</summary><p class="form-hint mt-2">{{ t(request, 'verification_help') }}</p><form method="post" action="/admin/users/{{ user.id }}/verification" class="flex flex-wrap items-end gap-3 mt-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><label class="text-xs flex items-center gap-2"><input type="checkbox" name="verified" value="true" {% if user.is_verified %}checked{% endif %} class="admin-checkbox">{{ t(request, 'verified_editor') }}</label><label class="text-xs">{{ t(request, 'current_password') }}<input type="password" name="current_password" required autocomplete="current-password" class="form-input mt-1"></label><button class="btn-secondary">{{ t(request, 'save') }}</button></form></details>
+      {% endif %}
       {% if user.is_active %}
         {% if staff_role == 'admin' %}
       <details class="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800">

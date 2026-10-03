@@ -99,17 +99,20 @@ class RequestGate:
                 self.condition.notify_all()
 
 
+request_gate = RequestGate()
+
+
 class LifecycleMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
-        self.gate = RequestGate()
+        self.gate = request_gate
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         path = scope["path"]
-        exclusive = scope["method"] == "POST" and path in {"/setup", "/admin/settings/maintenance/confirm"}
+        exclusive = scope["method"] == "POST" and path in {"/setup", "/admin/settings/maintenance/confirm", "/admin/backups/restore"}
         if exclusive:
             # Read the small confirmation body before taking the exclusive lock,
             # so an unauthenticated or slow POST cannot block the whole site.
@@ -163,6 +166,7 @@ class LifecycleMiddleware:
         async with self.gate.enter(exclusive):
             request = Request(scope)
             body_limit = 16 * 1024
+            user = None
             async with AsyncSessionLocal() as session:
                 state = await get_lifecycle(session)
                 installed, pending = state.installed, state.pending_reset
@@ -170,10 +174,18 @@ class LifecycleMiddleware:
                     from app.crud import get_site_settings
                     from app.dependencies import SESSION_COOKIE, authenticated_user
                     account = await get_site_settings(session)
-                    if await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session):
+                    user = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session)
+                    if user:
                         body_limit = settings.max_upload_size_bytes + 1024 * 1024
             if path in {"/setup", "/admin/login", "/admin/settings/account"} or path.startswith("/admin/settings/maintenance/"):
                 body_limit = 16 * 1024
+            if path.startswith(("/admin/contact", "/admin/review")):
+                body_limit = 64 * 1024
+            if path.startswith("/admin/backups"):
+                body_limit = 16 * 1024
+                if path == "/admin/backups/import" and scope["method"] == "POST":
+                    if user and user.role == "admin":
+                        body_limit = max(1, min(settings.max_backup_size_mb, 8192)) * 1024 * 1024 + 1024 * 1024
             bundled_asset = posixpath.normpath(path).startswith(("/static/css/", "/static/js/", "/static/vendor/"))
             if pending:
                 response = PlainTextResponse(gate_message(scope, "maintenance_in_progress"), status_code=503,
@@ -283,6 +295,8 @@ async def reset_site(session: AsyncSession, action: ResetAction, preserve_user_i
     state = await get_lifecycle(session)
     roots = reset_storage_roots() if action != "settings" else []
     session.info["audit_suppressed"] = True
+    # Full reset replaces account IDs; system-created defaults must remain unowned.
+    session.info.pop("actor_id", None)
     preserved_user = await session.get(User, preserve_user_id) if preserve_user_id is not None else None
     if action == "full" and (preserved_user is None or preserved_user.role != "admin" or not preserved_user.is_active):
         raise ValueError("An active administrator must be selected for a full reset")

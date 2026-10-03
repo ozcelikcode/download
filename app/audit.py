@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import AuditLog, Category, Download, DownloadVersionHistory, MediaAsset, MenuItem, Page, SiteSettings, Tag
 
 TRACKED = (Download, Category, Tag, MenuItem, Page, SiteSettings, MediaAsset, DownloadVersionHistory)
-IGNORED = {"id", "created_at", "updated_at", "body_html", "download_count", "draft_token", "sha256", "checksum_size", "checksum_mtime_ns"}
+IGNORED = {"id", "created_at", "updated_at", "body_html", "publication_feedback", "download_count", "draft_token", "sha256", "checksum_size", "checksum_mtime_ns"}
 ENTITY_LABELS = {"login": "Giriş güvenliği", "request": "Ziyaretçi hatası", "users": "Kullanıcı", "downloads": "İçerik", "categories": "Kategori", "tags": "Etiket", "menu_items": "Menü", "pages": "Sayfa", "site_settings": "Ayarlar", "media_assets": "Medya", "download_version_history": "Sürüm"}
 ACTION_LABELS = {"create": "Eklendi", "update": "Düzenlendi", "delete": "Silindi", "trash": "Silinenler'e taşındı", "restore": "Geri yüklendi", "purge": "Kalıcı silindi", "replace": "Dosya değiştirildi", "crop": "Görsel kırpıldı", "reorder": "Sıralandı", "bulk": "Toplu işlem", "transfer": "Aktarıldı", "error": "Hata", "login": "Oturum açıldı"}
 FIELD_LABELS = {

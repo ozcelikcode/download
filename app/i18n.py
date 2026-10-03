@@ -7,6 +7,9 @@ from app.locales.fr import STRINGS as FRENCH_STRINGS
 from app.locales.pages import STRINGS as PAGE_STRINGS
 from app.locales.users import STRINGS as USER_STRINGS
 from app.locales.admin_layout import STRINGS as ADMIN_LAYOUT_STRINGS
+from app.locales.editor import STRINGS as EDITOR_STRINGS
+from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
+from app.locales.maintenance import STRINGS as MAINTENANCE_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -723,6 +726,15 @@ for language, strings in USER_STRINGS.items():
     TRANSLATIONS[language].update(strings)
 for language, strings in ADMIN_LAYOUT_STRINGS.items():
     TRANSLATIONS[language].update(strings)
+for language, strings in EDITOR_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for language, strings in WORKFLOW_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for language, strings in MAINTENANCE_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for key, message in WORKFLOW_STRINGS["en"].items():
+    if key.startswith("audit_"):
+        _SYSTEM_MESSAGE_KEYS[message] = key
 for key in ("staff_session_opened", "staff_login_failed", "staff_login_limited", "staff_auth_rejected"):
     _SYSTEM_MESSAGE_KEYS[TRANSLATIONS["en"][key]] = key
 

@@ -230,6 +230,7 @@ async def page_trash(
     )).all()
     response = templates.TemplateResponse(request=request, name="admin/page_trash.html", context={
         "pages": rows, "page": page, "total_pages": max(1, math.ceil(total / PAGE_SIZE)),
+        "retention_days": (await crud.get_site_settings(session)).trash_retention_days,
         "admin_user": request.state.admin_user,
         "flash_message": request.session.pop("flash_message", None),
     })

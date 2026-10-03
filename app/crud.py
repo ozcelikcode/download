@@ -9,6 +9,7 @@ from __future__ import annotations
 
 
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
@@ -17,7 +18,7 @@ from slugify import slugify
 from sqlalchemy import Select, case, delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import aliased, selectinload, with_loader_criteria
 
 from app.audit import add_event
 from app.default_content import REQUIRED_CATEGORY_NAMES
@@ -35,6 +36,7 @@ from app.models import (
     MenuItem,
     SiteSettings,
     Tag,
+    User,
 )
 from app.schemas import (
     CategoryCreate,
@@ -49,6 +51,28 @@ from app.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def _lock_editor_write(session: AsyncSession) -> None:
+    """Serialize editor writes against verification revocation and account changes."""
+    from fastapi import HTTPException
+
+    editor_id = session.info.get("editor_owner_id")
+    if editor_id is None:
+        return
+    await session.rollback()
+    await session.execute(text("BEGIN IMMEDIATE"))
+    actor = await session.scalar(select(User).where(User.id == editor_id).execution_options(populate_existing=True))
+    if actor is None or not actor.is_active or actor.deleted_at is not None or actor.role != "editor":
+        raise HTTPException(403)
+    from app.dependencies import credential_stamp
+    credential = session.info.get("authenticated_credential")
+    if credential and not secrets.compare_digest(credential, credential_stamp(actor.username, actor.password_hash)):
+        raise HTTPException(403)
+    generation = session.info.get("authenticated_generation")
+    if generation and not secrets.compare_digest(generation, (await get_site_settings(session)).session_generation):
+        raise HTTPException(403)
+    session.info["verified_editor"] = actor.is_verified
 
 
 # ===========================================================================
@@ -66,6 +90,9 @@ async def _unique_slug(
     exclude_id: Optional[int] = None,
 ) -> str:
     """Çakışma varsa sonuna -2, -3 … ekleyerek eşsiz slug üretir."""
+    owner_id = session.info.get("editor_owner_id")
+    if owner_id is not None and not base_slug.endswith(f"-u{owner_id}"):
+        base_slug = f"{base_slug}-u{owner_id}"
     slug = base_slug
     counter = 1
     while True:
@@ -107,7 +134,11 @@ async def ensure_required_category(
         return category
     selected_language = language or (await get_site_settings(session)).content_language
     name = REQUIRED_CATEGORY_NAMES.get(selected_language, REQUIRED_CATEGORY_NAMES["en"])
-    slug = await _unique_slug(session, Category, _make_slug(name))
+    slug = _make_slug(name)
+    suffix = 1
+    while await session.scalar(select(Category.id).where(Category.slug == slug).execution_options(include_all_owners=True)):
+        suffix += 1
+        slug = f"{_make_slug(name)}-{suffix}"
     category = Category(name=name, slug=slug, is_required=True)
     session.add(category)
     if commit:
@@ -142,6 +173,9 @@ async def create_category(session: AsyncSession, data: CategoryCreate) -> Catego
 async def update_category(
     session: AsyncSession, category: Category, data: CategoryUpdate
 ) -> Category:
+    if category.is_required and session.info.get("editor_owner_id") is not None:
+        from fastapi import HTTPException
+        raise HTTPException(403)
     old_slug = category.slug
     old_name = category.name
     new_slug: Optional[str] = None
@@ -197,6 +231,34 @@ async def transfer_and_delete_categories(
     return int(moved)
 
 
+async def move_category_contents(session: AsyncSession, source_id: int, target_id: int) -> int:
+    """Move all records, including drafts and trash, without removing either category."""
+    from fastapi import HTTPException
+
+    if source_id == target_id:
+        raise HTTPException(422)
+    source = await get_category_by_id(session, source_id)
+    target = await get_category_by_id(session, target_id)
+    if source is None or target is None:
+        raise HTTPException(404)
+    editor_id = session.info.get("editor_owner_id")
+    if editor_id is not None:
+        if source.is_required:
+            raise HTTPException(403)
+        foreign = select(Download.id).where(
+            Download.category_id == source_id,
+            or_(Download.owner_id.is_(None), Download.owner_id != editor_id),
+        ).execution_options(include_all_owners=True).limit(1)
+        if await session.scalar(foreign) is not None:
+            raise HTTPException(409)
+    count = await session.scalar(select(func.count()).select_from(Download).where(Download.category_id == source_id)) or 0
+    await session.execute(update(Download).where(Download.category_id == source_id).values(category_id=target_id))
+    add_event(session, "transfer", "categories", "Category contents moved", target_id,
+              {"source_category_id": [source_id, target_id], "content_count": [None, count]})
+    await session.commit()
+    return int(count)
+
+
 async def get_categories_ordered(session: AsyncSession) -> List[Category]:
     """Sidebar'daki 'Kategori Menüsü' sırasına göre (position, sonra ad) döndürür."""
     result = await session.execute(select(Category).order_by(Category.position, Category.name))
@@ -249,11 +311,10 @@ async def get_tag_by_id(session: AsyncSession, tag_id: int) -> Optional[Tag]:
 
 
 async def get_or_create_tag(session: AsyncSession, name: str) -> Tag:
-    slug = _make_slug(name)
-    result = await session.execute(select(Tag).where(Tag.slug == slug))
+    result = await session.execute(select(Tag).where(Tag.name == name))
     tag = result.scalar_one_or_none()
     if tag is None:
-        tag = Tag(name=name, slug=slug)
+        tag = Tag(name=name, slug=await _unique_slug(session, Tag, _make_slug(name)))
         session.add(tag)
         await session.commit()
         await session.refresh(tag)
@@ -281,6 +342,9 @@ async def bulk_delete_tags(session: AsyncSession, tag_ids: List[int]) -> int:
     if not ids:
         raise ValueError("En az bir etiket seçin.")
     tags = list((await session.scalars(select(Tag).where(Tag.id.in_(ids)))).all())
+    if len(tags) != len(ids):
+        from fastapi import HTTPException
+        raise HTTPException(404)
     for tag in tags:
         await session.delete(tag)
     add_event(session, "bulk", "tags", f"{len(tags)} etiket silindi", changes={"islem": [None, "silme"]})
@@ -510,9 +574,29 @@ async def get_version_history_entry(
     return result.scalar_one_or_none()
 
 
+async def _review_history_change(session: AsyncSession, entry: DownloadVersionHistory) -> DownloadVersionHistory:
+    """Version history is public content and follows the parent's approval policy."""
+    from fastapi import HTTPException
+
+    if session.info.get("editor_owner_id") is None:
+        return entry
+    entry_id = entry.id
+    await _lock_editor_write(session)
+    entry = await get_version_history_entry(session, entry_id)
+    parent = await get_download_by_id(session, entry.download_id) if entry else None
+    if parent is None:
+        raise HTTPException(404)
+    if parent.is_active and not session.info.get("verified_editor"):
+        parent.is_active = False
+        parent.publication_pending = True
+        parent.publication_feedback = None
+    return entry
+
+
 async def update_version_history_entry(
     session: AsyncSession, entry: DownloadVersionHistory, version: str
 ) -> DownloadVersionHistory:
+    entry = await _review_history_change(session, entry)
     entry.version = version
     await session.commit()
     await session.refresh(entry)
@@ -522,6 +606,7 @@ async def update_version_history_entry(
 async def delete_version_history_entry(
     session: AsyncSession, entry: DownloadVersionHistory
 ) -> None:
+    entry = await _review_history_change(session, entry)
     await session.delete(entry)
     await session.commit()
 
@@ -607,7 +692,7 @@ def _download_base_query():
             selectinload(Download.tags),
         )
         .where(
-            Download.is_active.is_(True),
+            Download.is_active.is_(True), Download.is_hidden.is_(False),
             Download.is_draft.is_(False),
             Download.deleted_at.is_(None),
         )
@@ -692,11 +777,15 @@ async def get_downloads_paginated(
         stmt = stmt.where(Download.title.ilike(term))
 
     if status == "active":
-        stmt = stmt.where(Download.is_active == True, Download.is_draft == False)  # noqa: E712
+        stmt = stmt.where(Download.is_active == True, Download.is_hidden.is_(False), Download.is_draft == False)  # noqa: E712
     elif status == "inactive":
         stmt = stmt.where(Download.is_active == False, Download.is_draft == False)  # noqa: E712
     elif status == "draft":
         stmt = stmt.where(Download.is_draft == True)  # noqa: E712
+    elif status == "pending":
+        stmt = stmt.where(Download.publication_pending.is_(True))
+    elif status == "hidden":
+        stmt = stmt.where(Download.is_hidden.is_(True))
 
     if file_type_filter:
         stmt = stmt.where(Download.file_type == FileType(file_type_filter))
@@ -748,7 +837,7 @@ async def get_dashboard_stats(session: AsyncSession) -> dict:
     active_downloads = await session.scalar(
         select(func.count()).select_from(Download).where(
             Download.parent_id == None,  # noqa: E711
-            Download.is_active == True,  # noqa: E712
+            Download.is_active == True, Download.is_hidden.is_(False),  # noqa: E712
             Download.is_draft == False,  # noqa: E712
             Download.deleted_at.is_(None),
         )
@@ -818,10 +907,10 @@ async def get_download_by_slug(
     """Yayımlanmış detay sayfası için içerik ve sürüm ilişkilerini yükle."""
     stmt = _download_detail_query().where(
         Download.slug == slug,
-        Download.is_active.is_(True),
+        Download.is_active.is_(True), Download.is_hidden.is_(False),
         Download.is_draft.is_(False),
         Download.deleted_at.is_(None),
-    )
+    ).options(with_loader_criteria(Download, (Download.is_active.is_(True) & Download.is_hidden.is_(False) & Download.is_draft.is_(False) & Download.deleted_at.is_(None)), include_aliases=True))
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -903,6 +992,9 @@ async def get_download_by_id(
 async def create_download(
     session: AsyncSession, data: DownloadCreate
 ) -> Download:
+    await _lock_editor_write(session)
+    from app.ownership import validate_download_references
+    await validate_download_references(session, data)
     # Slug üret
     base_slug = data.slug or _make_slug(data.title)
     slug = await _unique_slug(session, Download, base_slug)
@@ -938,6 +1030,7 @@ async def create_download(
         parent_id=data.parent_id,
         is_active=data.is_active,
         is_draft=data.is_draft,
+        is_hidden=data.is_hidden,
         is_featured=data.is_featured,
         is_official_source=data.is_official_source,
     )
@@ -971,6 +1064,7 @@ async def create_download_draft(
     clean_title = title.strip()[:200] or "İsimsiz taslak"
     base_slug = _make_slug(clean_title) or "isimsiz-taslak"
     statement = sqlite_insert(Download).values(
+        owner_id=session.info.get("actor_id"),
         title=clean_title,
         slug=await _unique_slug(session, Download, base_slug),
         file_type=FileType.external,
@@ -992,6 +1086,15 @@ async def create_download_draft(
 async def update_download(
     session: AsyncSession, download: Download, data: DownloadUpdate
 ) -> Download:
+    download_id = download.id
+    await _lock_editor_write(session)
+    if session.info.get("editor_owner_id") is not None:
+        download = await get_download_by_id(session, download_id)
+        if download is None:
+            from fastapi import HTTPException
+            raise HTTPException(404)
+    from app.ownership import validate_download_references
+    await validate_download_references(session, data)
     update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
 
     if update_data.get("is_draft") is False and download.is_draft:
@@ -1060,7 +1163,7 @@ async def delete_download(session: AsyncSession, download: Download) -> None:
     await session.execute(
         update(Download)
         .where(or_(Download.id == download.id, Download.parent_id == download.id), Download.deleted_at.is_(None))
-        .values(deleted_at=now, draft_token=None)
+        .values(deleted_at=now, draft_token=None, deletion_pending=session.info.get("staff_role") == "editor")
     )
     add_event(session, "trash", "downloads", download.title, entity_id=download.id)
     await session.commit()
@@ -1088,7 +1191,7 @@ def _trash_visible_condition():
 
 async def update_trashed_downloads(session: AsyncSession, download_ids: list[int], action: str) -> int:
     """Yalnızca Silinenler'de görünen kayıtları geri getir veya kalıcı sil."""
-    if action not in {"restore", "purge"}:
+    if action not in {"restore", "purge", "reject"}:
         raise ValueError("Geçersiz silinenler işlemi.")
     ids = sorted(set(download_ids))
     if not ids:
@@ -1098,26 +1201,37 @@ async def update_trashed_downloads(session: AsyncSession, download_ids: list[int
     ))).all())
     if len(items) != len(ids):
         raise ValueError("Seçilen içeriklerden biri Silinenler bölümünde bulunamadı.")
-    if action == "restore":
+    if session.info.get("staff_role") == "editor" and action != "restore":
+        from fastapi import HTTPException
+        raise HTTPException(403)
+    if action == "reject" and any(not item.deletion_pending for item in items):
+        raise ValueError("Geçersiz silinenler işlemi.")
+    if action == "restore" and session.info.get("staff_role") != "editor" and any(item.deletion_pending for item in items):
+        from fastapi import HTTPException
+        raise HTTPException(403)
+    if action in {"restore", "reject"}:
         await session.execute(update(Download).where(
             or_(Download.id.in_(ids), Download.parent_id.in_(ids)),
             Download.deleted_at.is_not(None),
-        ).values(deleted_at=None))
+        ).values(deleted_at=None, deletion_pending=False))
     else:
         children = list((await session.scalars(select(Download).where(Download.parent_id.in_(ids)))).all())
         for item in children + items:
             await session.delete(item)
-    add_event(session, "restore" if action == "restore" else "purge", "downloads", f"{len(items)} içerik", changes={"islem": [None, action], "adet": [None, len(items)]})
+    add_event(session, "restore" if action in {"restore", "reject"} else "purge", "downloads", f"{len(items)} içerik", changes={"islem": [None, action], "adet": [None, len(items)]})
     await session.commit()
     return len(items)
 
 
 async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], action: str) -> int:
     """Seçili içerikler için geri alınabilir durum işlemleri veya silme uygular."""
+    await _lock_editor_write(session)
     ids = sorted(set(download_ids))
     if not ids:
         raise ValueError("En az bir içerik seçin.")
     downloads = list((await session.scalars(select(Download).where(Download.id.in_(ids), Download.deleted_at.is_(None)))).all())
+    if len(downloads) != len(ids):
+        raise ValueError("Seçilen içeriklerden biri bulunamadı.")
     if action == "publish":
         incomplete = [
             item
@@ -1136,7 +1250,7 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
         await session.execute(update(Download).where(
             or_(Download.id.in_(selected_ids), Download.parent_id.in_(selected_ids)),
             Download.deleted_at.is_(None),
-        ).values(deleted_at=datetime.now(timezone.utc), draft_token=None))
+        ).values(deleted_at=datetime.now(timezone.utc), draft_token=None, deletion_pending=session.info.get("staff_role") == "editor"))
     elif action == "publish":
         for download in downloads:
             if download.is_draft:
@@ -1149,14 +1263,15 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
             download.is_active = True
     else:
         values = {
-            "unpublish": {"is_active": False},
+            "unpublish": {"is_active": False, "publication_pending": False},
+            "hide": {"is_hidden": True},
             "feature": {"is_featured": True},
             "unfeature": {"is_featured": False},
         }.get(action)
         if values is None:
             raise ValueError("Geçersiz toplu işlem.")
         await session.execute(update(Download).where(Download.id.in_(ids), Download.deleted_at.is_(None)).values(**values))
-    labels = {"delete": "Silinenler'e taşındı", "publish": "yayınlandı", "unpublish": "pasife alındı", "feature": "öne çıkarıldı", "unfeature": "öne çıkarma kaldırıldı"}
+    labels = {"delete": "Silinenler'e taşındı", "publish": "yayınlandı", "unpublish": "pasife alındı", "hide": "hidden", "feature": "öne çıkarıldı", "unfeature": "öne çıkarma kaldırıldı"}
     add_event(session, "bulk", "downloads", f"{len(downloads)} içerik {labels[action]}", changes={"islem": [None, action], "adet": [None, len(downloads)]})
     await session.commit()
     return len(downloads)
@@ -1219,7 +1334,7 @@ async def record_download_if_allowed(
             .where(
                 Download.id == download_id,
                 Download.deleted_at.is_(None),
-                Download.is_active.is_(True),
+                Download.is_active.is_(True), Download.is_hidden.is_(False),
                 Download.is_draft.is_(False),
             )
             .values(download_count=Download.download_count + 1)
@@ -1245,7 +1360,7 @@ async def get_category_download_counts(
     stmt = (
         select(Download.category_id, func.count(Download.id))
         .where(
-            Download.is_active.is_(True),
+            Download.is_active.is_(True), Download.is_hidden.is_(False),
             Download.is_draft.is_(False),
             Download.parent_id.is_(None),
             Download.deleted_at.is_(None),

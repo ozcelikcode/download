@@ -1,0 +1,7 @@
+{% if pages > 1 %}
+<nav class="flex justify-between items-center mt-5 text-sm" aria-label="{{ t(request, 'navigation') }}">
+  {% if page > 1 %}<a class="btn-secondary" href="?page={{ page - 1 }}">←</a>{% else %}<span></span>{% endif %}
+  <span class="text-slate-500 dark:text-slate-400">{{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a class="btn-secondary" href="?page={{ page + 1 }}">→</a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}

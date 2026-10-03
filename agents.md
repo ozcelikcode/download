@@ -16,6 +16,13 @@ This project is a minimal download site built with FastAPI and Tailwind CSS. Fol
 - Inspect the current implementation before editing, verify each increment, and preserve existing user data and unrelated changes.
 - Do not move to another feature while the current increment is broken.
 
+## Artifact hygiene
+
+- Store manual migration/recovery snapshots in one private archive directory, grouped by date. Never scatter them across the repository's parent directory or the Documents root.
+- Use automatically cleaned temporary directories for disposable checks. Keep meaningful regression tests; remove only temporary artifacts whose purpose has ended.
+- Before removing SQLite sidecars, identify the exact database, check open handles, and confirm that its WAL contains no pending data. Never remove the active site's database, WAL/SHM files, uploads, virtual environment, or required build tools as cleanup.
+- Verify archived snapshots after relocation and record their location in the memory bank. Keep recovery copies unless their permanent deletion is explicitly authorized.
+
 ## Architecture
 
 - Use SQLite and Alembic migrations for schema changes.

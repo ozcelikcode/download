@@ -58,7 +58,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import select, func, text
 
 from app import crud
 from app.branding import SITE_ICON_COLORS
@@ -80,7 +80,8 @@ from app.dependencies import (
     verify_password_async,
     SESSION_COOKIE,
 )
-from app.models import FileType, IconType, Page, User
+from app.models import Download, FileType, IconType, Page, Tag, User
+from app.ownership import require_owned_media
 from app.media import ensure_unused, media_path, media_usage
 from app.routers.public import build_download_detail_context
 from app.schemas import (
@@ -380,6 +381,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
             session.info["audit_actor"] = uploaded_by
+            session.info["actor_id"] = _icon_fetch_progress[token].get("owner_id")
             await crud.record_media_upload(session, final_path, uploaded_by)
         _icon_fetch_progress[token].update(
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
@@ -583,6 +585,9 @@ async def media_view(
     # düzenler. Bu, fiziksel dosya adından bağımsız ayrı bir alandır.
     all_paths = [item["url"] for item in images] + [item["url"] for item in files]
     assets = await crud.get_media_assets_info(session, all_paths)
+    if session.info.get("editor_owner_id") is not None:
+        images = [item for item in images if item["url"] in assets]
+        files = [item for item in files if item["url"] in assets]
     for item in images + files:
         asset = assets.get(item["url"])
         item["display_name"] = (asset.display_name if asset and asset.display_name else None) or item["name"]
@@ -667,10 +672,12 @@ async def media_upload_file(
 async def media_file(
     filename: str,
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
 ):
     safe_name = Path(unquote(filename or "")).name
     if not safe_name or safe_name != unquote(filename):
         raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
+    await require_owned_media(session, f"/admin/media/files/{quote(safe_name)}")
     root = settings.download_path.resolve()
     try:
         path = (root / safe_name).resolve()
@@ -695,6 +702,7 @@ async def media_replace_file(
     file: UploadFile = File(...),
 ):
     """Dosya Arşivi'nde mevcut bir dosyanın İÇERİĞİNİ değiştirir; link/ad aynı kalır."""
+    await require_owned_media(session, path, mutation=True)
     filename = Path(unquote(path or "")).name
     if not filename:
         raise HTTPException(status_code=400, detail="Geçersiz yol.")
@@ -738,6 +746,7 @@ async def media_rename(
 ):
     """Bir medya öğesinin görünen adını değiştirir. Link (path) hiç değişmez;
     boş ad gönderilirse fiziksel dosya adına geri döner."""
+    await require_owned_media(session, path)
     await crud.set_media_display_name(session, path, display_name)
     return {"ok": True, "display_name": display_name.strip() or Path(path).name}
 
@@ -758,6 +767,7 @@ async def upload_icon_image(
         raise HTTPException(status_code=400, detail="Sadece görsel dosyaları yüklenebilir.")
 
     if replace_path:
+        await require_owned_media(session, replace_path, mutation=True)
         # Yerinde güncelleme: link/dosya adı asla değişmez, sıkıştırma uygulanmaz
         # (kaynak — kırpma tuvali çıktısı — zaten işlenmiş kabul edilir).
         path = await _replace_icon_upload(file, replace_path)
@@ -771,11 +781,15 @@ async def upload_icon_image(
 
 @router.post("/upload/icon-image-url", name="admin_upload_icon_image_url")
 async def upload_icon_image_url(
+    request: Request,
     _admin: str = Depends(require_admin),
     url: str = Form(...),
     token: str = Form(...),
 ):
+    if token in _icon_fetch_progress:
+        raise HTTPException(409)
     _icon_fetch_progress[token] = {
+        "owner_id": request.state.admin_id,
         "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
     }
     return JSONResponse({"started": True, "token": token},
@@ -785,7 +799,7 @@ async def upload_icon_image_url(
 @router.get("/upload/progress/{token}", name="admin_upload_progress")
 async def upload_progress(token: str, request: Request, _admin: str = Depends(require_admin)):
     data = _icon_fetch_progress.get(token)
-    if not data:
+    if not data or (request.state.admin_role == "editor" and data.get("owner_id") != request.state.admin_id):
         raise HTTPException(status_code=404, detail="Bilinmeyen işlem.")
     if data.get("done"):
         _icon_fetch_progress.pop(token, None)
@@ -823,6 +837,7 @@ async def upload_icon_auto_crop(
     `in_place=True`: sonucu KAYNAKLA AYNI dosya yoluna yazar (link asla değişmez).
     `in_place=False` (varsayılan): yeni, benzersiz adlı bir dosya oluşturur.
     """
+    await require_owned_media(session, path, mutation=in_place)
     filename = Path(unquote(path or "")).name
     src = settings.upload_path / "icons" / filename
     if not filename or not src.exists():
@@ -839,6 +854,8 @@ async def upload_icon_auto_crop(
         logger.error("Automatic icon cropping failed: error_type=%s", type(exc).__name__)
         raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
 
+    if not in_place:
+        await crud.record_media_upload(session, f"/static/uploads/icons/{dest.name}", _admin)
     add_event(session, "crop", "media_assets", f"/static/uploads/icons/{dest.name}")
     await session.commit()
     return {"path": f"/static/uploads/icons/{dest.name}"}
@@ -930,6 +947,12 @@ async def dashboard(
     )
 
     stats = await crud.get_dashboard_stats(session)
+    if request.state.admin_role == "editor":
+        return templates.TemplateResponse(request=request, name="admin/editor_dashboard.html", context={
+            "request": request, "stats": stats, "recent_items": recent_items,
+            "pending_deletions": await session.scalar(select(func.count()).select_from(Download).where(Download.deletion_pending.is_(True), Download.deleted_at.is_not(None))) or 0,
+            "admin_user": _admin, "flash_message": request.session.pop("flash_message", None),
+        })
     site_health = await get_admin_site_health(session)
     recent_activity = await crud.get_recent_audit_logs(session)
     flash_message = request.session.pop("flash_message", None)
@@ -992,7 +1015,7 @@ async def content_list(
 ):
     page_size = 20
     q = q.strip() if q and q.strip() else None
-    status_filter = status_filter if status_filter in {"active", "inactive", "draft"} else None
+    status_filter = status_filter if status_filter in {"active", "inactive", "draft", "pending", "hidden"} else None
     file_type_filter = file_type_filter if file_type_filter in {"external", "local"} else None
     if category_id != "uncategorized" and _int_or_none(category_id) is None:
         category_id = None
@@ -1033,6 +1056,7 @@ async def content_list(
         "active": translate(request, "active"),
         "inactive": translate(request, "inactive"),
         "draft": translate(request, "draft"),
+        "pending": translate(request, "publication_pending"),
     }
     filter_chips = []
     chip_values = [
@@ -1108,6 +1132,8 @@ async def download_trash(
 ):
     page = max(1, page)
     items, total = await crud.get_trashed_downloads(session, page)
+    from app.trash_retention import protected_trash_ids
+    protected_ids = await protected_trash_ids(session, [item.id for item in items])
     total_pages = max(1, math.ceil(total / 20))
     if page > total_pages:
         return _redirect(f"/admin/downloads/trash?page={total_pages}")
@@ -1117,6 +1143,8 @@ async def download_trash(
         "total": total,
         "page": page,
         "total_pages": total_pages,
+        "retention_days": (await crud.get_site_settings(session)).trash_retention_days,
+        "retention_protected_ids": protected_ids,
         "admin_user": _admin,
         "flash_message": request.session.pop("flash_message", None),
     })
@@ -1130,12 +1158,16 @@ async def download_trash_bulk(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
+    # Serialize review and withdrawal so approval cannot delete an already restored item.
+    await session.rollback()
+    await session.execute(text("BEGIN IMMEDIATE"))
+    await require_admin(request, request.cookies.get(SESSION_COOKIE), session)
     try:
         count = await crud.update_trashed_downloads(session, download_ids, action)
     except ValueError as exc:
         request.session["flash_message"] = system_message(request, str(exc))
     else:
-        key = "trash_restored" if action == "restore" else "trash_purged"
+        key = "trash_rejected" if action == "reject" else "trash_restored" if action == "restore" else "trash_purged"
         request.session["flash_message"] = translate(request, key).format(count=count)
     return _redirect("/admin/downloads/trash")
 
@@ -1217,6 +1249,7 @@ async def download_new_post(
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
+    is_hidden: bool = Form(False),
     submission_intent: str = Form("save"),
     is_featured: bool = Form(False),
     is_official_source: bool = Form(True),
@@ -1234,6 +1267,7 @@ async def download_new_post(
     file_path: Optional[str] = _stored_download_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
+        await crud.record_media_upload(session, f"/admin/media/files/{quote(Path(file_path).name)}", _admin)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: AJAX ile önceden yüklenmiş/indirilmiş yerel dosya yolu.
@@ -1244,6 +1278,7 @@ async def download_new_post(
         icon_img_url = None
     elif icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
+        await crud.record_media_upload(session, icon_img_path, _admin)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id     = _int_or_none(category_id)
@@ -1270,11 +1305,15 @@ async def download_new_post(
             category_id=cat_id,
             parent_id=par_id,
             is_active=is_active,
+            is_hidden=is_hidden,
             is_featured=is_featured,
             is_official_source=is_official_source,
             tag_ids=tag_id_list,
         )
         download = await crud.create_download(session, data)
+    except HTTPException:
+        await session.rollback()
+        raise
     except Exception as exc:
         await session.rollback()
         logger.error("Download creation failed: error_type=%s", type(exc).__name__)
@@ -1304,10 +1343,11 @@ async def download_new_post(
             status_code=422,
         )
 
-    request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
+    request.session["flash_message"] = (translate(request, "publication_submitted") if download.publication_pending
+                                        else translate(request, "application_added").format(title=download.title))
     if _wants_json(request):
         return JSONResponse(
-            {"ok": True, "message": translate(request, "saved_response"), "redirect_url": "/admin/downloads"}
+            {"ok": True, "message": request.session["flash_message"], "redirect_url": "/admin/downloads"}
         )
     return _redirect("/admin/downloads")
 
@@ -1380,6 +1420,7 @@ async def download_draft_autosave(
             is_active=False,
             is_draft=True,
             is_featured=_form_bool(form.get("is_featured")),
+            is_hidden=_form_bool(form.get("is_hidden")),
             is_official_source=_form_bool(form.get("is_official_source"), True),
             tag_ids=[
                 int(value)
@@ -1388,6 +1429,9 @@ async def download_draft_autosave(
             ],
         )
         draft = await crud.update_download(session, draft, data)
+    except HTTPException:
+        await session.rollback()
+        raise
     except (TypeError, ValueError) as exc:
         await session.rollback()
         return JSONResponse({"ok": False, "message": _download_form_error(request, exc)}, status_code=422)
@@ -1475,6 +1519,7 @@ async def download_edit_post(
     parent_id: Optional[str] = Form(None),
     os_tags: List[str] = Form(default_factory=list),
     is_active: bool = Form(False),
+    is_hidden: bool = Form(False),
     submission_intent: str = Form("save"),
     is_featured: bool = Form(False),
     is_official_source: bool = Form(True),
@@ -1491,6 +1536,7 @@ async def download_edit_post(
     file_path: Optional[str] = _stored_download_path(file_final_path) or download.file_path
     if upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
+        await crud.record_media_upload(session, f"/admin/media/files/{quote(Path(file_path).name)}", _admin)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: (1) kullanıcı görseli sildi  (2) AJAX ile önceden yüklenmiş/
@@ -1505,6 +1551,7 @@ async def download_edit_post(
         icon_img_url = None
     elif icon_image_file and icon_image_file.filename:
         icon_img_path = await _save_icon_upload(icon_image_file)
+        await crud.record_media_upload(session, icon_img_path, _admin)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id      = _int_or_none(category_id)
@@ -1528,11 +1575,11 @@ async def download_edit_post(
             short_description=short_description or None,
             version=None if is_latest_version and file_type == "external" else version or None,
             is_latest_version=is_latest_version and file_type == "external",
-            file_type=FileType(file_type) if file_type else None,
+            file_type=FileType(file_type) if file_type else download.file_type,
             file_path=file_path or download.file_path,
             external_url=external_url or None,
             file_size_bytes=size_bytes,
-            icon_type=IconType(icon_type) if icon_type else None,
+            icon_type=IconType(icon_type) if icon_type else download.icon_type,
             icon_extension=(icon_extension or "").strip().lstrip(".").lower() or None,
             icon_image_path=icon_img_path,
             icon_image_url=icon_img_url,
@@ -1541,14 +1588,21 @@ async def download_edit_post(
             parent_id=par_id,
             is_active=False if was_draft and not publishing_draft else is_active,
             is_draft=was_draft and not publishing_draft,
+            is_hidden=is_hidden,
             is_featured=is_featured,
             is_official_source=is_official_source,
             tag_ids=tag_id_list,
         )
         await crud.update_download(session, download, data)
+    except HTTPException:
+        await session.rollback()
+        raise
     except Exception as exc:
         await session.rollback()
         logger.error("Download update failed: error_type=%s", type(exc).__name__)
+        download = await crud.get_download_by_id(session, download_id)
+        if download is None:
+            raise HTTPException(404)
         error_message = _download_form_error(request, exc)
         categories = await crud.get_categories(session)
         tags = await crud.get_tags(session)
@@ -1588,13 +1642,14 @@ async def download_edit_post(
         return _redirect(f"/admin/downloads/{download_id}/edit")
 
     if publishing_draft:
-        request.session["flash_message"] = translate(request, "application_added").format(title=download.title)
+        request.session["flash_message"] = (translate(request, "publication_submitted") if download.publication_pending
+                                            else translate(request, "application_added").format(title=download.title))
         if _wants_json(request):
             return JSONResponse(
-                {"ok": True, "message": translate(request, "saved_response"), "redirect_url": "/admin/downloads"}
+                {"ok": True, "message": request.session["flash_message"], "redirect_url": "/admin/downloads"}
             )
         return _redirect("/admin/downloads")
-    request.session["flash_message"] = translate(request, "changes_saved")
+    request.session["flash_message"] = translate(request, "publication_submitted" if download.publication_pending else "changes_saved")
     if _wants_json(request):
         return JSONResponse(
             {
@@ -1642,6 +1697,8 @@ async def version_history_edit(
     _admin: str = Depends(require_admin),
     version: str = Form(...),
 ):
+    if await crud.get_download_by_id(session, download_id) is None:
+        raise HTTPException(404)
     entry = await crud.get_version_history_entry(session, entry_id)
     if not entry or entry.download_id != download_id:
         raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
@@ -1664,6 +1721,8 @@ async def version_history_delete(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
+    if await crud.get_download_by_id(session, download_id) is None:
+        raise HTTPException(404)
     entry = await crud.get_version_history_entry(session, entry_id)
     if not entry or entry.download_id != download_id:
         raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
@@ -1780,6 +1839,20 @@ async def category_delete(
     return _redirect("/admin/categories")
 
 
+@router.post("/categories/{category_id}/move", name="admin_category_move")
+async def category_move(
+    category_id: int, request: Request, target_category_id: int = Form(...),
+    session: AsyncSession = Depends(get_db), _admin: str = Depends(require_admin),
+):
+    await session.rollback()
+    await session.execute(text("BEGIN IMMEDIATE"))
+    await require_admin(request, request.cookies.get(SESSION_COOKIE), session)
+    moved = await crud.move_category_contents(session, category_id, target_category_id)
+    request.session["flash_type"] = "success"
+    request.session["flash_message"] = translate(request, "category_moved").format(count=moved)
+    return _redirect("/admin/categories")
+
+
 @router.post("/categories/bulk-delete", name="admin_category_bulk_delete")
 async def category_bulk_delete(
     request: Request,
@@ -1860,7 +1933,7 @@ async def tag_edit(
         clean_name = name.strip()
         TagCreate(name=clean_name)
         tag.name = clean_name
-        tag.slug = slugify(clean_name, allow_unicode=False, separator="-")
+        tag.slug = await crud._unique_slug(session, Tag, slugify(clean_name, allow_unicode=False, separator="-"), exclude_id=tag.id)
         await session.commit()
         await session.refresh(tag)
     except IntegrityError:

@@ -82,7 +82,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
             .join(Download, Download.category_id == Category.id)
             .where(
                 Download.parent_id.is_(None),
-                Download.is_active.is_(True),
+                Download.is_active.is_(True), Download.is_hidden.is_(False),
                 Download.is_draft.is_(False),
                 Download.deleted_at.is_(None),
             )
@@ -100,7 +100,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
             .join(Download, Download.id == DownloadTag.download_id)
             .where(
                 Download.parent_id.is_(None),
-                Download.is_active.is_(True),
+                Download.is_active.is_(True), Download.is_hidden.is_(False),
                 Download.is_draft.is_(False),
                 Download.deleted_at.is_(None),
             )
@@ -114,7 +114,7 @@ async def sitemap_xml(session: AsyncSession = Depends(get_db)) -> Response:
     downloads = (
         await session.execute(
             select(Download.slug, Download.updated_at)
-            .where(Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None))
+            .where(Download.is_active.is_(True), Download.is_hidden.is_(False), Download.is_draft.is_(False), Download.deleted_at.is_(None))
             .order_by(Download.slug)
         )
     ).all()
@@ -498,7 +498,7 @@ def _build_version_timeline(download) -> list:
     }]
 
     for v in root.versions:
-        if v.id == download.id or v.deleted_at is not None:
+        if v.id == download.id or v.deleted_at is not None or v.is_hidden or not v.is_active or v.is_draft:
             continue
         entries.append({
             "version": v.version or v.title,

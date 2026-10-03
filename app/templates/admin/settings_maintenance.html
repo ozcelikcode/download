@@ -6,6 +6,16 @@
 {% set active_settings_tab = 'maintenance' %}
 {% include "admin/_settings_tabs.html" %}
 <div class="max-w-2xl space-y-5">
+  <form id="trash-retention" method="post" action="/admin/settings/maintenance/retention" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <h2 class="font-semibold flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i>{{ t(request, 'trash_retention') }}</h2>
+    <p class="text-sm text-slate-500">{{ t(request, 'retention_help') }}</p>
+    <label for="retention-days" class="form-label">{{ t(request, 'trash_retention') }}</label>
+    <select id="retention-days" name="days" class="form-input"><option value="0">{{ t(request, 'retention_off') }}</option>{% for days in retention_days %}<option value="{{ days }}" {% if site_settings.trash_retention_days == days %}selected{% endif %}>{{ tf(request, 'retention_days', days=days) }}</option>{% endfor %}</select>
+    <label for="retention-password" class="form-label">{{ t(request, 'current_password') }}</label>
+    <input id="retention-password" name="current_password" type="password" required maxlength="1024" autocomplete="current-password" class="form-input">
+    <button class="btn-secondary" type="submit">{{ t(request, 'save') }}</button>
+  </form>
   <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
     <h2 class="font-semibold">{{ site_settings.site_name }}</h2>
     <p class="text-sm text-slate-500 mt-1 break-all">{{ public_url }}</p>

@@ -11,7 +11,7 @@
   <ul class="divide-y divide-slate-100 dark:divide-slate-800">
     {% for item in pages %}
     <li class="p-4 flex flex-wrap items-center gap-3">
-      <div class="flex-1 min-w-0"><p class="font-medium">{{ item.title }}</p><p class="text-xs text-slate-500 dark:text-slate-400">/page/{{ item.slug }} · {{ t(request, 'deleted_on') }}: {{ item.deleted_at | format_date }}</p></div>
+      <div class="flex-1 min-w-0"><p class="font-medium">{{ item.title }}</p><p class="text-xs text-slate-500 dark:text-slate-400">/page/{{ item.slug }} · {{ t(request, 'deleted_on') }}: {{ item.deleted_at | format_date }}</p>{% include "admin/_trash_timer.html" %}</div>
       <form method="post" action="/admin/pages/{{ item.id }}/restore"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary text-xs">{{ t(request, 'restore') }}</button></form>
       <form method="post" action="/admin/pages/{{ item.id }}/purge"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-danger text-xs" data-confirm-message="{{ t(request, 'page_delete_confirm') }}">{{ t(request, 'permanent_delete') }}</button></form>
     </li>
@@ -27,3 +27,4 @@
 </nav>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="/static/js/trash_retention.js" defer></script>{% endblock %}

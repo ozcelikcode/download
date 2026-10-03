@@ -3,6 +3,7 @@
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
+<script src="/static/js/rich_text.js" defer></script>
 {% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
@@ -40,12 +41,11 @@
 document.addEventListener('DOMContentLoaded', function () {
   var field = document.getElementById('page-body');
   if (typeof Quill === 'undefined') return;
-  var editor = new Quill('#page-editor', {
+  var editor = createRichTextEditor('#page-editor', {
     theme: 'snow',
     modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['blockquote', 'code-block', 'link'], ['clean']] }
-  });
+  }, field.value);
   editor.root.setAttribute('aria-label', {{ t(request, 'page_content')|tojson }});
-  if (field.value.trim()) editor.clipboard.dangerouslyPasteHTML(field.value);
   document.getElementById('page-editor-wrap').classList.remove('hidden');
   field.classList.add('hidden');
   editor.on('text-change', function () { field.value = editor.getText().trim() ? editor.root.innerHTML : ''; });

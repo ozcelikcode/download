@@ -48,11 +48,13 @@ async def _confirm_password(request: Request, session: AsyncSession, password: s
     return True
 
 
-async def _lock_actor(request: Request, session: AsyncSession, role: str) -> None:
+async def _lock_actor(request: Request, session: AsyncSession, role: str, *, durable: bool = False) -> None:
     """Revalidate the acting account after acquiring the account mutation lock."""
     from app.crud import get_site_settings
 
     await session.rollback()
+    if durable:
+        await session.execute(text("PRAGMA synchronous=FULL"))
     await session.execute(text("BEGIN IMMEDIATE"))
     account = await get_site_settings(session)
     actor = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session)
@@ -123,9 +125,33 @@ async def change_role(
             return _back(request, "last_admin_required", error=True)
     old_role = user.role
     user.role = role
+    if role != old_role:
+        user.is_verified = False
     add_event(session, "update", "users", user.username, entity_id=user.id, changes={"role": [old_role, role]}, actor=request.state.admin_user)
     await session.commit()
     return _back(request, "user_updated")
+
+
+@router.post("/{user_id}/verification")
+async def verify_editor(
+    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    current_password: str = Form(...), verified: bool = Form(False),
+):
+    role = request.state.admin_role
+    if role not in {"admin", "manager"}:
+        raise HTTPException(403)
+    if not await _confirm_password(request, session, current_password):
+        return _back(request, "wrong_current_password", error=True)
+    await _lock_actor(request, session, role)
+    user = await session.get(User, user_id)
+    if user is None or not user.is_active or user.role != "editor":
+        raise HTTPException(404)
+    old = user.is_verified
+    user.is_verified = verified
+    add_event(session, "update", "users", "Editor verification updated", user.id,
+              {"is_verified": [old, verified]}, actor=request.state.admin_user)
+    await session.commit()
+    return _back(request, "verification_saved")
 
 
 @router.post("/{user_id}/request-delete")

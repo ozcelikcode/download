@@ -16,6 +16,7 @@ from app.dependencies import get_db, require_admin
 from app.link_checks import check_link, save_link_result
 from app.i18n import ui_language
 from app.locales.report_labels import LABELS as LOCALIZED_REPORT_LABELS
+from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
 from app.models import AuditLog, Download, FileType, LinkCheck
 from app.security import require_csrf
 from app.templating import templates
@@ -49,15 +50,25 @@ FIELD_LABELS_EN = {
 
 def report_labels(language: str, group: str) -> dict[str, str]:
     if language in LOCALIZED_REPORT_LABELS:
-        return LOCALIZED_REPORT_LABELS[language][group]
-    defaults = {
-        "statuses": (STATUSES, STATUSES_EN),
-        "entities": (ENTITY_LABELS, ENTITY_LABELS_EN),
-        "actions": (ACTION_LABELS, ACTION_LABELS_EN),
-        "fields": (FIELD_LABELS, FIELD_LABELS_EN),
-    }
-    turkish, english = defaults[group]
-    return english if language == "en" else turkish
+        labels = dict(LOCALIZED_REPORT_LABELS[language][group])
+    else:
+        defaults = {
+            "statuses": (STATUSES, STATUSES_EN),
+            "entities": (ENTITY_LABELS, ENTITY_LABELS_EN),
+            "actions": (ACTION_LABELS, ACTION_LABELS_EN),
+            "fields": (FIELD_LABELS, FIELD_LABELS_EN),
+        }
+        turkish, english = defaults[group]
+        labels = dict(english if language == "en" else turkish)
+    strings = WORKFLOW_STRINGS.get(language, WORKFLOW_STRINGS["en"])
+    if group == "entities":
+        labels.update(publication=strings["review_title"], contact=strings["contact_title"])
+    elif group == "actions":
+        from app.i18n import TRANSLATIONS
+        labels.update(approve=strings["approve_publication"], reject=TRANSLATIONS.get(language, TRANSLATIONS["en"])["reject"])
+    elif group == "fields":
+        labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
+    return labels
 
 
 async def _check_downloads(session: AsyncSession, items: list[tuple[int, str]]) -> None:

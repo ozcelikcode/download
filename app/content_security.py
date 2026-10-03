@@ -1,4 +1,4 @@
-"""Zengin metin ve kullanıcı tarafından yönetilen URL'ler için güvenlik sınırları."""
+"""Security boundaries for rich text and user-managed URLs."""
 
 from __future__ import annotations
 
@@ -33,7 +33,6 @@ _RICH_TEXT_CLEANER = nh3.Cleaner(
     attributes={
         "a": {"href", "target", "title"},
         "img": {"alt", "height", "src", "title", "width"},
-        "span": {"style"},
     },
     allowed_classes={
         "blockquote": _BLOCK_CLASSES,
@@ -45,7 +44,6 @@ _RICH_TEXT_CLEANER = nh3.Cleaner(
         "p": _BLOCK_CLASSES,
         "span": _INLINE_CLASSES,
     },
-    filter_style_properties={"background-color", "color"},
     url_schemes={"http", "https", "mailto"},
     url_relative="pass_through",
     attribute_filter=_filter_attribute,
@@ -54,7 +52,7 @@ _RICH_TEXT_CLEANER = nh3.Cleaner(
 
 
 def sanitize_rich_text(value: str | None) -> str | None:
-    """Quill çıktısını güvenli bir HTML alt kümesine indirger."""
+    """Keep semantic editor formatting without source-specific colors or styles."""
     if value is None:
         return None
     cleaned = _RICH_TEXT_CLEANER.clean(str(value).strip()).strip()

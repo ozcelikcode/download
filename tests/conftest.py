@@ -35,6 +35,7 @@ def isolated_uploads(tmp_path, monkeypatch):
     yükleme dizinini her testte geçici bir klasöre yönlendirir."""
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
     monkeypatch.setattr(settings, "download_dir", str(tmp_path / "downloads"))
+    monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
 
 
 @pytest.fixture(autouse=True)
@@ -56,6 +57,7 @@ def isolated_branding_globals():
 async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
     """Sıfırdan oluşturulmuş, izole bir test veritabanı sağlar."""
     db_path = tmp_path / "test.db"
+    monkeypatch.setattr(settings, "database_url", f"sqlite+aiosqlite:///{db_path}")
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
 
     @event.listens_for(engine.sync_engine, "connect")

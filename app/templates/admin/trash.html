@@ -4,10 +4,11 @@
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
 <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-  {{ page_heading(request, t(request, 'trash'), t(request, 'trash_help'), t(request, 'contents'), '/admin/downloads') }}
-  <div class="flex gap-2"><a href="/admin/pages/trash" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'pages') }}</a><a href="/admin/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a></div>
+  {{ page_heading(request, t(request, 'trash'), t(request, 'editor_trash_help') if request.state.admin_role == 'editor' else t(request, 'trash_help'), t(request, 'contents'), '/admin/downloads') }}
+  <div class="flex gap-2">{% if request.state.admin_role != 'editor' %}<a href="/admin/pages/trash" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'pages') }}</a>{% endif %}<a href="/admin/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a></div>
 </div>
 
+{% if request.state.admin_role == 'admin' %}<a href="/admin/settings/maintenance#trash-retention" class="btn-secondary text-sm mb-4"><i data-lucide="timer" class="w-4 h-4"></i>{{ t(request, 'trash_retention') }}</a>{% endif %}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
   {% if items %}
   <form id="trash-bulk-form" method="post" action="/admin/downloads/trash/bulk">
@@ -17,8 +18,11 @@
         <input id="trash-select-all" type="checkbox" class="admin-checkbox" aria-label="{{ t(request, 'select_all') }}">
         <span id="trash-selected-count">0 {{ t(request, 'selected_count') }}</span>
       </label>
-      <button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-3 text-xs">{{ t(request, 'restore') }}</button>
+      <button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-3 text-xs">{{ t(request, 'withdraw_deletion') if request.state.admin_role == 'editor' else t(request, 'restore') }}</button>
+      {% if request.state.admin_role != 'editor' %}
+      <button type="submit" name="action" value="reject" class="btn-secondary py-1.5 px-3 text-xs">{{ t(request, 'reject_deletion') }}</button>
       <button type="submit" name="action" value="purge" data-confirm-message="{{ t(request, 'permanent_delete_confirm') }}" class="btn-danger py-1.5 px-3 text-xs">{{ t(request, 'permanent_delete') }}</button>
+      {% endif %}
     </div>
     <ul class="divide-y divide-slate-100 dark:divide-slate-800">
       {% for item in items %}
@@ -27,9 +31,14 @@
         <div class="min-w-[160px] flex-1">
           <p class="font-medium text-sm truncate">{{ item.title }}</p>
           <p class="text-xs text-slate-500 dark:text-slate-400">#{{ item.id }} · {{ t(request, 'deleted_on') }}: {{ item.deleted_at | format_date }}</p>
+          {% if item.deletion_pending %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ t(request, 'deletion_pending') }}</p>{% endif %}
+          {% include "admin/_trash_timer.html" %}
         </div>
-        <button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}">{{ t(request, 'restore') }}</button>
-        <button type="submit" name="action" value="purge" class="btn-danger py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}" data-confirm-message="{{ t(request, 'permanent_delete_confirm') }}">{{ t(request, 'permanent_delete') }}</button>
+        {% if request.state.admin_role == 'editor' or not item.deletion_pending %}<button type="submit" name="action" value="restore" class="btn-secondary py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}">{{ t(request, 'withdraw_deletion') if request.state.admin_role == 'editor' and item.deletion_pending else t(request, 'restore') }}</button>{% endif %}
+        {% if request.state.admin_role != 'editor' %}
+        {% if item.deletion_pending %}<button type="submit" name="action" value="reject" class="btn-secondary py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}">{{ t(request, 'reject_deletion') }}</button>{% endif %}
+        <button type="submit" name="action" value="purge" class="btn-danger py-1.5 px-2.5 text-xs trash-single" data-id="{{ item.id }}" data-confirm-message="{{ t(request, 'permanent_delete_confirm') }}">{{ t(request, 'approve_deletion') if item.deletion_pending else t(request, 'permanent_delete') }}</button>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
@@ -48,6 +57,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/trash_retention.js" defer></script>
 <script>
 (function () {
   var form = document.getElementById('trash-bulk-form');

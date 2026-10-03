@@ -38,7 +38,7 @@
       <div class="audit-entry-line">
         <div class="audit-entry-main">
           <p class="audit-entry-title text-sm font-medium break-all">
-            {{ system_message(request, row.label) if row.entity in ['login', 'users'] else row.label }}
+            {{ system_message(request, row.label) }}
             <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span>
             {% if row.level == 'critical' %}
             <strong class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'critical') }}</strong>

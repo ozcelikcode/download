@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models import Download, FileType
+from app.models import Download, FileType, Page, SiteSettings
 
 
 def media_path(value: str | None, origin: str | None = None) -> Path | None:
@@ -54,9 +54,9 @@ class _MediaReferences(HTMLParser):
                         self.paths.add(path)
 
 
-async def media_usage(session: AsyncSession, origin: str | None = None) -> dict[Path, list[dict]]:
+async def media_usage(session: AsyncSession, origin: str | None = None, *, all_owners: bool = False) -> dict[Path, list[dict]]:
     usage: dict[Path, list[dict]] = {}
-    downloads = (await session.scalars(select(Download))).all()
+    downloads = (await session.scalars(select(Download).execution_options(include_all_owners=all_owners))).all()
     for download in downloads:
         parser = _MediaReferences(origin)
         parser.feed(download.description or "")
@@ -70,19 +70,34 @@ async def media_usage(session: AsyncSession, origin: str | None = None) -> dict[
         for path in paths:
             usage.setdefault(path, []).append({
                 "id": download.id, "title": download.title,
+                "owner_id": download.owner_id,
                 "url": f"/admin/downloads/{download.id}/edit",
             })
+    if all_owners:
+        pages = await session.scalars(select(Page))
+        for page in pages:
+            parser = _MediaReferences(origin)
+            parser.feed(page.body_html)
+            for path in parser.paths:
+                usage.setdefault(path, []).append({"id": page.id, "title": page.title, "owner_id": None, "url": f"/admin/pages/{page.id}/edit"})
+        account = await session.scalar(select(SiteSettings))
+        if account:
+            for value in (account.logo_light_path, account.logo_dark_path, account.hero_image_path):
+                if path := media_path(value, origin):
+                    usage.setdefault(path, []).append({"id": account.id, "title": "Site settings", "owner_id": None, "url": "/admin/settings/appearance"})
     return usage
 
 
 async def ensure_unused(session: AsyncSession, value: str, origin: str | None = None) -> Path:
+    from app.ownership import require_owned_media
+    await require_owned_media(session, value)
     path = media_path(value, origin)
     if path is None:
         raise HTTPException(status_code=400, detail="Geçersiz medya yolu.")
-    linked = (await media_usage(session, origin)).get(path, [])
+    linked = (await media_usage(session, origin, all_owners=True)).get(path, [])
     if linked:
         raise HTTPException(status_code=409, detail={
             "message": "Dosya kullanıldığı için silinemedi. Önce ilgili içeriklerdeki bağlantıyı kaldırın.",
-            "downloads": linked,
+            "downloads": [] if session.info.get("editor_owner_id") is not None else linked,
         })
     return path

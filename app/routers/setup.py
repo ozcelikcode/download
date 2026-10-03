@@ -123,6 +123,9 @@ async def maintenance_page(request: Request, session: AsyncSession, error: str |
         "media_count": await session.scalar(select(func.count()).select_from(MediaAsset)),
         "error": translate(request, error) if error else None,
         "challenge": challenge, "can_uninstall": setup_available(),
+        "retention_days": (15, 30, 60, 90, 120, 240, 360),
+        "flash_message": request.session.pop("flash_message", None),
+        "flash_type": request.session.pop("flash_type", "success"),
     }, status_code=status_code)
 
 

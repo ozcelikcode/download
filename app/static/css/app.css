@@ -683,6 +683,13 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
   border-color: var(--theme-border) !important;
 }
 [class~="accent-blue-600"] { accent-color: var(--theme-accent); }
+/* Identity colors are semantic and do not inherit the site's accent palette. */
+.publisher-badge--editor { color: #2563eb; }
+.publisher-badge--admin { color: #ca8a04; }
+.publisher-badge--manager { color: #7c3aed; }
+.dark .publisher-badge--editor { color: #60a5fa; }
+.dark .publisher-badge--admin { color: #facc15; }
+.dark .publisher-badge--manager { color: #a78bfa; }
 [class~="stroke-blue-400"], [class~="stroke-blue-600"] { stroke: var(--theme-accent) !important; }
 [class~="ring-blue-50"], [class~="ring-blue-500/10"] { --tw-ring-color: color-mix(in srgb, var(--theme-accent) 20%, transparent) !important; }
 

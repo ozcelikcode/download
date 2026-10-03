@@ -1,0 +1,24 @@
+{% extends "admin/base_admin.html" %}
+{% from "admin/_page_heading.html" import render as page_heading %}
+{% from "_publisher.html" import render as publisher_badge %}
+{% block title %}{{ t(request, 'review_title') }}{% endblock %}
+{% block content %}
+<div class="mb-6">{{ page_heading(request, t(request, 'review_title'), t(request, 'review_help')) }}</div>
+<div class="space-y-3">
+{% for item in items %}
+<article class="rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+  <h2 class="font-semibold text-sm"><a href="/admin/downloads/{{ item.id }}/edit">{{ item.title }}</a></h2>
+  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ publisher_badge(request, item.publisher, site_name) }}</p>
+  <a href="/admin/downloads/{{ item.id }}/edit" class="btn-secondary text-xs mt-3">{{ t(request, 'edit_content') }}</a>
+  <div class="prose-description mt-4 text-sm">{{ (item.description or '') | sanitize_html | safe }}</div>
+  <form method="post" action="/admin/review/{{ item.id }}" class="mt-4 space-y-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <input type="hidden" name="revision" value="{{ item.updated_at.isoformat() }}">
+    <label class="block"><span class="form-label">{{ t(request, 'review_reason') }}</span><textarea name="reason" maxlength="1000" class="form-input" rows="2"></textarea></label>
+    <div class="flex flex-wrap gap-2"><button name="action" value="approve" class="btn-primary">{{ t(request, 'approve_publication') }}</button><button name="action" value="reject" class="btn-secondary">{{ t(request, 'reject') }}</button></div>
+  </form>
+</article>
+{% else %}<p class="text-sm text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm p-5">{{ t(request, 'review_empty') }}</p>{% endfor %}
+</div>
+{% include "admin/_workflow_pagination.html" %}
+{% endblock %}

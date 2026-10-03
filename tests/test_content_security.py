@@ -22,7 +22,7 @@ def test_rich_text_sanitizer_preserves_editor_formatting_and_removes_active_cont
     assert cleaned is not None
     assert "Güvenli" in cleaned
     assert 'class="ql-align-center"' in cleaned
-    assert "color:red" in cleaned
+    assert "color:red" not in cleaned
     assert 'src="/static/uploads/icon.png"' in cleaned
     assert "onclick" not in cleaned
     assert "onerror" not in cleaned
@@ -39,6 +39,24 @@ def test_rich_text_sanitizer_blocks_unsafe_link_schemes():
     assert 'javascript:' not in (cleaned or "")
     assert 'href="https://example.com"' in (cleaned or "")
     assert 'rel="noopener noreferrer"' in (cleaned or "")
+
+
+def test_pasted_rich_text_inherits_theme_without_losing_structure():
+    source = (
+        '<h2 style="color:white;background:black">Overview</h2>'
+        '<p><span class="ql-color-white" style="color:#fff;background-color:#000;'
+        'font-family:Arial;font-size:48px">Readable in both themes</span></p>'
+        '<ul><li><strong>Feature</strong> <em>details</em> '
+        '<a href="https://example.com">Source</a></li></ul>'
+    )
+    cleaned = sanitize_rich_text(source)
+    assert 'style=' not in cleaned
+    assert 'ql-color' not in cleaned
+    assert '<h2>Overview</h2>' in cleaned
+    assert 'Readable in both themes' in cleaned
+    assert '<ul><li><strong>Feature</strong> <em>details</em>' in cleaned
+    assert 'href="https://example.com"' in cleaned
+    assert sanitize_rich_text(cleaned) == cleaned
 
 
 @pytest.mark.parametrize(
@@ -71,7 +89,7 @@ async def test_legacy_description_is_sanitized_when_rendered(client, db_session:
     download = Download(
         title="Eski kayıt",
         slug="eski-kayit",
-        description='<strong>Güvenli</strong><img src="x" onerror="alert(1)"><script>alert(2)</script>',
+        description='<strong>Güvenli</strong><span style="color:white;background-color:black">Legacy text</span><img src="x" onerror="alert(1)"><script>alert(2)</script>',
         file_type=FileType.external,
         icon_type=IconType.link,
         external_url="https://example.com/file.zip",
@@ -85,6 +103,7 @@ async def test_legacy_description_is_sanitized_when_rendered(client, db_session:
     assert "<strong>Güvenli</strong>" in response.text
     assert "onerror" not in response.text
     assert "alert(2)" not in response.text
+    assert '<span>Legacy text</span>' in response.text
 
 
 async def test_legacy_unsafe_download_redirect_is_blocked(client, db_session: AsyncSession):

@@ -127,6 +127,16 @@ async def require_admin(
     request.state.admin_user = user.username
     request.state.admin_role = user.role
     request.state.admin_id = user.id
+    from app import ownership  # Register the ORM ownership boundary before route queries.
+    session.info["actor_id"] = user.id
+    session.info["staff_role"] = user.role
+    session.info["verified_editor"] = user.is_verified
+    session.info["authenticated_credential"] = credential_stamp(user.username, user.password_hash)
+    session.info["authenticated_generation"] = account.session_generation
+    if user.role == "editor":
+        session.info["editor_owner_id"] = user.id
+    else:
+        session.info.pop("editor_owner_id", None)
     return user.username
 
 
@@ -160,10 +170,16 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return False
     if path == "/admin/settings/account":
         return True
+    if path == "/admin/contact" or path.startswith("/admin/contact/"):
+        return True
     if path in {"/admin", "/admin/"} or path.startswith(("/admin/downloads", "/admin/categories", "/admin/tags", "/admin/media", "/admin/upload")):
         return True
     if role == "editor":
         return False
+    if path == "/admin/review" or path.startswith("/admin/review/"):
+        return True
+    if path.startswith("/admin/users/") and path.endswith("/verification") and method == "POST":
+        return True
     if path.startswith(("/admin/pages", "/admin/links")) or path == "/admin/site-health":
         return True
     if path == "/admin/users" and method == "GET":

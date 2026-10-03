@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import asyncio
+from contextlib import suppress
 import time
 from contextlib import asynccontextmanager
 
@@ -17,7 +19,11 @@ from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.i18n import translate, system_message
-from app.routers import admin, pages, public, reports, setup, users
+from app.routers import admin, pages, public, reports, setup, users, workflows, backups as backup_routes
+from app import backups, maintenance_jobs
+from app.models import SiteSettings
+from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 from app.lifecycle import LifecycleMiddleware, finish_pending_reset, single_worker_guard, reset_storage_roots
 from app.storage import migrate_legacy_local_downloads
 from app.security import SecurityHeadersMiddleware
@@ -65,6 +71,10 @@ async def lifespan(app: FastAPI):
         settings.upload_path
         settings.download_path
         async with AsyncSessionLocal() as session:
+            marker = await session.scalar(select(SiteSettings.restore_marker))
+        await run_in_threadpool(backups.recover_restore, marker)
+        await run_in_threadpool(backups.clean_stages)
+        async with AsyncSessionLocal() as session:
             await finish_pending_reset(session)
             migrated = await migrate_legacy_local_downloads(session)
             if migrated:
@@ -72,9 +82,13 @@ async def lifespan(app: FastAPI):
             site_settings = await crud.get_site_settings(session)
             refresh_site_branding_globals(site_settings)
         logger.info("Application started")
+        maintenance_task = asyncio.create_task(maintenance_jobs.run())
         try:
             yield
         finally:
+            maintenance_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await maintenance_task
             await engine.dispose()
             logger.info("Application stopped")
 
@@ -119,6 +133,8 @@ app.include_router(admin.router)
 app.include_router(pages.admin_router)
 app.include_router(reports.router)
 app.include_router(users.router)
+app.include_router(workflows.router)
+app.include_router(backup_routes.router)
 
 
 # ---------------------------------------------------------------------------

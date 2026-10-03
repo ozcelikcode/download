@@ -17,6 +17,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -74,9 +75,15 @@ class DownloadTag(Base):
 # ---------------------------------------------------------------------------
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = (
+        Index("uq_categories_owner_name", "owner_id", "name", unique=True),
+        Index("uq_categories_unowned_name", "name", unique=True, sqlite_where=text("owner_id IS NULL")),
+        Index("uq_categories_required", "is_required", unique=True, sqlite_where=text("is_required = 1")),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     slug: Mapped[str] = mapped_column(String(120), unique=True, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Sidebar'daki "Kategori Menüsü" sıralaması (admin panelinden sürüklenerek değiştirilir)
@@ -101,9 +108,14 @@ class Category(Base):
 # ---------------------------------------------------------------------------
 class Tag(Base):
     __tablename__ = "tags"
+    __table_args__ = (
+        Index("uq_tags_owner_name", "owner_id", "name", unique=True),
+        Index("uq_tags_unowned_name", "name", unique=True, sqlite_where=text("owner_id IS NULL")),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
     slug: Mapped[str] = mapped_column(String(80), unique=True, nullable=False, index=True)
     # Sidebar'daki "Etiketler" sıralaması (admin panelinden sürüklenerek değiştirilir)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False, index=True)
@@ -215,6 +227,8 @@ class SiteSettings(Base):
     # Admin oturumunun dakika cinsinden geçerlilik süresi
     session_max_age_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=480)
     audit_log_max_records: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
+    trash_retention_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    restore_marker: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
@@ -232,6 +246,7 @@ class MediaAsset(Base):
     __tablename__ = "media_assets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     path: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     uploaded_by: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -276,11 +291,42 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(10), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     deletion_requested_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (CheckConstraint("role IN ('admin', 'manager', 'editor')", name="ck_users_role"),)
+
+
+class EditorMessage(Base):
+    """Private, plain-text correspondence between an editor and authorized staff."""
+
+    __tablename__ = "editor_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(150), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    responded_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    responded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sender: Mapped["User"] = relationship(foreign_keys=[sender_id], lazy="selectin")
+
+
+class BackupPolicy(Base):
+    """Only the public encryption key is stored on the server."""
+    __tablename__ = "backup_policy"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    public_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    last_attempt: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    __table_args__ = (CheckConstraint("id = 1", name="ck_backup_policy_singleton"),
+                     CheckConstraint("interval_days IN (1,3,5,7,14)", name="ck_backup_policy_interval"))
 
 
 class AuditLog(Base):
@@ -304,6 +350,10 @@ class Download(Base):
     __tablename__ = "downloads"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    deletion_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    publication_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
+    publication_feedback: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
 
     # Temel bilgiler
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -350,6 +400,7 @@ class Download(Base):
     # Durum bayrakları
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_draft: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="0")
     draft_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Kaynak güvenilirliği: True → resmî site, False → üçüncü parti site
@@ -370,6 +421,7 @@ class Download(Base):
     category: Mapped[Optional["Category"]] = relationship(
         "Category", back_populates="downloads", lazy="select"
     )
+    publisher: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id], lazy="selectin")
     tags: Mapped[List["Tag"]] = relationship(
         "Tag", secondary="download_tag", back_populates="downloads", lazy="select"
     )

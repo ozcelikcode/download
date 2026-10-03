@@ -58,7 +58,7 @@ async def check_clicked_link(download_id: int, url: str) -> None:
         async with AsyncSessionLocal() as session:
             current = await session.scalar(select(Download.external_url).where(
                 Download.id == download_id, Download.file_type == FileType.external,
-                Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None),
+                Download.is_active.is_(True), Download.is_hidden.is_(False), Download.is_draft.is_(False), Download.deleted_at.is_(None),
             ))
             if current != url:
                 return

@@ -6,9 +6,12 @@
 <script src="/static/vendor/cropperjs/1.6.2/cropper.min.js" defer></script>
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
+<script src="/static/js/rich_text.js" defer></script>
 {% endblock %}
 
 {% block content %}
+{% if download and download.publication_pending %}<div role="status" class="border border-slate-200 dark:border-slate-800 rounded-sm p-3 text-sm mb-4">{{ t(request, 'publication_submitted') }}</div>{% endif %}
+{% if download and download.publication_feedback %}<div class="border border-slate-200 dark:border-slate-800 rounded-sm p-3 text-sm mb-4"><p class="font-semibold">{{ t(request, 'review_reason') }}</p><p class="mt-1 whitespace-pre-wrap">{{ download.publication_feedback }}</p></div>{% endif %}
 
 {# ================================================================
      Yükleme ilerleme göstergesi — dinamik, sol üst köşe
@@ -137,17 +140,19 @@
       </div>
 
       {# Sürüm #}
-      <div>
+      <div class="sm:col-span-2 flex flex-wrap items-end gap-3">
+        <div class="w-full sm:w-64 shrink-0">
         <label for="f-version" class="form-label">{{ t(request, 'version') }}</label>
         <input id="f-version" name="version" type="text"
           value="{{ download.version if download and download.version and download.version != 'None' else '' }}"
           placeholder="{{ t(request, 'example') }}: v2.1.0"
           class="form-input" {% if download and download.is_latest_version %}disabled{% endif %}>
-        <label id="latest-version-option" class="choice-card flex items-center gap-2 mt-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
+        </div>
+        <label id="latest-version-option" class="choice-card flex items-center gap-2 px-2.5 py-2 {% if download and download.file_type.value == 'local' %}hidden{% endif %}">
           <input id="f-latest-version" type="checkbox" name="is_latest_version" value="true" class="choice-input" {% if download and download.is_latest_version %}checked{% endif %}>
           <span class="text-xs text-slate-600 dark:text-slate-400">{{ t(request, 'latest_link') }}</span>
         </label>
-        <p id="latest-version-hint" class="form-hint {% if not (download and download.is_latest_version) %}hidden{% endif %}">{{ t(request, 'latest_link_help') }}</p>
+        <p id="latest-version-hint" class="form-hint w-full {% if not (download and download.is_latest_version) %}hidden{% endif %}">{{ t(request, 'latest_link_help') }}</p>
       </div>
 
       {# Optional icon controls stay out of the primary writing flow. #}
@@ -553,6 +558,15 @@
 
     <div class="space-y-3">
       <label class="choice-card flex items-center gap-3 p-3">
+        <input type="checkbox" name="is_featured" value="true"
+          {% if download and download.is_featured %}checked{% endif %}
+          class="choice-input">
+        <div>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'feature') }}</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'feature_help') }}</p>
+        </div>
+      </label>
+      <label class="choice-card flex items-center gap-3 p-3">
         <input type="checkbox" name="is_active" value="true"
           {% if not download or download.is_active %}checked{% endif %}
           class="choice-input">
@@ -563,12 +577,10 @@
       </label>
 
       <label class="choice-card flex items-center gap-3 p-3">
-        <input type="checkbox" name="is_featured" value="true"
-          {% if download and download.is_featured %}checked{% endif %}
-          class="choice-input">
+        <input type="checkbox" name="is_hidden" value="true" {% if download and download.is_hidden %}checked{% endif %} class="choice-input">
         <div>
-          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'feature') }}</p>
-          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'feature_help') }}</p>
+          <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'hide_content') }}</p>
+          <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'hide_content_help') }}</p>
         </div>
       </label>
     </div>
@@ -651,7 +663,7 @@
     var hiddenTextarea = document.getElementById('f-description');
     if (!editorEl || typeof Quill === 'undefined') return;
 
-    var quill = new Quill(editorEl, {
+    var quill = createRichTextEditor(editorEl, {
       theme: 'snow',
       placeholder: {{ t(request, 'description_placeholder')|tojson }},
       modules: {
@@ -659,7 +671,6 @@
           [{ header: [1, 2, 3, false] }],
           [{ size: ['small', false, 'large', 'huge'] }],
           ['bold', 'italic', 'underline', 'strike'],
-          [{ color: [] }, { background: [] }],
           [{ script: 'sub' }, { script: 'super' }],
           [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
           ['blockquote', 'code-block', 'link'],
@@ -667,11 +678,7 @@
           ['clean'],
         ],
       },
-    });
-
-    if (hiddenTextarea.value.trim()) {
-      quill.clipboard.dangerouslyPasteHTML(hiddenTextarea.value);
-    }
+    }, hiddenTextarea.value);
 
     function syncDescription() {
       var isEmpty = quill.getText().trim().length === 0;

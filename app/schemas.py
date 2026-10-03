@@ -330,6 +330,7 @@ class DownloadBase(BaseModel):
     parent_id: Optional[int] = None
     is_active: bool = True
     is_draft: bool = False
+    is_hidden: bool = False
     is_featured: bool = False
     is_official_source: bool = True
 
@@ -384,6 +385,7 @@ class DownloadUpdate(BaseModel):
     parent_id: Optional[int] = None
     is_active: Optional[bool] = None
     is_draft: Optional[bool] = None
+    is_hidden: Optional[bool] = None
     is_featured: Optional[bool] = None
     is_official_source: Optional[bool] = None
     tag_ids: Optional[List[int]] = None

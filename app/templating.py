@@ -28,6 +28,9 @@ templates.env.globals["ui_language"] = ui_language
 templates.env.globals["og_locale"] = og_locale
 templates.env.globals["date_locale"] = date_locale
 templates.env.globals["language_choices"] = LANGUAGE_CHOICES
+from app.trash_retention import expires_at, days_remaining
+templates.env.globals["trash_expires_at"] = expires_at
+templates.env.globals["trash_days_remaining"] = days_remaining
 templates.env.globals.update({
     "theme_color": "blue", "theme_accent_light": "#356fd4", "theme_accent_dark": "#72a7e8",
     "theme_surface_light": "#eaf2fc", "theme_surface_dark": "#152033",
