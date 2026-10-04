@@ -247,7 +247,7 @@ async def restore(request: Request, token: str = Form(...), confirmation: str = 
     account = await crud.get_site_settings(session)
     refresh_site_branding_globals(account)
     request.session.clear()
-    response = RedirectResponse("/admin/login", status_code=303)
+    response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
 

@@ -20,6 +20,8 @@ from app.config import settings
 from app.database import AsyncSessionLocal, engine
 from app.i18n import translate, system_message
 from app.routers import admin, pages, public, reports, setup, users, workflows, backups as backup_routes
+from app.routers import registrations
+from app.routers import auth
 from app import backups, maintenance_jobs
 from app.models import SiteSettings
 from sqlalchemy import select
@@ -127,6 +129,7 @@ app.add_middleware(
 app.add_middleware(LifecycleMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(setup.router)
+app.include_router(auth.router)
 app.include_router(public.router)
 app.include_router(pages.public_router)
 app.include_router(admin.router)
@@ -135,6 +138,7 @@ app.include_router(reports.router)
 app.include_router(users.router)
 app.include_router(workflows.router)
 app.include_router(backup_routes.router)
+app.include_router(registrations.router)
 
 
 # ---------------------------------------------------------------------------
@@ -196,9 +200,9 @@ async def server_error_handler(request: Request, exc):
 
 @app.exception_handler(429)
 async def rate_limit_handler(request: Request, exc):
-    if request.url.path != "/admin/login":
+    if request.url.path != "/login":
         await _record_public_error(request, 429)
-    if request.url.path == "/admin/login":
+    if request.url.path == "/login":
         return templates.TemplateResponse(
             request=request, name="admin/login.html",
             context={"request": request, "error": translate(request, "login_rate_limited")},

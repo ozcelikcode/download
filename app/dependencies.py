@@ -111,7 +111,7 @@ async def require_admin(
     if not admin_session:
         raise HTTPException(
             status_code=status.HTTP_302_FOUND,
-            headers={"Location": "/admin/login"},
+            headers={"Location": "/login"},
         )
     from app.crud import get_site_settings
     account = await get_site_settings(session)
@@ -119,7 +119,7 @@ async def require_admin(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_302_FOUND,
-            headers={"Location": "/admin/login"},
+            headers={"Location": "/login"},
         )
     if not role_allows(user.role, request.url.path, request.method):
         raise HTTPException(status_code=403, detail=translate(request, "permission_denied"))
@@ -170,6 +170,8 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return False
     if path == "/admin/settings/account":
         return True
+    if path == "/admin/registrations" or path.startswith("/admin/registrations/"):
+        return role == "manager"
     if path == "/admin/contact" or path.startswith("/admin/contact/"):
         return True
     if path in {"/admin", "/admin/"} or path.startswith(("/admin/downloads", "/admin/categories", "/admin/tags", "/admin/media", "/admin/upload")):

@@ -128,10 +128,10 @@ async def test_delete_menu_item(admin_client: AsyncClient, db_session: AsyncSess
 async def test_menu_settings_requires_admin_session(client: AsyncClient):
     response = await client.get("/admin/settings/menu")
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"
 
     response = await client.post(
         "/admin/settings/menu", data={"label": "X", "url": "/x"}
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"

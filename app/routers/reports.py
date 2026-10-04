@@ -15,6 +15,7 @@ from app.audit import ACTION_LABELS, ENTITY_LABELS, FIELD_LABELS
 from app.dependencies import get_db, require_admin
 from app.link_checks import check_link, save_link_result
 from app.i18n import ui_language
+from app.locales.timezones import STRINGS as TIMEZONE_STRINGS
 from app.locales.report_labels import LABELS as LOCALIZED_REPORT_LABELS
 from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
 from app.models import AuditLog, Download, FileType, LinkCheck
@@ -68,6 +69,7 @@ def report_labels(language: str, group: str) -> dict[str, str]:
         labels.update(approve=strings["approve_publication"], reject=TRANSLATIONS.get(language, TRANSLATIONS["en"])["reject"])
     elif group == "fields":
         labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
+        labels["site_timezone"] = TIMEZONE_STRINGS.get(language, TIMEZONE_STRINGS["en"])["timezone_title"]
     return labels
 
 

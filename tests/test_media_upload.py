@@ -276,7 +276,7 @@ async def test_media_upload_requires_admin_session(client: AsyncClient):
         files={"file": ("x.txt", b"x", "text/plain")},
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"
 
 
 # ---------------------------------------------------------------------------

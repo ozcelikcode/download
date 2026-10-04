@@ -310,7 +310,7 @@ async def test_saved_draft_can_be_previewed_only_by_admin(
     preview_url = f"/admin/downloads/{draft_id}/preview"
     anonymous = await client.get(preview_url, follow_redirects=False)
     assert anonymous.status_code == 302
-    assert anonymous.headers["location"] == "/admin/login"
+    assert anonymous.headers["location"] == "/login"
 
     preview = await admin_client.get(preview_url)
     edit_form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")

@@ -51,7 +51,7 @@ async def test_new_site_closed_until_owner_completes_setup(client, db_session, m
     state = await get_lifecycle(db_session)
     state.installed = False
     await db_session.commit()
-    for path in ("/", "/admin/login", "/sitemap.xml", "/static/uploads/icons/old.png", "/static/css/%2e%2e/uploads/old.png", "/dl/old"):
+    for path in ("/", "/login", "/sitemap.xml", "/static/uploads/icons/old.png", "/static/css/%2e%2e/uploads/old.png", "/dl/old"):
         response = await client.get(path)
         assert response.status_code == 303
         assert response.headers["location"] == "/setup"
@@ -71,9 +71,9 @@ async def test_new_site_closed_until_owner_completes_setup(client, db_session, m
     assert rejected.status_code == 422
     accepted = await client.post("/setup", data=data)
     assert accepted.status_code == 303
-    assert accepted.headers["location"] == "/admin/login"
+    assert accepted.headers["location"] == "/login"
     assert (await client.get("/")).status_code == 200
-    assert (await client.get("/setup")).headers["location"] == "/admin/login"
+    assert (await client.get("/setup")).headers["location"] == "/login"
     db_session.expire_all()
     account = await crud.get_site_settings(db_session)
     owner_user = await db_session.scalar(select(User).where(User.username == "owner"))
@@ -184,13 +184,13 @@ async def test_reset_confirmation_expires(admin_client, db_session, password_has
 
 
 async def test_oversized_requests_rejected_before_form_parsing(client):
-    assert (await client.post("/admin/login", content=b"x" * 17000)).status_code == 413
+    assert (await client.post("/login", content=b"x" * 17000)).status_code == 413
 
     async def chunks():
         yield b"username=ignored&password="
         yield b"x" * 17000
 
-    response = await client.post("/admin/login", content=chunks(), headers={"Content-Type": "application/x-www-form-urlencoded"})
+    response = await client.post("/login", content=chunks(), headers={"Content-Type": "application/x-www-form-urlencoded"})
     assert response.status_code == 413
 
 

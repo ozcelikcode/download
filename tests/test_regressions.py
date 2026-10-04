@@ -175,7 +175,7 @@ async def test_login_cookie_uses_configured_duration(client: AsyncClient, db_ses
     user.password_hash = hash_admin_password("test-password")
     await db_session.commit()
     await crud.update_session_max_age(db_session, 30)
-    response = await client.post("/admin/login", data={"username": "test-admin", "password": "test-password"})
+    response = await client.post("/login", data={"username": "test-admin", "password": "test-password"})
     assert response.status_code == 302
     assert "Max-Age=1800" in response.headers["set-cookie"]
 

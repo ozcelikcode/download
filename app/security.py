@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import secrets
+import ipaddress
 from pathlib import PurePosixPath
 from datetime import datetime, timedelta, timezone
 
@@ -17,6 +18,20 @@ from starlette.types import ASGIApp, Scope, Receive, Send, Message
 
 LOGIN_LIMIT = 5
 LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+def require_secure_password_transport(request: Request) -> None:
+    """Allow HTTPS; unencrypted password submission is local-development only."""
+    if request.url.scheme == "https":
+        return
+    try:
+        address = ipaddress.ip_address(request.client.host if request.client else "")
+        if address.is_loopback:
+            return
+    except ValueError:
+        pass
+    from app.i18n import translate
+    raise HTTPException(400, detail=translate(request, "registration_https_required"))
 
 
 def client_key(address: str, *, context: str = "client") -> str:
@@ -43,7 +58,7 @@ class SecurityHeadersMiddleware:
                 if "referrer-policy" not in headers:
                     headers["Referrer-Policy"] = "same-origin"
                 path = scope["path"]
-                if path.startswith(("/admin", "/setup")):
+                if path.startswith(("/admin", "/setup")) or path in {"/login", "/register"}:
                     headers["Cache-Control"] = "no-store"
                     headers["X-Robots-Tag"] = "noindex, nofollow"
                 if path.startswith("/static/uploads/") and PurePosixPath(path).suffix.lower() in {

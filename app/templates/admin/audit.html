@@ -7,6 +7,7 @@
     <div>
       {{ page_heading(request, t(request, 'audit_history'), t(request, 'audit_intro') ~ ' · ' ~ t(request, 'audit_private_note')) }}
       <span class="audit-count mt-2 inline-flex">{{ tf(request, 'audit_record_count', count=total) }}</span>
+      <a href="/admin/settings/general" class="text-xs text-slate-500 ml-2">{{ t(request, 'timezone_title') }}: {{ site_timezone }}</a>
     </div>
     <button id="audit-density-toggle" type="button" class="btn-secondary text-xs" aria-label="{{ t(request, 'audit_view_mode') }}" aria-controls="audit-list" aria-pressed="false">
       <i data-lucide="list-filter" class="w-3.5 h-3.5" aria-hidden="true"></i>
@@ -42,13 +43,13 @@
             <span class="text-slate-500 font-normal">— {{ actions.get(row.action, row.action) }}</span>
             {% if row.level == 'critical' %}
             <strong class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'critical') }}</strong>
-            {% elif row.level == 'error' %}
+            {% elif row.level == 'error' and row.action != 'error' %}
             <span class="text-red-600 dark:text-red-400 text-xs">{{ t(request, 'error') }}</span>
             {% endif %}
           </p>
           <p class="audit-entry-meta text-xs text-slate-500 dark:text-slate-400">{{ row.actor }} · {{ entities.get(row.entity, row.entity) }}{% if row.entity_id %} #{{ row.entity_id }}{% endif %}</p>
         </div>
-        <time class="audit-entry-time text-xs text-slate-500 dark:text-slate-400" datetime="{{ row.created_at.isoformat() }}">{{ row.created_at.strftime('%d.%m.%Y %H:%M:%S') }} UTC</time>
+        <time class="audit-entry-time text-xs text-slate-500 dark:text-slate-400" datetime="{{ row.created_at.replace(tzinfo=none).isoformat() }}Z">{{ row.created_at | format_date('%d.%m.%Y %H:%M:%S') }}</time>
       </div>
       {% if changes[row.id] %}
       <details class="audit-entry-changes text-xs">

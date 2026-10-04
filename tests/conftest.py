@@ -45,7 +45,9 @@ def isolated_branding_globals():
     /admin/settings/branding), diğer testlere sızmasın diye önceki/sonraki
     değeri yedekleyip geri yükler."""
     keys = ["site_name", "site_language", "site_icon", "site_icon_color_light", "site_icon_color_dark", "logo_mode", "logo_light_path", "logo_dark_path", "theme_color", "theme_accent_light", "theme_accent_dark", "theme_surface_light", "theme_surface_dark", "theme_border_light", "theme_border_dark"]
+    keys.append("site_timezone")
     snapshot = {k: templates.env.globals.get(k) for k in keys}
+    templates.env.globals["site_timezone"] = "UTC"
     templates.env.globals.update(site_name="Download Sitesi", site_language="tr")
     set_ui_language("tr")
     yield
@@ -108,7 +110,7 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """Kimliksiz istemci — herkese açık rotaları test etmek için."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        login = await ac.get("/admin/login")
+        login = await ac.get("/login")
         token = re.search(r'name="csrf-token" content="([^"]+)"', login.text).group(1)
         ac.headers["X-CSRF-Token"] = token
         yield ac
@@ -123,7 +125,7 @@ async def admin_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         ac.cookies.set(SESSION_COOKIE, token, domain="test.local", path="/")
-        login = await ac.get("/admin/login")
+        login = await ac.get("/login")
         csrf = re.search(r'name="csrf-token" content="([^"]+)"', login.text).group(1)
         ac.headers["X-CSRF-Token"] = csrf
         yield ac

@@ -67,7 +67,7 @@ def setup_page(request: Request, error: str | None = None, status_code: int = 20
 @router.get("/setup")
 async def installation(request: Request, session: AsyncSession = Depends(get_db)):
     if (await get_lifecycle(session)).installed:
-        return RedirectResponse("/admin/login", status_code=303)
+        return RedirectResponse("/login", status_code=303)
     return setup_page(request)
 
 
@@ -75,7 +75,7 @@ async def installation(request: Request, session: AsyncSession = Depends(get_db)
 async def install(request: Request, session: AsyncSession = Depends(get_db)):
     state = await get_lifecycle(session)
     if state.installed:
-        return RedirectResponse("/admin/login", status_code=303)
+        return RedirectResponse("/login", status_code=303)
     await session.rollback()
     attempt = await reserve_login_attempt(session, "setup:" + get_request_ip(request))
     form = await request.form()
@@ -107,7 +107,7 @@ async def install(request: Request, session: AsyncSession = Depends(get_db)):
     await clear_successful_attempt(session, attempt)
     refresh_site_branding_globals(account)
     request.session.clear()
-    response = RedirectResponse("/admin/login", status_code=303)
+    response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     logger.info("Site installation completed")
     return response
@@ -207,7 +207,7 @@ async def confirm_reset(request: Request, session: AsyncSession = Depends(get_db
         from app.routers.admin import _icon_fetch_progress
         _icon_fetch_progress.clear()
     request.session.clear()
-    response = RedirectResponse("/setup" if action == "uninstall" else "/admin/login?reset=done", status_code=303)
+    response = RedirectResponse("/setup" if action == "uninstall" else "/login?reset=done", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     logger.info("Site maintenance action completed: %s", action)
     return response

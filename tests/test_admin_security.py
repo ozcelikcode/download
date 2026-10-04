@@ -23,7 +23,7 @@ async def test_csrf_hidden_form_token_works(admin_client):
 
 async def test_csrf_token_is_bound_to_session(admin_client):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as other:
-        page = await other.get("/admin/login")
+        page = await other.get("/login")
         other_token = re.search(r'name="csrf-token" content="([^"]+)"', page.text).group(1)
     response = await admin_client.post("/admin/categories", data={"name": "Denied"}, headers={"X-CSRF-Token": other_token})
     assert response.status_code == 403
@@ -38,7 +38,7 @@ async def test_json_reorder_requires_csrf(admin_client):
 
 async def test_parallel_login_attempts_share_limit(client, db_session):
     responses = await asyncio.gather(*[
-        client.post("/admin/login", data={"username": "incorrect", "password": "incorrect"}) for _ in range(6)
+        client.post("/login", data={"username": "incorrect", "password": "incorrect"}) for _ in range(6)
     ])
     assert sorted(r.status_code for r in responses) == [401] * 5 + [429]
     limited = next(r for r in responses if r.status_code == 429)
@@ -56,7 +56,7 @@ async def test_logout_requires_post_and_csrf(admin_client):
 
 async def test_failed_login_is_critical_without_stored_address(client, db_session):
     from app.models import AuditLog
-    response = await client.post('/admin/login', data={'username': 'attacker', 'password': 'never-log-this'}, headers={'X-Forwarded-For': '203.0.113.42'})
+    response = await client.post('/login', data={'username': 'attacker', 'password': 'never-log-this'}, headers={'X-Forwarded-For': '203.0.113.42'})
     assert response.status_code == 401
     row = await db_session.scalar(select(AuditLog).where(AuditLog.entity == 'login'))
     assert row.level == 'critical'
@@ -86,6 +86,6 @@ def test_scrypt_password_storage():
 
 
 async def test_admin_pages_are_not_cacheable(client):
-    response = await client.get('/admin/login')
+    response = await client.get('/login')
     assert response.headers['Cache-Control'] == 'no-store'
     assert response.headers['X-Frame-Options'] == 'DENY'

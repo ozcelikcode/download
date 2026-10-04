@@ -71,9 +71,11 @@ def fingerprint(pem: str) -> str:
     return hashlib.sha256(der).hexdigest()
 
 
-def schema_fingerprint() -> str:
-    schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns]
-              for table in Base.metadata.sorted_tables if table.name != "backup_policy"}
+def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False) -> str:
+    schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
+                         if not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")]
+              for table in Base.metadata.sorted_tables if table.name != "backup_policy"
+              and not (before_registrations and table.name == "registration_requests")}
     return hashlib.sha256(json.dumps(schema, sort_keys=True).encode()).hexdigest()
 
 
@@ -221,11 +223,22 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             data = json.loads(archive.read("data.json"))
             if not isinstance(manifest, dict):
                 raise BackupError("backup_invalid")
-            if manifest.get("format") != 1 or manifest.get("schema") != schema_fingerprint():
+            # Adapt only the two known previous schemas, not arbitrary mismatches.
+            legacy = manifest.get("schema") == schema_fingerprint(before_registrations=True)
+            old_timezone = legacy or manifest.get("schema") == schema_fingerprint(before_timezone=True)
+            if manifest.get("format") != 1 or (not old_timezone and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
+            if legacy:
+                expected.remove("registration_requests")
             if not isinstance(data, dict) or set(data) != expected:
                 raise BackupError("backup_invalid")
+            if legacy:
+                data["registration_requests"] = []
+            if old_timezone:
+                if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or "site_timezone" in data["site_settings"][0]:
+                    raise BackupError("backup_invalid")
+                data["site_settings"][0]["site_timezone"] = "UTC"
             for table in Base.metadata.sorted_tables:
                 if table.name == "backup_policy":
                     continue
@@ -236,6 +249,11 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             if data["site_lifecycle"][0]["id"] != 1:
                 raise BackupError("backup_invalid")
+            from app.timezones import validate_timezone
+            try:
+                validate_timezone(data["site_settings"][0]["site_timezone"])
+            except (ValueError, TypeError):
+                raise BackupError("backup_invalid") from None
             extracted = stage / "extracted"
             extracted.mkdir(mode=0o700, exist_ok=True)
             for info in infos:

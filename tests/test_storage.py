@@ -46,7 +46,7 @@ async def test_uploaded_download_is_private_but_public_download_route_serves_it(
 
     protected = await client.get(protected_path)
     assert protected.status_code == 302
-    assert protected.headers["location"] == "/admin/login"
+    assert protected.headers["location"] == "/login"
     assert (await client.get(f"/static/uploads/{quote(name)}")).status_code == 404
 
     public_download = await client.get(f"/dl/{download.slug}")

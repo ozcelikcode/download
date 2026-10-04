@@ -145,7 +145,7 @@ async def test_site_health_requires_admin(client):
     response = await client.get("/admin/site-health", follow_redirects=False)
 
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"
 
 
 async def test_robots_and_sitemap_only_advertise_public_pages(client, db_session, monkeypatch):

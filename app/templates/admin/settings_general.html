@@ -1,5 +1,17 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}{{ t(request, 'settings') }} — {{ t(request, 'general') }}{% endblock %}
+{% block title %}{{ t(request, 'settings') }} — {{ t(request, 'general') }}<section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mt-6">
+  <h2 class="text-sm font-semibold">{{ t(request, 'timezone_title') }}</h2>
+  <p class="text-xs text-slate-500 mt-1 mb-4">{{ t(request, 'timezone_help') }}</p>
+  <form method="post" action="/admin/settings/timezone" class="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="w-full sm:w-auto min-w-0"><label class="form-label" for="site-timezone">{{ t(request, 'timezone_title') }}</label>
+      <select id="site-timezone" name="site_timezone" class="form-input">{% for zone in timezone_choices %}<option value="{{ zone }}" {% if zone == site_settings.site_timezone %}selected{% endif %}>{{ zone }}</option>{% endfor %}</select>
+    </div>
+    <button class="btn-primary" type="submit">{{ t(request, 'save') }}</button>
+  </form>
+</section>
+
+{% endblock %}
 
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
@@ -7,6 +19,8 @@
 
 {% set active_settings_tab = 'general' %}
 {% include "admin/_settings_tabs.html" %}
+
+
 
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">

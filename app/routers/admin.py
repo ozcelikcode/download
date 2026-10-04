@@ -2,8 +2,6 @@
 Admin router — şifre korumalı yönetim paneli.
 
 Rotalar:
-  GET  /admin/login                  → Giriş formu
-  POST /admin/login                  → Kimlik doğrulama
   GET  /admin/logout                 → Çıkış
   GET  /admin                        → Dashboard (özet: son 5 içerik + istatistikler)
   GET  /admin/downloads              → İçerikler (tam liste, arama/filtre/sayfalama)
@@ -71,8 +69,6 @@ from app.imaging import compress_image_file, make_square_icon, validate_raster_i
 from app.i18n import translate, system_message
 from app.link_checks import resolve_public_url
 from app.dependencies import (
-    create_admin_session_token,
-    DUMMY_PASSWORD_HASH,
     get_db,
     get_request_ip,
     hash_password_async,
@@ -80,7 +76,7 @@ from app.dependencies import (
     verify_password_async,
     SESSION_COOKIE,
 )
-from app.models import Download, FileType, IconType, Page, Tag, User
+from app.models import Download, FileType, IconType, Page, RegistrationRequest, Tag, User
 from app.ownership import require_owned_media
 from app.media import ensure_unused, media_path, media_usage
 from app.routers.public import build_download_detail_context
@@ -99,6 +95,7 @@ from app.schemas import (
 from app.templating import refresh_site_branding_globals, templates
 from app.uploads import save_upload
 from app.audit import add_event
+from app.timezones import TIMEZONE_CHOICES, validate_timezone
 from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
 import secrets
 
@@ -865,68 +862,16 @@ async def upload_icon_auto_crop(
 # Login / Logout
 # ---------------------------------------------------------------------------
 
-@router.get("/login", name="admin_login")
-async def login_get(request: Request):
-    return templates.TemplateResponse(request=request, name="admin/login.html", context={"request": request})
-
-
-@router.post("/login", name="admin_login_post")
-async def login_post(
-    request: Request,
-    session: AsyncSession = Depends(get_db),
-    username: str = Form(...),
-    password: str = Form(...),
-):
-    ip = get_request_ip(request)
-    try:
-        attempt_id = await reserve_login_attempt(session, ip)
-    except HTTPException as exc:
-        if exc.status_code == 429:
-            add_event(session, "error", "login", "Login attempt limit reached",
-                      actor="anonymous", level="critical")
-            await session.commit()
-            logger.warning("Login attempt limit reached")
-        raise
-    site_settings = await crud.get_site_settings(session)
-    user = await session.scalar(select(User).where(User.username == username, User.is_active.is_(True), User.deleted_at.is_(None)))
-    # Always perform a memory-hard check, including for unknown accounts.
-    effective_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
-    password_valid = await verify_password_async(password, effective_hash)
-    if user is None or not password_valid:
-        logger.warning("Failed staff login attempt")
-        add_event(session, "error", "login", "Failed staff login attempt", actor="anonymous", level="critical")
-        await session.commit()
-        return templates.TemplateResponse(
-            request=request, name="admin/login.html",
-            context={"request": request, "error": translate(request, "invalid_credentials")},
-            status_code=status.HTTP_401_UNAUTHORIZED,
-        )
-
-    if not user.password_hash.startswith("scrypt$"):
-        user.password_hash = await hash_password_async(password)
-        await session.commit()
-    await clear_successful_attempt(session, attempt_id)
-    request.session.clear()
-    add_event(session, "login", "login", "Staff session opened", actor=username)
-    await session.commit()
-    token = create_admin_session_token(user.username, user.password_hash, site_settings.session_generation, user_id=user.id)
-    response = _redirect("/admin")
-    response.set_cookie(
-        key=SESSION_COOKIE,
-        value=token,
-        max_age=max(1, site_settings.session_max_age_minutes) * 60,
-        httponly=True,
-        samesite="strict",
-        secure=settings.app_base_url.startswith("https://"),
-    )
-    logger.info("Staff login succeeded: user_id=%d", user.id)
-    return response
+@router.get("/login", include_in_schema=False)
+async def legacy_login() -> RedirectResponse:
+    """Keep old bookmarks usable without hosting a second sign-in form."""
+    return RedirectResponse("/login", status_code=303)
 
 
 @router.post("/logout", name="admin_logout")
 async def logout(request: Request):
     request.session.clear()
-    response = _redirect("/admin/login")
+    response = _redirect("/login")
     response.delete_cookie(SESSION_COOKIE)
     return response
 
@@ -967,6 +912,7 @@ async def dashboard(
             "seo_warning_count": site_health.seo_warning_count,
             "configuration_attention_count": site_health.configuration_attention_count,
             "recent_activity": recent_activity,
+            "pending_registrations": await session.scalar(select(func.count()).select_from(RegistrationRequest)) or 0,
             "admin_user": _admin,
             "flash_message": flash_message,
         },
@@ -2021,6 +1967,7 @@ async def settings_general_view(
             "request": request,
             "site_settings": site_settings,
             "icon_colors": SITE_ICON_COLORS,
+            "timezone_choices": TIMEZONE_CHOICES,
             "admin_user": _admin,
             "flash_message": flash_message,
             "flash_type": flash_type,
@@ -2281,6 +2228,26 @@ async def settings_language_update(
     else:
         refresh_site_branding_globals(updated)
         request.session["flash_message"] = translate(request, "language_updated")
+    return _redirect("/admin/settings/general")
+
+
+@router.post("/settings/timezone")
+async def settings_timezone_update(
+    request: Request, site_timezone: str = Form(...),
+    session: AsyncSession = Depends(get_db), _admin: str = Depends(require_admin),
+) -> RedirectResponse:
+    try:
+        zone = validate_timezone(site_timezone)
+    except ValueError:
+        request.session["flash_message"] = translate(request, "timezone_invalid")
+        request.session["flash_type"] = "error"
+    else:
+        account = await crud.get_site_settings(session)
+        account.site_timezone = zone
+        await session.commit()
+        refresh_site_branding_globals(account)
+        request.session["flash_message"] = translate(request, "timezone_saved")
+        request.session["flash_type"] = "success"
     return _redirect("/admin/settings/general")
 
 

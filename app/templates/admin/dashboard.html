@@ -15,6 +15,13 @@
   </a>
 </div>
 
+{% if pending_registrations %}
+<a href="/admin/registrations" class="flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800 rounded-sm p-3 mb-6 text-sm">
+  <span class="inline-flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i>{{ t(request, 'registration_requests') }}</span>
+  <span class="inline-flex items-center gap-2"><span class="font-semibold">{{ pending_registrations }}</span><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+</a>
+{% endif %}
+
 {# İstatistik kartları #}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
@@ -273,7 +280,7 @@
           <span class="text-slate-500 dark:text-slate-400">{{ t(request, 'activity_' ~ row.action) }}</span>
         </p>
         <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">
-          {{ row.actor }} · <time datetime="{{ row.created_at.isoformat() }}">{{ row.created_at.strftime('%d.%m.%Y %H:%M') }} UTC</time>
+          {{ row.actor }} · <time datetime="{{ row.created_at.replace(tzinfo=none).isoformat() }}Z">{{ row.created_at | format_date('%d.%m.%Y %H:%M') }}</time>
         </p>
       </div>
     </li>

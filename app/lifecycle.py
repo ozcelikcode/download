@@ -177,7 +177,7 @@ class LifecycleMiddleware:
                     user = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session)
                     if user:
                         body_limit = settings.max_upload_size_bytes + 1024 * 1024
-            if path in {"/setup", "/admin/login", "/admin/settings/account"} or path.startswith("/admin/settings/maintenance/"):
+            if path in {"/setup", "/register", "/login", "/admin/login", "/admin/settings/account", "/admin/settings/timezone"} or path.startswith(("/admin/settings/maintenance/", "/admin/registrations/")):
                 body_limit = 16 * 1024
             if path.startswith(("/admin/contact", "/admin/review")):
                 body_limit = 64 * 1024

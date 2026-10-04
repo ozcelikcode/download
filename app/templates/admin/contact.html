@@ -15,7 +15,7 @@
 {% for item in items %}
 <article class="rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
   <div class="flex flex-wrap justify-between gap-2"><h2 class="text-sm font-semibold">{{ item.subject }}</h2><span class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'contact_closed') if item.response else t(request, 'contact_open') }}</span></div>
-  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ item.sender.username }} · {{ item.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ item.sender.username }} · {{ item.created_at | format_date('%Y-%m-%d %H:%M') }}</p>
   <p class="text-sm whitespace-pre-wrap break-words mt-3">{{ item.body }}</p>
   {% if item.response %}<div class="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3"><h3 class="text-xs font-semibold">{{ t(request, 'contact_response') }}</h3><p class="mt-2 text-sm whitespace-pre-wrap break-words">{{ item.response }}</p></div>
   {% elif request.state.admin_role != 'editor' %}

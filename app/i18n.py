@@ -10,6 +10,8 @@ from app.locales.admin_layout import STRINGS as ADMIN_LAYOUT_STRINGS
 from app.locales.editor import STRINGS as EDITOR_STRINGS
 from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
 from app.locales.maintenance import STRINGS as MAINTENANCE_STRINGS
+from app.locales.registrations import STRINGS as REGISTRATION_STRINGS
+from app.locales.timezones import STRINGS as TIMEZONE_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -732,6 +734,13 @@ for language, strings in WORKFLOW_STRINGS.items():
     TRANSLATIONS[language].update(strings)
 for language, strings in MAINTENANCE_STRINGS.items():
     TRANSLATIONS[language].update(strings)
+for language, strings in REGISTRATION_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for language, strings in TIMEZONE_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+for key, message in REGISTRATION_STRINGS["en"].items():
+    if key.startswith("audit_"):
+        _SYSTEM_MESSAGE_KEYS[message] = key
 for key, message in WORKFLOW_STRINGS["en"].items():
     if key.startswith("audit_"):
         _SYSTEM_MESSAGE_KEYS[message] = key

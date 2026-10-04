@@ -68,4 +68,4 @@ async def test_deleted_entity_keeps_its_history(admin_client, db_session):
 async def test_reports_require_admin(client, path):
     response = await client.get(path)
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"

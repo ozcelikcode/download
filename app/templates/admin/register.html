@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ t(request, 'registration_title') }} — {{ site_name }}{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto my-8 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm">
+  <h1 class="text-xl font-semibold">{{ t(request, 'registration_title') }}</h1>
+  <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ t(request, 'registration_help') }}</p>
+  {% if received %}
+  <p role="status" class="text-sm border border-slate-200 dark:border-slate-800 rounded-sm p-4 mt-5">{{ t(request, 'registration_received') }}</p>
+  <a href="/login" class="btn-primary w-full justify-center mt-4">{{ t(request, 'sign_in') }}</a>
+  {% else %}
+  {% if error %}<p role="alert" class="text-sm text-red-600 dark:text-red-400 mt-4">{{ error }}</p>{% endif %}
+  <form method="post" action="/register" class="space-y-4 mt-5">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div><label for="register-username" class="form-label">{{ t(request, 'username') }}</label><input id="register-username" name="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{2,49}" autocomplete="username" autocapitalize="none" spellcheck="false" class="form-input"></div>
+    <div><label for="register-password" class="form-label">{{ t(request, 'password') }}</label><input id="register-password" name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password" class="form-input"></div>
+    <div><label for="register-confirmation" class="form-label">{{ t(request, 'setup_password_confirm') }}</label><input id="register-confirmation" name="password_confirmation" type="password" required minlength="12" maxlength="1024" autocomplete="new-password" class="form-input"></div>
+    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'registration_password_help') }}</p>
+    <button type="submit" class="btn-primary w-full justify-center">{{ t(request, 'registration_submit') }}</button>
+  </form>
+  <a href="/login" class="btn-secondary w-full justify-center mt-4">{{ t(request, 'sign_in') }}</a>
+  {% endif %}
+</section>
+{% endblock %}

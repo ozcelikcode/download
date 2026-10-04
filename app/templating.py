@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from urllib.parse import quote
 
@@ -16,6 +16,7 @@ from app.models import FileType, IconType, SiteSettings
 from app.seo import inspect_public_base_url
 
 from app.security import csrf_token
+from app.timezones import local_datetime
 from app.i18n import LANGUAGE_CHOICES, date_locale, og_locale, set_ui_language, translate, translate_format, ui_language, system_message
 
 templates = Jinja2Templates(directory="app/templates")
@@ -45,9 +46,7 @@ templates.env.globals.update({
 def _format_date(value: Optional[datetime], fmt: str = "%d.%m.%Y") -> str:
     if value is None:
         return "-"
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.strftime(fmt)
+    return local_datetime(value, templates.env.globals.get("site_timezone", "UTC")).strftime(fmt)
 
 
 def _human_size(value: Optional[int]) -> str:
@@ -191,6 +190,7 @@ templates.env.globals["css_asset_v"] = _css_asset_version()
 # Defaults used until SiteSettings has been loaded.
 templates.env.globals["site_name"] = settings.app_name
 templates.env.globals["site_language"] = "en"
+templates.env.globals["site_timezone"] = "UTC"
 templates.env.globals["site_icon"] = "download-cloud"
 templates.env.globals["logo_mode"] = "icon_text"
 templates.env.globals["logo_light_path"] = None
@@ -211,6 +211,7 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     """
     templates.env.globals["site_name"] = site_settings.site_name
     templates.env.globals["site_language"] = site_settings.site_language
+    templates.env.globals["site_timezone"] = site_settings.site_timezone
     set_ui_language(site_settings.site_language)
     templates.env.globals["site_icon"] = site_settings.site_icon
     templates.env.globals["logo_mode"] = site_settings.logo_mode

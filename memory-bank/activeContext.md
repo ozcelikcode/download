@@ -4,10 +4,17 @@
 
 Maintain isolated editor workspaces, shared protected categories, editorial approval, verified publishers, and private staff correspondence. Preserve existing site data during migrations.
 
-Current increment adds a right-corner category-move dialog, opt-in trash retention, administrator-only client-key encrypted backups, and single/bulk publication hiding.
+Current increment fixes registration feedback/persistence verification and adds configurable IANA display time zones.
 
 ## Current decisions
 
+- Settings → General exposes IANA time zones after language selection. Display dates use the selected zone, including daylight saving; database and console timestamps remain UTC. Audit rows no longer repeat UTC/error labels. Known pre-time-zone backups import with UTC; invalid zones are rejected.
+- The time-zone migration recovery snapshot is retained at `Documents/Project Archives/download/migration-snapshots/2026-10-04/download-before-timezone-20261004T092434Z.db`. Populated-copy migration preserved all row counts and raw audit timestamps.
+
+- Anonymous navigation exposes only Sign in; the sign-in page links to registration. Pending applications contain only a username, salted scrypt hash, and creation time, grant no access, and never overwrite existing credentials. Staff approval is password-confirmed and creates only an unverified editor; rejection removes the pending credentials. Four interface languages are covered.
+- `/login` is the global authentication address, owned by a separate authentication router. Protected routes, setup/reset/restore, logout, login throttling, cache/indexing headers, and form actions use it; the old `/admin/login` GET only redirects for bookmarks. The staff dashboard shows the pending-registration count. Unavailable usernames now produce a 409 warning without distinguishing accounts from pending requests; success receipts require an actual commit, and a receipt cannot be fabricated by a query parameter alone. Native form submission with hidden CSRF tokens is verified for both administrator and manager review lists.
+- Password submissions for sign-in/registration/review require HTTPS except loopback development clients. Registration uses keyed quotas (five submissions per 15 minutes), CSRF, bounded bodies, and a 500-request queue. Password protection is HTTPS plus one-way hashing, not end-to-end encryption.
+- The registration migration recovery snapshot is retained at `Documents/Project Archives/download/migration-snapshots/2026-10-04/download-before-registration-20261004T084639Z.db`. Prior-schema encrypted backups remain importable with an empty registration queue; all other schema checks remain strict.
 - Manual recovery snapshots are consolidated by date under `Documents/Project Archives/download/migration-snapshots`, outside the repository. Seven snapshots were verified and relocated; eight unused sidecars with empty WALs were removed. The active site database and its sidecars were not touched. Future snapshots must use this single private archive rather than sibling/root files.
 
 - Category moves use a compact source-folder → destination-folder dialog; the source category remains and all its content is moved, not copied.
@@ -40,9 +47,9 @@ Current increment adds a right-corner category-move dialog, opt-in trash retenti
 
 ## Recent verification
 
-- The full suite passes 338 tests, including the optional shipped-browser Web Crypto harness, with warnings treated as errors. Maintenance coverage includes retention, public hiding, encrypted backup history, reviewed import, scheduler catch-up/manual operation, and restore rollback. Existing editorial/security coverage still passes. Browser-level visual verification remains pending because no compatible automation browser is installed.
+- The full suite passes 382 tests, including the optional shipped-browser Web Crypto harness, with warnings treated as errors. Registration coverage includes native form-to-staff-panel submission, global login/legacy bookmark handling, receipt forgery prevention, pending-login denial, staff approval/rejection, credential conflicts, replay rejection, quotas, HTTPS, CSRF, four languages, pagination, and previous-backup compatibility. Existing maintenance/editorial/security coverage still passes. The live registration form was inspected in the in-app browser. A disposable real HTTP submission persisted in the running database and was removed without creating a user account. Full staff layout review remains pending.
 - A requirements audit found no known dependency vulnerabilities. Live startup/shutdown and home/sign-in HTTP smoke checks passed with the shared logging configuration.
-- Alembic revision `w0b2d4f6a781` is applied. Populated-copy upgrade, unchanged live content/taxonomy/media/user counts, SQLite integrity, foreign keys, schema checks, Tailwind build, and startup/home/sign-in smoke checks pass. Temporary migration copies were removed automatically; the pre-migration recovery backup remains outside the repository.
+- Alembic revision `y2d4f6a8b903` is applied. Populated-copy upgrade, unchanged live content/taxonomy/media/user counts, SQLite integrity, foreign keys, schema checks, and Tailwind build pass. Temporary migration copies were removed automatically; the pre-migration recovery backup remains outside the repository.
 
 ## Next step
 

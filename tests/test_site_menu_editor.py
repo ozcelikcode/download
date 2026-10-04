@@ -32,7 +32,7 @@ async def test_branding_update_requires_admin(client: AsyncClient):
         data={"site_name": "X", "site_icon": "home", "site_icon_color": "blue"},
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/login"
+    assert response.headers["location"] == "/login"
 
 
 async def test_theme_color_is_reflected_in_public_and_admin_pages(
@@ -44,7 +44,7 @@ async def test_theme_color_is_reflected_in_public_and_admin_pages(
     )
     assert response.status_code == 302
     home = await client.get("/")
-    admin_login = await client.get("/admin/login")
+    admin_login = await client.get("/login")
     assert 'data-theme-color="green"' in home.text
     assert "--accent: #247a4d" in home.text
     assert 'data-theme-color="green"' in admin_login.text

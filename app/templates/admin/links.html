@@ -25,7 +25,7 @@
         <tr class="border-b border-slate-100 dark:border-slate-800">
           <td class="p-3"><a class="text-blue-600 dark:text-blue-400 hover:underline" href="/admin/downloads/{{ download.id }}/edit">{{ download.title }}</a><div class="text-xs text-slate-500 break-all mt-1">{{ download.source_domain or t(request, 'missing_address') }}</div></td>
           <td class="p-3"><span class="font-medium {% if check and check.status == 'broken' %}text-red-600{% elif check and check.status == 'ok' %}text-green-600{% endif %}">{{ statuses[check.status] if check else statuses.unchecked }}</span>{% if check %}<p class="text-xs text-slate-500 mt-1">{% if check.http_status %}HTTP {{ check.http_status }} · {% endif %}{{ system_message(request, check.message) }}</p>{% endif %}</td>
-          <td class="p-3 whitespace-nowrap text-xs">{{ check.checked_at.strftime('%d.%m.%Y %H:%M') if check else '—' }}</td>
+          <td class="p-3 whitespace-nowrap text-xs">{{ check.checked_at | format_date('%d.%m.%Y %H:%M') if check else '—' }}</td>
           <td class="p-3"><form method="post" action="/admin/links/{{ download.id }}/check"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="text-blue-600 dark:text-blue-400 hover:underline" type="submit">{{ t(request, 'check') }}</button></form></td>
         </tr>
       {% else %}<tr><td colspan="4" class="p-8 text-center text-slate-500">{{ t(request, 'no_links') }}</td></tr>{% endfor %}</tbody>

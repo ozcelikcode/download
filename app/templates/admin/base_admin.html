@@ -109,6 +109,7 @@
   {% set content_section = admin_path.startswith('/admin/downloads') or admin_path.startswith('/admin/pages') or admin_path.startswith('/admin/review') %}
   {% set management_section = admin_path.startswith('/admin/categories') or admin_path.startswith('/admin/tags') or admin_path.startswith('/admin/media') or admin_path.startswith('/admin/links') or admin_path.startswith('/admin/audit') or admin_path.startswith('/admin/settings') or admin_path.startswith('/admin/users') or admin_path.startswith('/admin/contact') %}
   {% set management_section = management_section or admin_path.startswith('/admin/backups') %}
+  {% set management_section = management_section or admin_path.startswith('/admin/registrations') %}
   <aside class="w-48 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
     <nav class="space-y-1" aria-label="{{ t(request, 'menu') }}">
       <p class="admin-nav-label text-xs font-semibold uppercase tracking-wider px-2 mb-2">{{ t(request, 'menu') }}</p>
@@ -148,6 +149,7 @@
           <a href="/admin/contact" class="admin-nav-link {% if admin_path.startswith('/admin/contact') %}is-active{% endif %}">{{ t(request, 'contact_title') }}</a>
           <a href="/admin/settings/account" class="admin-nav-link {% if admin_path == '/admin/settings/account' %}is-active{% endif %}" {% if admin_path == '/admin/settings/account' %}aria-current="page"{% endif %}>{{ t(request, 'account') }}</a>
           {% if request.state.admin_role != 'editor' %}<a href="/admin/users" class="admin-nav-link {% if admin_path.startswith('/admin/users') %}is-active{% endif %}" {% if admin_path.startswith('/admin/users') %}aria-current="page"{% endif %}>{{ t(request, 'users') }}</a>{% endif %}
+          {% if request.state.admin_role != 'editor' %}<a href="/admin/registrations" class="admin-nav-link {% if admin_path.startswith('/admin/registrations') %}is-active{% endif %}">{{ t(request, 'registration_requests') }}</a>{% endif %}
         </div>
       </details>
     </nav>
@@ -183,6 +185,7 @@
             <a href="/admin/contact" class="admin-nav-link {% if admin_path.startswith('/admin/contact') %}is-active{% endif %}">{{ t(request, 'contact_title') }}</a>
           <a href="/admin/settings/account" class="admin-nav-link {% if admin_path == '/admin/settings/account' %}is-active{% endif %}">{{ t(request, 'account') }}</a>
             {% if request.state.admin_role != 'editor' %}<a href="/admin/users" class="admin-nav-link {% if admin_path.startswith('/admin/users') %}is-active{% endif %}">{{ t(request, 'users') }}</a>{% endif %}
+            {% if request.state.admin_role != 'editor' %}<a href="/admin/registrations" class="admin-nav-link {% if admin_path.startswith('/admin/registrations') %}is-active{% endif %}">{{ t(request, 'registration_requests') }}</a>{% endif %}
           </div>
         </details>
       </nav>

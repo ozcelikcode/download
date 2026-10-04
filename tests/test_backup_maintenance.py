@@ -268,7 +268,7 @@ async def test_reviewed_import_restore_route(admin_client, db_session, key_pair)
     db_session.expire_all()
     assert (await crud.get_site_settings(db_session)).site_name == "Current site confirmation"
     response = await admin_client.post("/admin/backups/restore", data={"current_password": PASSWORD, "token": token, "confirmation": "Current site confirmation", "irreversible": "true"})
-    assert response.status_code == 303 and response.headers["location"] == "/admin/login"
+    assert response.status_code == 303 and response.headers["location"] == "/login"
     db_session.expunge_all()
     assert (await crud.get_site_settings(db_session)).site_name == "Download Sitesi"
     assert (await db_session.get(BackupPolicy, 1)).public_key == key_pair[1]

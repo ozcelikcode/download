@@ -195,6 +195,7 @@ class SiteSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     site_name: Mapped[str] = mapped_column(String(100), nullable=False, default="Downloader")
     site_language: Mapped[str] = mapped_column(String(2), nullable=False, default="en")
+    site_timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC", server_default="UTC")
     content_language: Mapped[str] = mapped_column(String(2), nullable=False, default="en")
     seo_home_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     seo_meta_description: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
@@ -297,6 +298,16 @@ class User(Base):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (CheckConstraint("role IN ('admin', 'manager', 'editor')", name="ck_users_role"),)
+
+
+class RegistrationRequest(Base):
+    """Pending applicants are not accounts and cannot authenticate."""
+
+    __tablename__ = "registration_requests"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
 
 
 class EditorMessage(Base):

@@ -15,10 +15,15 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - Administrator-only encrypted backups with browser-held recovery keys, manual export/import, optional 1/3/5/7/14-day schedules, and a protected latest backup plus seven historical archives
 - Opt-in trash expiry (15/30/60/90/120/240/360 days), protected editorial deletion requests, and single/bulk publication hiding
 - Administrator, manager, and editor accounts with server-side permissions, reviewed editor-deletion requests, and a last-administrator safeguard
+- Public sign-in and registration applications; administrator/manager approval creates an unverified editor account, with no access while approval is pending
 - Scrypt password hashing, signed sessions, CSRF protection, login throttling, and anonymous visitor-error logs
 - Owner-key protected first-run setup, deployment checks, and two-step maintenance/reset controls
 - SSRF protection for outbound URL checks and remote icon imports
 - Locally served Lucide, Quill, and Cropper.js assets
+
+Sign in at `/login` and apply at `/register`. The staff dashboard links to pending applications at `/admin/registrations`; only administrators/managers can review them. Existing usernames do not create another account or application. Unavailable usernames show a conflict warning without distinguishing an account from a pending request. A success receipt appears only after a new request is committed. `/admin/login` is only a redirect for old bookmarks.
+
+Choose the display time zone in **Settings → General**, after the language options. IANA zones support daylight saving automatically. Stored timestamps and console logs remain UTC; changing the display zone does not rewrite historical records. The initial display zone is UTC.
 
 ## Requirements
 
