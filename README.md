@@ -12,6 +12,7 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - Bulk content operations and safe category deletion with content transfer
 - Automatic application drafts with live save status and manual finalization
 - Media archive, link health reports, and paginated audit logs
+- Administrator-only default and individual storage quotas for managers/editors, with combined file/image usage and safe in-place replacement
 - Administrator-only encrypted backups with browser-held recovery keys, manual export/import, optional 1/3/5/7/14-day schedules, and a protected latest backup plus seven historical archives
 - Opt-in trash expiry (15/30/60/90/120/240/360 days), protected editorial deletion requests, and single/bulk publication hiding
 - Administrator, manager, and editor accounts with server-side permissions, reviewed editor-deletion requests, and a last-administrator safeguard
@@ -28,6 +29,10 @@ Choose the display time zone in **Settings → General**, after the language opt
 All staff roles use `/panel`; changing this address is not a substitute for authorization. Old `/admin` GET bookmarks redirect to the new routes, where the same permissions are enforced. Existing private media URLs and metadata remain compatible. Permission-denied browser pages are localized HTML; API errors explicitly declare UTF-8.
 
 **Settings → Account → Delete my account** requires the current password, the exact current username, and explicit acknowledgment. Closure invalidates sign-in credentials and sessions, but preserves content, taxonomy, media, and correspondence. A non-login identity tombstone anchors existing ownership; the last active administrator cannot close their account.
+
+**Users → Default storage quotas** configures editor and manager defaults separately. Each active manager/editor has a personal override under **Media storage quota**; clearing it follows the role default. Only an administrator can change these settings, with password confirmation and HTTPS (loopback development is exempt). Choices are 64/128/256/512/1024/2048/4096/8192/16384/32768 MB, where MB means 1024² bytes. Initial defaults are 256 MB for editors and 1024 MB for managers; administrators are unlimited. Role changes clear the personal override.
+
+Images and files share the owner's quota, including unused media and media belonging to trashed content. Stored image size is counted after processing; legacy media URL aliases count once. Unowned legacy site assets remain site assets rather than being assigned to an arbitrary user. Lowering a limit never removes existing files. At or above the limit, replacement may keep or reduce the stored size, but cannot add storage. Direct uploads, content-form uploads, branding images, remote icons, and crop copies use the same SQLite-serialized quota/publication check. In-place replacement is charged to the existing owner, not the acting staff member. The independent per-upload size limit still applies.
 
 ## Requirements
 

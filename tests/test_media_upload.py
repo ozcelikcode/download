@@ -79,8 +79,12 @@ async def test_icon_url_upload_revalidates_redirect_target(monkeypatch):
     assert len(requests) == 1
 
 
-async def test_icon_url_upload_streams_valid_public_image(monkeypatch):
+async def test_icon_url_upload_streams_valid_public_image(monkeypatch, db_session):
     from app.routers import admin
+    from app.dependencies import credential_stamp
+    from app.models import SiteSettings, User
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
     image_bytes = _make_png_bytes(32, 32)
 
@@ -96,31 +100,23 @@ async def test_icon_url_upload_streams_valid_public_image(monkeypatch):
             content=image_bytes,
         )
 
-    class FakeSession:
-        def __init__(self):
-            self.info = {}
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *_args):
-            return None
-
-    async def record_media_upload(_session, _path, _actor):
-        return None
-
     client_class = httpx.AsyncClient
     monkeypatch.setattr(admin, "resolve_public_url", resolve)
-    monkeypatch.setattr(admin, "AsyncSessionLocal", FakeSession)
-    monkeypatch.setattr(admin.crud, "record_media_upload", record_media_upload)
+    monkeypatch.setattr(admin, "AsyncSessionLocal", async_sessionmaker(db_session.bind, expire_on_commit=False))
     monkeypatch.setattr(
         admin.httpx,
         "AsyncClient",
         lambda **kwargs: client_class(transport=httpx.MockTransport(handle), **kwargs),
     )
     token = "public-image-test"
-    admin._icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None}
-    await admin._fetch_icon_from_url("https://example.com/icon.png", token, "admin")
+    user = await db_session.scalar(select(User).where(User.username == "admin"))
+    account = await db_session.scalar(select(SiteSettings))
+    admin._icon_fetch_progress[token] = {"percent": 0, "done": False, "error": None, "owner_id": user.id}
+    await admin._fetch_icon_from_url("https://example.com/icon.png", token, "admin", {
+        "actor_id": user.id, "staff_role": "admin",
+        "authenticated_credential": credential_stamp(user.username, user.password_hash),
+        "authenticated_generation": account.session_generation,
+    })
 
     result = admin._icon_fetch_progress.pop(token)
     assert result["done"] is True

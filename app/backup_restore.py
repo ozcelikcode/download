@@ -59,7 +59,8 @@ async def restore_site(session: AsyncSession, stage: Path, actor: User) -> None:
     if recovered_admin is None:
         recovered_admin = {"id": max((u["id"] for u in users), default=0) + 1, "username": username,
                            "password_hash": password_hash, "role": "admin", "is_active": True, "is_verified": False,
-                           "deletion_requested_by": None, "created_at": datetime.now(timezone.utc), "deleted_at": None}
+                           "deletion_requested_by": None, "media_quota_mb": None,
+                           "created_at": datetime.now(timezone.utc), "deleted_at": None}
         users.append(recovered_admin)
     recovered_admin.update(password_hash=password_hash, role="admin", is_active=True, deleted_at=None, deletion_requested_by=None)
     account = rows["site_settings"][0]

@@ -6,6 +6,18 @@
 <div class="mb-6">{{ page_heading(request, t(request, 'users'), t(request, 'users_help')) }}</div>
 
 {% if staff_role == 'admin' %}
+<details class="mb-6 rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+  <summary class="cursor-pointer text-sm font-semibold">{{ t(request, 'quota_defaults') }}</summary>
+  <p class="form-hint mt-3">{{ t(request, 'quota_help') }}</p>
+  <form method="post" action="/panel/users/media-quota/defaults" class="mt-4 grid gap-3 sm:grid-cols-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    {% for role in ['editor', 'manager'] %}
+    <label class="text-sm">{{ t(request, 'role_' ~ role) }}<select name="{{ role }}_quota_mb" class="form-input mt-1">{% for value in quota_choices %}<option value="{{ value }}" {% if quota_settings[role ~ '_media_quota_mb'] == value %}selected{% endif %}>{{ value }} MB</option>{% endfor %}</select></label>
+    {% endfor %}
+    <label class="text-sm">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>
+    <button class="btn-secondary self-end justify-self-start" type="submit">{{ t(request, 'save') }}</button>
+  </form>
+</details>
 <section class="mb-6 rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
   <h2 class="mb-4 text-sm font-semibold">{{ t(request, 'new_user') }}</h2>
   <form method="post" action="/panel/users" class="grid gap-3 sm:grid-cols-2">
@@ -33,6 +45,16 @@
       {% endif %}
       {% if user.is_active %}
         {% if staff_role == 'admin' %}
+      {% if user.role in ['editor', 'manager'] %}
+      <details class="mt-3"><summary class="cursor-pointer text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'media_quota') }} · {{ user.media_quota_mb or quota_settings[user.role ~ '_media_quota_mb'] }} MB</summary>
+        <form method="post" action="/panel/users/{{ user.id }}/media-quota" class="mt-3 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+          <label class="text-xs">{{ t(request, 'quota_override') }}<select name="quota_mb" class="form-input mt-1"><option value="">{{ t(request, 'quota_inherit') }}</option>{% for value in quota_choices %}<option value="{{ value }}" {% if user.media_quota_mb == value %}selected{% endif %}>{{ value }} MB</option>{% endfor %}</select></label>
+          <label class="text-xs">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>
+          <button class="btn-secondary" type="submit">{{ t(request, 'save') }}</button>
+        </form>
+      </details>
+      {% endif %}
       <details class="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800">
         <summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">{{ t(request, 'manage_user') }}</summary>
         <div class="mt-3 flex flex-wrap items-end gap-4">

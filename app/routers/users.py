@@ -15,8 +15,9 @@ from app.audit import add_event
 from app.database import get_db
 from app.dependencies import SESSION_COOKIE, authenticated_user, get_request_ip, hash_password_async, require_admin, verify_password_async
 from app.i18n import translate
-from app.models import User
-from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
+from app.models import SiteSettings, User
+from app.storage_quota import QUOTA_CHOICES, validate_quota
+from app.security import clear_successful_attempt, require_csrf, require_secure_password_transport, reserve_login_attempt
 from app.templating import templates
 
 
@@ -67,12 +68,69 @@ async def _lock_actor(request: Request, session: AsyncSession, role: str, *, dur
 @router.get("")
 async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
     users = (await session.scalars(select(User).order_by(User.is_active.desc(), User.username))).all()
+    account = await session.scalar(select(SiteSettings))
     return templates.TemplateResponse(request=request, name="admin/users.html", context={
         "request": request, "users": users, "admin_user": request.state.admin_user,
         "staff_role": request.state.admin_role,
+        "quota_choices": QUOTA_CHOICES, "quota_settings": account,
         "flash_message": request.session.pop("flash_message", None),
         "flash_type": request.session.pop("flash_type", "success"),
     })
+
+
+@router.post("/media-quota/defaults")
+async def update_default_quotas(
+    request: Request, session: AsyncSession = Depends(get_db),
+    editor_quota_mb: int = Form(...), manager_quota_mb: int = Form(...),
+    current_password: str = Form(...),
+):
+    _forbid(request)
+    require_secure_password_transport(request)
+    try:
+        validate_quota(editor_quota_mb)
+        validate_quota(manager_quota_mb)
+    except ValueError:
+        return _back(request, "quota_invalid", error=True)
+    if not await _confirm_password(request, session, current_password):
+        return _back(request, "wrong_current_password", error=True)
+    await _lock_actor(request, session, "admin")
+    account = await session.scalar(select(SiteSettings).execution_options(populate_existing=True))
+    changes = {
+        "editor_media_quota_mb": [account.editor_media_quota_mb, editor_quota_mb],
+        "manager_media_quota_mb": [account.manager_media_quota_mb, manager_quota_mb],
+    }
+    account.editor_media_quota_mb = editor_quota_mb
+    account.manager_media_quota_mb = manager_quota_mb
+    add_event(session, "update", "site_settings", "Default media quotas updated", account.id,
+              changes, actor=request.state.admin_user)
+    await session.commit()
+    return _back(request, "quota_saved")
+
+
+@router.post("/{user_id}/media-quota")
+async def update_user_quota(
+    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    quota_mb: str = Form(""), current_password: str = Form(...),
+):
+    _forbid(request)
+    require_secure_password_transport(request)
+    try:
+        value = int(quota_mb) if quota_mb else None
+        validate_quota(value, optional=True)
+    except ValueError:
+        return _back(request, "quota_invalid", error=True)
+    if not await _confirm_password(request, session, current_password):
+        return _back(request, "wrong_current_password", error=True)
+    await _lock_actor(request, session, "admin")
+    user = await session.get(User, user_id, populate_existing=True)
+    if user is None or not user.is_active or user.role not in {"editor", "manager"}:
+        raise HTTPException(404)
+    old = user.media_quota_mb
+    user.media_quota_mb = value
+    add_event(session, "update", "users", "Personal media quota updated", user.id,
+              {"media_quota_mb": [old, value]}, actor=request.state.admin_user)
+    await session.commit()
+    return _back(request, "quota_saved")
 
 
 @router.post("")
@@ -127,6 +185,7 @@ async def change_role(
     user.role = role
     if role != old_role:
         user.is_verified = False
+        user.media_quota_mb = None
     add_event(session, "update", "users", user.username, entity_id=user.id, changes={"role": [old_role, role]}, actor=request.state.admin_user)
     await session.commit()
     return _back(request, "user_updated")

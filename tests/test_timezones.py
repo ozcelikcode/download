@@ -88,6 +88,10 @@ async def test_backup_before_timezone_remains_importable(db_session):
             manifest = json.loads(archive.read("manifest.json"))
             data = json.loads(archive.read("data.json"))
         del data["site_settings"][0]["site_timezone"]
+        del data["site_settings"][0]["editor_media_quota_mb"]
+        del data["site_settings"][0]["manager_media_quota_mb"]
+        for user in data["users"]:
+            del user["media_quota_mb"]
         manifest["schema"] = backups.schema_fingerprint(before_timezone=True)
         with zipfile.ZipFile(stage / "incoming.zip", "w") as archive:
             archive.writestr("manifest.json", json.dumps(manifest))

@@ -13,6 +13,7 @@ from app.locales.maintenance import STRINGS as MAINTENANCE_STRINGS
 from app.locales.registrations import STRINGS as REGISTRATION_STRINGS
 from app.locales.timezones import STRINGS as TIMEZONE_STRINGS
 from app.locales.account import STRINGS as ACCOUNT_STRINGS
+from app.locales.storage import STRINGS as STORAGE_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -742,6 +743,11 @@ for language, strings in TIMEZONE_STRINGS.items():
 for language, strings in ACCOUNT_STRINGS.items():
     TRANSLATIONS[language].update(strings)
 _SYSTEM_MESSAGE_KEYS[ACCOUNT_STRINGS["en"]["audit_account_closed"]] = "audit_account_closed"
+for language, strings in STORAGE_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+_SYSTEM_MESSAGE_KEYS[STORAGE_STRINGS["en"]["quota_exceeded"]] = "quota_exceeded"
+_SYSTEM_MESSAGE_KEYS["Default media quotas updated"] = "quota_saved"
+_SYSTEM_MESSAGE_KEYS["Personal media quota updated"] = "quota_saved"
 for key, message in REGISTRATION_STRINGS["en"].items():
     if key.startswith("audit_"):
         _SYSTEM_MESSAGE_KEYS[message] = key

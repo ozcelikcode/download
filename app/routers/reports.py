@@ -16,6 +16,7 @@ from app.dependencies import get_db, require_admin
 from app.link_checks import check_link, save_link_result
 from app.i18n import ui_language
 from app.locales.timezones import STRINGS as TIMEZONE_STRINGS
+from app.locales.storage import STRINGS as STORAGE_STRINGS
 from app.locales.report_labels import LABELS as LOCALIZED_REPORT_LABELS
 from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
 from app.models import AuditLog, Download, FileType, LinkCheck
@@ -70,6 +71,12 @@ def report_labels(language: str, group: str) -> dict[str, str]:
     elif group == "fields":
         labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
         labels["site_timezone"] = TIMEZONE_STRINGS.get(language, TIMEZONE_STRINGS["en"])["timezone_title"]
+        storage = STORAGE_STRINGS.get(language, STORAGE_STRINGS["en"])
+        from app.i18n import TRANSLATIONS
+        translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
+        labels["media_quota_mb"] = storage["quota_override"] + " (MB)"
+        for role in ("editor", "manager"):
+            labels[f"{role}_media_quota_mb"] = translated[f"role_{role}"] + " · " + storage["media_quota"] + " (MB)"
     return labels
 
 

@@ -1,14 +1,28 @@
-"""Boyut sınırlı yükleme; başarısız işlemde mevcut dosyayı korur."""
+"""Bounded staged uploads and protection against serving temporary files."""
 
 import os
 import tempfile
-from collections.abc import Callable
-from pathlib import Path
+from collections.abc import Awaitable, Callable
+from pathlib import Path, PurePosixPath
 
 import anyio
 from fastapi import HTTPException, UploadFile
+from starlette.responses import Response
+from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from app.config import settings
+
+STAGING_PREFIXES = (".upload-", ".replace-", ".remote-", ".crop-")
+
+
+class UploadSafeStaticFiles(StaticFiles):
+    """Never expose hidden staging files in the public uploads tree."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        if path.startswith("uploads/") and any(part.startswith(".") for part in PurePosixPath(path).parts):
+            raise HTTPException(404)
+        return await super().get_response(path, scope)
 
 
 async def save_upload(
@@ -16,6 +30,7 @@ async def save_upload(
     destination: Path,
     *,
     validator: Callable[[Path], None] | None = None,
+    publisher: Callable[[Path, Path], Awaitable[None]] | None = None,
 ) -> None:
     limit = settings.max_upload_size_bytes
     if file.size is not None and file.size > limit:
@@ -35,6 +50,9 @@ async def save_upload(
                 await output.write(chunk)
         if validator is not None:
             await anyio.to_thread.run_sync(validator, temporary)
-        await anyio.to_thread.run_sync(temporary.replace, destination)
+        if publisher is not None:
+            await publisher(temporary, destination)
+        else:
+            await anyio.to_thread.run_sync(temporary.replace, destination)
     finally:
         temporary.unlink(missing_ok=True)

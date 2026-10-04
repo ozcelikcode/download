@@ -33,7 +33,9 @@ import asyncio
 import json
 import logging
 import math
+import os
 import re
+import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -93,7 +95,8 @@ from app.schemas import (
     TagCreate,
 )
 from app.templating import refresh_site_branding_globals, templates
-from app.uploads import save_upload
+from app.uploads import STAGING_PREFIXES, save_upload
+from app.storage_quota import publish_media, quota_bytes, usage_bytes
 from app.audit import add_event
 from app.timezones import TIMEZONE_CHOICES, validate_timezone
 from app.security import clear_successful_attempt, require_csrf, reserve_login_attempt
@@ -251,13 +254,13 @@ def _deconstruct_file_size(bytes_val: Optional[int]) -> tuple[Optional[float], s
 
 
 
-async def _save_upload(file: UploadFile) -> str:
-    """Yüklenen indirme dosyasını web kökü dışındaki özel depoya kaydeder."""
+async def _save_upload(file: UploadFile, session: AsyncSession) -> str:
+    """Publish a quota-checked download outside the public web root."""
     _ensure_safe_public_upload(file.filename, file.content_type)
     upload_dir = settings.download_path
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / _unique_upload_filename(file.filename)
-    await save_upload(file, dest)
+    await save_upload(file, dest, publisher=lambda staged, target: publish_media(session, staged, target))
     logger.info("File uploaded")
     return str(dest)
 
@@ -271,22 +274,21 @@ def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str
     return f"{uuid.uuid4().hex[:12]}{ext}"
 
 
-async def _save_icon_upload(file: UploadFile, compress: bool = True) -> str:
-    """İkon görselini icons/ alt dizinine benzersiz bir adla kaydeder, web yolunu döndürür.
-
-    `compress=False`: kaynağı zaten işlenmiş (ör. kırpma tuvalinden gelen) bir
-    görsel ise gereksiz ikinci bir sıkıştırma turu uygulanmaz.
-    """
+async def _save_icon_upload(file: UploadFile, session: AsyncSession, compress: bool = True) -> str:
+    """Validate and optionally compress an icon before quota-checked publication."""
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
     try:
-        await save_upload(file, dest, validator=validate_raster_image_file)
+        def prepare(staged: Path) -> None:
+            validate_raster_image_file(staged)
+            if compress:
+                compress_image_file(staged)
+        await save_upload(file, dest, validator=prepare,
+                          publisher=lambda staged, target: publish_media(session, staged, target))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if compress:
-        compress_image_file(dest)
     logger.info("Icon uploaded: compressed=%s", compress)
     return f"/static/uploads/icons/{filename}"
 
@@ -297,17 +299,16 @@ def _resolve_icon_path(path: str) -> Path:
     return settings.upload_path / "icons" / Path(unquote(path or "")).name
 
 
-async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
-    """Var olan bir ikon dosyasının İÇERİĞİNİ, TAM OLARAK AYNI yol/link üzerinde
-    değiştirir — dosya adı asla değişmez, sıkıştırma uygulanmaz (kaynak zaten
-    işlenmiş kabul edilir)."""
+async def _replace_icon_upload(file: UploadFile, existing_path: str, session: AsyncSession) -> str:
+    """Replace a prepared icon in place without changing its URL or recompressing."""
     dest = _resolve_icon_path(existing_path)
     if not dest.is_file():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
     if dest.suffix.lower() not in _SAFE_IMAGE_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Güvensiz görsel uzantısı yerinde güncellenemez.")
     try:
-        await save_upload(file, dest, validator=validate_raster_image_file)
+        await save_upload(file, dest, validator=validate_raster_image_file,
+                          publisher=lambda staged, target: publish_media(session, staged, target))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     logger.info("Icon replaced in place")
@@ -319,9 +320,10 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str) -> str:
 _icon_fetch_progress: dict[str, dict] = {}
 
 
-async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
-    """Dış URL'deki görseli akış halinde indirip icons/ dizinine kaydeder, ilerlemeyi günceller."""
+async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_info: dict | None = None) -> None:
+    """Stream an external image to staging, then validate, process, and publish it."""
     dest: Optional[Path] = None
+    staged: Optional[Path] = None
     try:
         current = httpx.URL(url)
         visited: set[str] = set()
@@ -358,9 +360,12 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
                     icons_dir.mkdir(parents=True, exist_ok=True)
                     filename = f"{uuid.uuid4().hex[:12]}{ext}"
                     dest = icons_dir / filename
+                    fd, name = tempfile.mkstemp(prefix=".remote-", suffix=".part", dir=icons_dir)
+                    os.close(fd)
+                    staged = Path(name)
 
                     received = 0
-                    with dest.open("wb") as out:
+                    with staged.open("wb") as out:
                         async for chunk in resp.aiter_bytes(chunk_size=65536):
                             received += len(chunk)
                             if received > settings.max_upload_size_bytes:
@@ -373,31 +378,31 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str) -> None:
             raise ValueError("Çok fazla yönlendirme.")
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
-        validate_raster_image_file(dest)
-        compress_image_file(dest)
+        validate_raster_image_file(staged)
+        compress_image_file(staged)
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
             session.info["audit_actor"] = uploaded_by
             session.info["actor_id"] = _icon_fetch_progress[token].get("owner_id")
-            await crud.record_media_upload(session, final_path, uploaded_by)
+            session.info.update(actor_info or {})
+            await publish_media(session, staged, dest)
         _icon_fetch_progress[token].update(
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
         logger.info("Remote image downloaded")
     except asyncio.CancelledError:
-        if dest is not None:
-            dest.unlink(missing_ok=True)
         raise
     except Exception as exc:
-        if dest is not None:
-            dest.unlink(missing_ok=True)
         logger.error("Remote image download failed: error_type=%s", type(exc).__name__)
-        _icon_fetch_progress[token].update({"done": True, "error": str(exc)})
+        _icon_fetch_progress[token].update({"done": True, "error": str(exc.detail) if isinstance(exc, HTTPException) else str(exc)})
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
 
 
-async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str) -> None:
+async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str, actor_info: dict | None = None) -> None:
     try:
-        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by), timeout=60)
+        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by, actor_info), timeout=60)
     except TimeoutError:
         _icon_fetch_progress[token].update({"done": True, "error": "Bağlantı kontrolü zaman aşımına uğradı."})
 
@@ -469,7 +474,7 @@ def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
     items: List[dict] = []
     if directory.exists():
         for p in directory.iterdir():
-            if not p.is_file():
+            if p.name == ".gitkeep" or p.name.startswith(STAGING_PREFIXES) or not p.is_file():
                 continue
             stat = p.stat()
             ext = p.suffix.lstrip(".").lower()
@@ -569,6 +574,10 @@ async def media_view(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
+    quota_account = await crud.get_site_settings(session)
+    quota_user = await session.get(User, session.info["actor_id"])
+    storage_limit = quota_bytes(quota_user, quota_account)
+    storage_used = await usage_bytes(session, quota_user.id)
     upload_root = settings.upload_path
     icons_dir = upload_root / "icons"
 
@@ -628,6 +637,7 @@ async def media_view(
             "files_total_all": len(files),
             "active_tab": active_tab,
             "page_sizes": _MEDIA_PAGE_SIZES,
+            "storage_limit": storage_limit, "storage_used": storage_used,
             "type_categories": {key: translate(request, label) for key, label in _TYPE_CATEGORY_LABELS.items()},
             "files_type": files_type,
             "files_os": files_os,
@@ -658,9 +668,8 @@ async def media_upload_file(
     upload_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_upload_filename(file.filename)
     dest = upload_dir / filename
-    await save_upload(file, dest)
+    await save_upload(file, dest, publisher=lambda staged, target: publish_media(session, staged, target))
     web_path = f"/panel/media/files/{quote(filename)}"
-    await crud.record_media_upload(session, web_path, _admin)
     logger.info("File added to media library")
     return {"path": web_path, "storage_path": str(dest), "name": filename}
 
@@ -672,7 +681,7 @@ async def media_file(
     session: AsyncSession = Depends(get_db),
 ):
     safe_name = Path(unquote(filename or "")).name
-    if not safe_name or safe_name != unquote(filename):
+    if not safe_name or safe_name.startswith(STAGING_PREFIXES) or safe_name == ".gitkeep" or safe_name != unquote(filename):
         raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
     await require_owned_media(session, f"/panel/media/files/{quote(safe_name)}")
     root = settings.download_path.resolve()
@@ -708,7 +717,7 @@ async def media_replace_file(
         raise HTTPException(status_code=404, detail="Kaynak dosya bulunamadı.")
     _ensure_safe_public_upload(dest.name, file.content_type)
     _ensure_safe_public_upload(file.filename, file.content_type)
-    await save_upload(file, dest)
+    await save_upload(file, dest, publisher=lambda staged, target: publish_media(session, staged, target))
     logger.info("File replaced in place")
     add_event(session, "replace", "media_assets", path)
     await session.commit()
@@ -767,12 +776,11 @@ async def upload_icon_image(
         await require_owned_media(session, replace_path, mutation=True)
         # Yerinde güncelleme: link/dosya adı asla değişmez, sıkıştırma uygulanmaz
         # (kaynak — kırpma tuvali çıktısı — zaten işlenmiş kabul edilir).
-        path = await _replace_icon_upload(file, replace_path)
+        path = await _replace_icon_upload(file, replace_path, session)
         add_event(session, "replace", "media_assets", path)
         await session.commit()
     else:
-        path = await _save_icon_upload(file, compress=not skip_compression)
-        await crud.record_media_upload(session, path, _admin)
+        path = await _save_icon_upload(file, session, compress=not skip_compression)
     return {"path": path}
 
 
@@ -780,6 +788,7 @@ async def upload_icon_image(
 async def upload_icon_image_url(
     request: Request,
     _admin: str = Depends(require_admin),
+    session: AsyncSession = Depends(get_db),
     url: str = Form(...),
     token: str = Form(...),
 ):
@@ -790,7 +799,7 @@ async def upload_icon_image_url(
         "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
     }
     return JSONResponse({"started": True, "token": token},
-                        background=BackgroundTask(_fetch_icon_with_timeout, url, token, _admin))
+                        background=BackgroundTask(_fetch_icon_with_timeout, url, token, _admin, dict(session.info)))
 
 
 @router.get("/upload/progress/{token}", name="admin_upload_progress")
@@ -845,14 +854,19 @@ async def upload_icon_auto_crop(
     else:
         dest = settings.upload_path / "icons" / f"{uuid.uuid4().hex[:12]}.png"
 
+    fd, name = tempfile.mkstemp(prefix=".crop-", suffix=".part", dir=src.parent)
+    os.close(fd)
+    staged = Path(name)
     try:
-        make_square_icon(src, dest, size=max(32, min(int(size), 1024)))
-    except Exception as exc:
-        logger.error("Automatic icon cropping failed: error_type=%s", type(exc).__name__)
-        raise HTTPException(status_code=422, detail="Görsel işlenemedi.")
+        try:
+            make_square_icon(src, staged, size=max(32, min(int(size), 1024)))
+        except Exception as exc:
+            logger.error("Automatic icon cropping failed: error_type=%s", type(exc).__name__)
+            raise HTTPException(status_code=422, detail="Görsel işlenemedi.") from exc
+        await publish_media(session, staged, dest)
+    finally:
+        staged.unlink(missing_ok=True)
 
-    if not in_place:
-        await crud.record_media_upload(session, f"/static/uploads/icons/{dest.name}", _admin)
     add_event(session, "crop", "media_assets", f"/static/uploads/icons/{dest.name}")
     await session.commit()
     return {"path": f"/static/uploads/icons/{dest.name}"}
@@ -1212,8 +1226,7 @@ async def download_new_post(
     # ── Dosya yükleme ────────────────────────────────────────────────────
     file_path: Optional[str] = _stored_download_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
-        file_path = await _save_upload(upload_file)
-        await crud.record_media_upload(session, f"/panel/media/files/{quote(Path(file_path).name)}", _admin)
+        file_path = await _save_upload(upload_file, session)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: AJAX ile önceden yüklenmiş/indirilmiş yerel dosya yolu.
@@ -1223,8 +1236,7 @@ async def download_new_post(
         icon_img_path = icon_image_final_path
         icon_img_url = None
     elif icon_image_file and icon_image_file.filename:
-        icon_img_path = await _save_icon_upload(icon_image_file)
-        await crud.record_media_upload(session, icon_img_path, _admin)
+        icon_img_path = await _save_icon_upload(icon_image_file, session)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id     = _int_or_none(category_id)
@@ -1481,8 +1493,7 @@ async def download_edit_post(
     # ── Dosya yükleme ────────────────────────────────────────────────────
     file_path: Optional[str] = _stored_download_path(file_final_path) or download.file_path
     if upload_file and upload_file.filename:
-        file_path = await _save_upload(upload_file)
-        await crud.record_media_upload(session, f"/panel/media/files/{quote(Path(file_path).name)}", _admin)
+        file_path = await _save_upload(upload_file, session)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: (1) kullanıcı görseli sildi  (2) AJAX ile önceden yüklenmiş/
@@ -1496,8 +1507,7 @@ async def download_edit_post(
         icon_img_path = icon_image_final_path
         icon_img_url = None
     elif icon_image_file and icon_image_file.filename:
-        icon_img_path = await _save_icon_upload(icon_image_file)
-        await crud.record_media_upload(session, icon_img_path, _admin)
+        icon_img_path = await _save_icon_upload(icon_image_file, session)
 
     # ── Tip dönüşümleri (boş string → None) ─────────────────────────────
     cat_id      = _int_or_none(category_id)
@@ -2088,11 +2098,11 @@ async def settings_appearance_update(
     logo_dark = None if clear_logo_dark else current.logo_dark_path
     hero_image = None if clear_hero_image else current.hero_image_path
     if logo_light_file and logo_light_file.filename:
-        logo_light = await _save_icon_upload(logo_light_file)
+        logo_light = await _save_icon_upload(logo_light_file, session)
     if logo_dark_file and logo_dark_file.filename:
-        logo_dark = await _save_icon_upload(logo_dark_file)
+        logo_dark = await _save_icon_upload(logo_dark_file, session)
     if hero_image_file and hero_image_file.filename:
-        hero_image = await _save_icon_upload(hero_image_file)
+        hero_image = await _save_icon_upload(hero_image_file, session)
 
     allowed = {"eyebrow", "title", "description", "search", "stats"}
     components = []

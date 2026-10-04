@@ -71,9 +71,12 @@ def fingerprint(pem: str) -> str:
     return hashlib.sha256(der).hexdigest()
 
 
-def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False) -> str:
+def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False, before_quotas: bool = False) -> str:
     schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
-                         if not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")]
+                         if not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")
+                         and not ((before_quotas or before_timezone or before_registrations)
+                                  and ((table.name == "site_settings" and column.name in {"editor_media_quota_mb", "manager_media_quota_mb"})
+                                       or (table.name == "users" and column.name == "media_quota_mb")))]
               for table in Base.metadata.sorted_tables if table.name != "backup_policy"
               and not (before_registrations and table.name == "registration_requests")}
     return hashlib.sha256(json.dumps(schema, sort_keys=True).encode()).hexdigest()
@@ -223,10 +226,11 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             data = json.loads(archive.read("data.json"))
             if not isinstance(manifest, dict):
                 raise BackupError("backup_invalid")
-            # Adapt only the two known previous schemas, not arbitrary mismatches.
+            # Adapt only known previous schemas, not arbitrary mismatches.
             legacy = manifest.get("schema") == schema_fingerprint(before_registrations=True)
             old_timezone = legacy or manifest.get("schema") == schema_fingerprint(before_timezone=True)
-            if manifest.get("format") != 1 or (not old_timezone and manifest.get("schema") != schema_fingerprint()):
+            old_quotas = old_timezone or manifest.get("schema") == schema_fingerprint(before_quotas=True)
+            if manifest.get("format") != 1 or (not old_quotas and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
             if legacy:
@@ -239,6 +243,17 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or "site_timezone" in data["site_settings"][0]:
                     raise BackupError("backup_invalid")
                 data["site_settings"][0]["site_timezone"] = "UTC"
+            if old_quotas:
+                if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or not isinstance(data.get("users"), list):
+                    raise BackupError("backup_invalid")
+                account = data["site_settings"][0]
+                if "editor_media_quota_mb" in account or "manager_media_quota_mb" in account:
+                    raise BackupError("backup_invalid")
+                account.update(editor_media_quota_mb=256, manager_media_quota_mb=1024)
+                for user in data["users"]:
+                    if not isinstance(user, dict) or "media_quota_mb" in user:
+                        raise BackupError("backup_invalid")
+                    user["media_quota_mb"] = None
             for table in Base.metadata.sorted_tables:
                 if table.name == "backup_policy":
                     continue
@@ -250,8 +265,13 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             if data["site_lifecycle"][0]["id"] != 1:
                 raise BackupError("backup_invalid")
             from app.timezones import validate_timezone
+            from app.storage_quota import validate_quota
             try:
                 validate_timezone(data["site_settings"][0]["site_timezone"])
+                validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
+                validate_quota(data["site_settings"][0]["manager_media_quota_mb"])
+                for user in data["users"]:
+                    validate_quota(user["media_quota_mb"], optional=True)
             except (ValueError, TypeError):
                 raise BackupError("backup_invalid") from None
             extracted = stage / "extracted"

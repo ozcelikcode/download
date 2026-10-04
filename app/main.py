@@ -11,10 +11,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import crud
+from app.uploads import UploadSafeStaticFiles
 from app.audit import add_event
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
@@ -110,7 +110,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Static files
 # ---------------------------------------------------------------------------
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", UploadSafeStaticFiles(directory="app/static"), name="static")
 
 # ---------------------------------------------------------------------------
 # Middleware

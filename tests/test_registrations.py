@@ -256,6 +256,10 @@ async def test_previous_backup_schema_remains_importable(db_session):
         data = json.loads(archive.read("data.json"))
     del data["registration_requests"]
     del data["site_settings"][0]["site_timezone"]
+    del data["site_settings"][0]["editor_media_quota_mb"]
+    del data["site_settings"][0]["manager_media_quota_mb"]
+    for user in data["users"]:
+        del user["media_quota_mb"]
     manifest["schema"] = backups.schema_fingerprint(before_registrations=True)
     with zipfile.ZipFile(stage / "incoming.zip", "w") as archive:
         archive.writestr("manifest.json", json.dumps(manifest))
