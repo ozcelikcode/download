@@ -58,7 +58,7 @@ async def test_site_health_page_groups_technical_and_seo_findings(admin_client, 
     )
     await db_session.commit()
 
-    response = await admin_client.get("/admin/site-health")
+    response = await admin_client.get("/panel/site-health")
     assert response.status_code == 200
     assert "Site Sağlığı" in response.text
     assert "Teknik Sağlık" in response.text
@@ -67,19 +67,19 @@ async def test_site_health_page_groups_technical_and_seo_findings(admin_client, 
     assert "Açıklaması olmayan yayınlar" in response.text
     assert "Uzun başlıklar" in response.text
     assert "Uzun kategori açıklamaları" in response.text
-    assert "/admin/downloads/1/edit" in response.text
+    assert "/panel/downloads/1/edit" in response.text
     assert "/sitemap.xml" in response.text
     assert "/robots.txt" in response.text
 
 
 async def test_site_health_recommends_homepage_seo_metadata(admin_client):
-    response = await admin_client.get("/admin/site-health")
+    response = await admin_client.get("/panel/site-health")
 
     assert response.status_code == 200
     assert "Ana sayfa SEO alanları kişiselleştirilmemiş" in response.text
     assert "Mevcut varsayılan metinler çalışmaya devam eder" in response.text
     assert 'id="seo-settings"' in response.text
-    assert 'action="/admin/settings/seo"' in response.text
+    assert 'action="/panel/settings/seo"' in response.text
 
 
 async def test_site_health_flags_long_homepage_metadata(admin_client, db_session):
@@ -88,7 +88,7 @@ async def test_site_health_flags_long_homepage_metadata(admin_client, db_session
     site_settings.seo_meta_description = "Örnek açıklama. " * 14
     await db_session.commit()
 
-    response = await admin_client.get("/admin/site-health")
+    response = await admin_client.get("/panel/site-health")
 
     assert response.status_code == 200
     assert "Ana sayfa SEO başlığı uzun" in response.text
@@ -101,7 +101,7 @@ async def test_site_health_explains_invalid_public_base_url(
 ):
     monkeypatch.setattr(settings, "app_base_url", "javascript:alert(1)")
 
-    response = await admin_client.get("/admin/site-health")
+    response = await admin_client.get("/panel/site-health")
 
     assert response.status_code == 200
     assert "APP_BASE_URL geçerli bir HTTP/HTTPS kök adresi değil." in response.text
@@ -111,7 +111,7 @@ async def test_site_health_explains_invalid_public_base_url(
 
 async def test_manual_homepage_seo_settings_are_saved_and_used(admin_client, client):
     response = await admin_client.post(
-        "/admin/settings/seo",
+        "/panel/settings/seo",
         data={
             "seo_home_title": "Özel Ana Sayfa Başlığı",
             "seo_meta_description": "Sitemiz için arama sonuçlarında kullanılacak özel açıklama.",
@@ -120,7 +120,7 @@ async def test_manual_homepage_seo_settings_are_saved_and_used(admin_client, cli
     )
 
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/site-health#seo-settings"
+    assert response.headers["location"] == "/panel/site-health#seo-settings"
     homepage = await client.get("/")
     assert "<title>Özel Ana Sayfa Başlığı</title>" in homepage.text
     assert '<meta name="description" content="Sitemiz için arama sonuçlarında kullanılacak özel açıklama.">' in homepage.text
@@ -129,20 +129,20 @@ async def test_manual_homepage_seo_settings_are_saved_and_used(admin_client, cli
 
 async def test_invalid_homepage_seo_settings_notify_without_saving(admin_client):
     response = await admin_client.post(
-        "/admin/settings/seo",
+        "/panel/settings/seo",
         data={"seo_home_title": "Başlık " * 20, "seo_meta_description": "Geçerli açıklama."},
         follow_redirects=False,
     )
 
     assert response.status_code == 302
-    health_page = await admin_client.get("/admin/site-health")
+    health_page = await admin_client.get("/panel/site-health")
     assert 'data-toast-type="error"' in health_page.text
     assert "SEO başlığı en fazla 100" in health_page.text
     assert 'value="" class="form-input"' in health_page.text
 
 
 async def test_site_health_requires_admin(client):
-    response = await client.get("/admin/site-health", follow_redirects=False)
+    response = await client.get("/panel/site-health", follow_redirects=False)
 
     assert response.status_code == 302
     assert response.headers["location"] == "/login"
@@ -185,7 +185,7 @@ async def test_robots_and_sitemap_only_advertise_public_pages(client, db_session
     sitemap = await client.get("/sitemap.xml")
 
     assert robots.status_code == 200
-    assert "Disallow: /admin" in robots.text
+    assert "Disallow: /panel" in robots.text
     assert "Disallow: /dl/" in robots.text
     assert "Sitemap: https://downloads.example.com/sitemap.xml" in robots.text
     assert sitemap.status_code == 200

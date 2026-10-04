@@ -30,7 +30,7 @@ from app.templating import refresh_site_branding_globals, templates
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_csrf)])
-MAINTENANCE_PATH = "/admin/settings/maintenance"
+MAINTENANCE_PATH = "/panel/settings/maintenance"
 CONFIRM_SECONDS = 5 * 60
 
 

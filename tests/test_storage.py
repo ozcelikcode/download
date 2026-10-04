@@ -28,7 +28,7 @@ async def test_uploaded_download_is_private_but_public_download_route_serves_it(
     db_session: AsyncSession,
 ):
     upload = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("paket.zip", b"private-content", "application/zip")},
     )
     assert upload.status_code == 200
@@ -63,7 +63,7 @@ async def test_admin_private_file_preview_forces_non_images_to_download(
     admin_client: AsyncClient,
 ):
     upload = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("belge.pdf", b"not-a-real-pdf", "application/pdf")},
     )
     response = await admin_client.get(upload.json()["path"])
@@ -111,7 +111,7 @@ async def test_legacy_static_downloads_and_metadata_are_migrated(
     assert download.file_path == str(target.resolve())
     asset = await db_session.scalar(select(MediaAsset))
     assert asset is not None
-    assert asset.path == f"/admin/media/files/{quote(target.name)}"
+    assert asset.path == f"/panel/media/files/{quote(target.name)}"
     assert asset.display_name == "Eski Paket"
     assert await migrate_legacy_local_downloads(db_session) == 0
     assert target.read_bytes() == b"legacy"

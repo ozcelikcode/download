@@ -168,28 +168,30 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return True
     if role not in {"manager", "editor"}:
         return False
-    if path == "/admin/settings/account":
+    if path == "/panel/settings/account":
         return True
-    if path == "/admin/registrations" or path.startswith("/admin/registrations/"):
+    if path == "/panel/account/close" and method == "POST":
+        return True
+    if path == "/panel/registrations" or path.startswith("/panel/registrations/"):
         return role == "manager"
-    if path == "/admin/contact" or path.startswith("/admin/contact/"):
+    if path == "/panel/contact" or path.startswith("/panel/contact/"):
         return True
-    if path in {"/admin", "/admin/"} or path.startswith(("/admin/downloads", "/admin/categories", "/admin/tags", "/admin/media", "/admin/upload")):
+    if path in {"/panel", "/panel/"} or path.startswith(("/panel/downloads", "/panel/categories", "/panel/tags", "/panel/media", "/panel/upload")):
         return True
     if role == "editor":
         return False
-    if path == "/admin/review" or path.startswith("/admin/review/"):
+    if path == "/panel/review" or path.startswith("/panel/review/"):
         return True
-    if path.startswith("/admin/users/") and path.endswith("/verification") and method == "POST":
+    if path.startswith("/panel/users/") and path.endswith("/verification") and method == "POST":
         return True
-    if path.startswith(("/admin/pages", "/admin/links")) or path == "/admin/site-health":
+    if path.startswith(("/panel/pages", "/panel/links")) or path == "/panel/site-health":
         return True
-    if path == "/admin/users" and method == "GET":
+    if path == "/panel/users" and method == "GET":
         return True
-    if path.startswith("/admin/users/") and path.endswith("/request-delete") and method == "POST":
+    if path.startswith("/panel/users/") and path.endswith("/request-delete") and method == "POST":
         return True
-    if path == "/admin/settings" or path.startswith("/admin/settings/"):
-        return not path.startswith(("/admin/settings/session-duration", "/admin/settings/audit-log-limit", "/admin/settings/maintenance"))
+    if path == "/panel/settings" or path.startswith("/panel/settings/"):
+        return not path.startswith(("/panel/settings/session-duration", "/panel/settings/audit-log-limit", "/panel/settings/maintenance"))
     return False
 
 

@@ -34,7 +34,7 @@ async def file_checksum(session: AsyncSession, value: str | None) -> str | None:
         return None
     private_root = settings.download_path.resolve()
     if path.is_relative_to(private_root):
-        url = "/admin/media/files/" + quote(path.relative_to(private_root).as_posix())
+        url = "/panel/media/files/" + quote(path.relative_to(private_root).as_posix())
     else:
         url = "/static/uploads/" + quote(
             path.relative_to(settings.upload_path.resolve()).as_posix()

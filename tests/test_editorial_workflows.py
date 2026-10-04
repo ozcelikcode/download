@@ -28,19 +28,19 @@ def login(client, user):
 async def test_required_category_is_shared_read_only_and_usable(client, db_session):
     first, second, manager = await accounts(db_session)
     login(client, manager)
-    await client.get("/admin/categories")
+    await client.get("/panel/categories")
     category = await db_session.scalar(select(Category).where(Category.is_required.is_(True)))
     assert category.owner_id is None
-    assert (await client.post(f"/admin/categories/{category.id}/edit", data={"name": "Shared defaults"})).status_code == 302
+    assert (await client.post(f"/panel/categories/{category.id}/edit", data={"name": "Shared defaults"})).status_code == 302
     for user in (first, second):
         login(client, user)
-        page = await client.get("/admin/categories")
+        page = await client.get("/panel/categories")
         assert "Shared defaults" in page.text
         assert f'id="cat-edit-{category.id}"' not in page.text
-        assert (await client.post(f"/admin/categories/{category.id}/edit", data={"name": "Forbidden"})).status_code == 403
-        response = await client.post("/admin/downloads/drafts/autosave", data={"title": "Using shared category", "draft_token": user.username, "category_id": str(category.id)})
+        assert (await client.post(f"/panel/categories/{category.id}/edit", data={"name": "Forbidden"})).status_code == 403
+        response = await client.post("/panel/downloads/drafts/autosave", data={"title": "Using shared category", "draft_token": user.username, "category_id": str(category.id)})
         assert response.status_code == 200
-        assert (await client.post(f"/admin/categories/{category.id}/move", data={"target_category_id": category.id})).status_code in (403, 422)
+        assert (await client.post(f"/panel/categories/{category.id}/move", data={"target_category_id": category.id})).status_code in (403, 422)
     await db_session.refresh(category)
     assert category.name == "Shared defaults"
     assert await db_session.scalar(select(func.count()).select_from(Category).where(Category.is_required.is_(True))) == 1
@@ -57,7 +57,7 @@ async def test_category_move_includes_trash_and_drafts_without_copying(client, d
     db_session.add_all(items)
     await db_session.commit()
     login(client, editor)
-    assert (await client.post(f"/admin/categories/{a.id}/move", data={"target_category_id": b.id})).status_code == 302
+    assert (await client.post(f"/panel/categories/{a.id}/move", data={"target_category_id": b.id})).status_code == 302
     db_session.expire_all()
     categories = list(await db_session.scalars(select(Category)))
     moved = list(await db_session.scalars(select(Download)))
@@ -73,8 +73,8 @@ async def test_category_move_denies_foreign_target_and_shared_source(client, db_
     db_session.add_all([a, b, required])
     await db_session.commit()
     login(client, first)
-    assert (await client.post(f"/admin/categories/{a.id}/move", data={"target_category_id": b.id})).status_code == 404
-    assert (await client.post(f"/admin/categories/{required.id}/move", data={"target_category_id": a.id})).status_code == 403
+    assert (await client.post(f"/panel/categories/{a.id}/move", data={"target_category_id": b.id})).status_code == 404
+    assert (await client.post(f"/panel/categories/{required.id}/move", data={"target_category_id": a.id})).status_code == 403
 
 
 @pytest.mark.parametrize("verified", [False, True])
@@ -83,18 +83,18 @@ async def test_publication_requires_review_unless_verified(client, db_session, v
     editor.is_verified = verified
     await db_session.commit()
     login(client, editor)
-    response = await client.post("/admin/downloads/new", data={"title": "Editorial submission", "file_type": "external", "external_url": "https://example.com/download", "is_active": "true", "submission_intent": "publish"})
+    response = await client.post("/panel/downloads/new", data={"title": "Editorial submission", "file_type": "external", "external_url": "https://example.com/download", "is_active": "true", "submission_intent": "publish"})
     assert response.status_code == 302
     item = await db_session.scalar(select(Download).where(Download.title == "Editorial submission"))
     assert item.is_active == verified and item.publication_pending != verified
     public = await client.get(f"/download/{item.slug}")
     assert public.status_code == (200 if verified else 404)
-    assert (await client.get("/admin/review")).status_code == 403
+    assert (await client.get("/panel/review")).status_code == 403
     if not verified:
-        assert (await client.post(f"/admin/review/{item.id}", data={"action": "approve", "revision": item.updated_at.isoformat()})).status_code == 403
+        assert (await client.post(f"/panel/review/{item.id}", data={"action": "approve", "revision": item.updated_at.isoformat()})).status_code == 403
         login(client, manager)
-        assert "Editorial submission" in (await client.get("/admin/review")).text
-        assert (await client.post(f"/admin/review/{item.id}", data={"action": "approve", "revision": item.updated_at.isoformat()})).status_code == 303
+        assert "Editorial submission" in (await client.get("/panel/review")).text
+        assert (await client.post(f"/panel/review/{item.id}", data={"action": "approve", "revision": item.updated_at.isoformat()})).status_code == 303
         await db_session.refresh(item)
         assert item.is_active and not item.publication_pending
         assert (await client.get(f"/download/{item.slug}")).status_code == 200
@@ -107,13 +107,13 @@ async def test_rejection_returns_draft_with_private_feedback(client, db_session)
     await db_session.commit()
     await db_session.refresh(item)
     login(client, manager)
-    await client.post(f"/admin/review/{item.id}", data={"action": "reject", "reason": "Add a proper description", "revision": item.updated_at.isoformat()})
+    await client.post(f"/panel/review/{item.id}", data={"action": "reject", "reason": "Add a proper description", "revision": item.updated_at.isoformat()})
     await db_session.refresh(item)
     assert item.is_draft and not item.is_active and not item.publication_pending
     login(client, editor)
-    assert "Add a proper description" in (await client.get(f"/admin/downloads/{item.id}/edit")).text
+    assert "Add a proper description" in (await client.get(f"/panel/downloads/{item.id}/edit")).text
     login(client, other)
-    assert (await client.get(f"/admin/downloads/{item.id}/edit")).status_code == 404
+    assert (await client.get(f"/panel/downloads/{item.id}/edit")).status_code == 404
 
 
 async def test_unverified_edits_cannot_keep_an_approved_publication_live(client, db_session):
@@ -122,7 +122,7 @@ async def test_unverified_edits_cannot_keep_an_approved_publication_live(client,
     db_session.add(item)
     await db_session.commit()
     login(client, editor)
-    response = await client.post(f"/admin/downloads/{item.id}/edit", data={"title": "Changed publication", "file_type": "external", "external_url": "https://example.com/new", "is_active": "true", "submission_intent": "publish"})
+    response = await client.post(f"/panel/downloads/{item.id}/edit", data={"title": "Changed publication", "file_type": "external", "external_url": "https://example.com/new", "is_active": "true", "submission_intent": "publish"})
     assert response.status_code == 302
     await db_session.refresh(item)
     assert not item.is_active and item.publication_pending
@@ -136,32 +136,32 @@ async def test_verification_needs_password_and_editor_target(client, db_session,
         actor.password_hash = hash_admin_password(PASSWORD)
         await db_session.commit()
     login(client, actor)
-    assert (await client.post(f"/admin/users/{editor.id}/verification", data={"verified": "true", "current_password": "wrong"})).status_code == 303
+    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": "wrong"})).status_code == 303
     await db_session.refresh(editor)
     assert not editor.is_verified
-    await client.post(f"/admin/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})
+    await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})
     await db_session.refresh(editor)
     assert editor.is_verified
-    assert (await client.post(f"/admin/users/{actor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 404
+    assert (await client.post(f"/panel/users/{actor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 404
     login(client, other)
-    assert (await client.post(f"/admin/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 403
+    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 403
 
 
 async def test_private_contact_scopes_messages_escapes_text_and_accepts_staff_reply(client, db_session):
     editor, other, manager = await accounts(db_session)
     login(client, editor)
-    assert (await client.post("/admin/contact", data={"subject": "Private question", "body": "<script>alert('private')</script>"})).status_code == 303
+    assert (await client.post("/panel/contact", data={"subject": "Private question", "body": "<script>alert('private')</script>"})).status_code == 303
     item = await db_session.scalar(select(EditorMessage))
-    page = (await client.get("/admin/contact")).text
+    page = (await client.get("/panel/contact")).text
     assert "&lt;script&gt;" in page and "<script>alert('private')</script>" not in page
     login(client, other)
-    assert "Private question" not in (await client.get("/admin/contact")).text
-    assert (await client.post(f"/admin/contact/{item.id}/reply", data={"response": "Forbidden reply"})).status_code == 403
+    assert "Private question" not in (await client.get("/panel/contact")).text
+    assert (await client.post(f"/panel/contact/{item.id}/reply", data={"response": "Forbidden reply"})).status_code == 403
     login(client, manager)
-    assert "Private question" in (await client.get("/admin/contact")).text
-    assert (await client.post(f"/admin/contact/{item.id}/reply", data={"response": "Staff answer"})).status_code == 303
+    assert "Private question" in (await client.get("/panel/contact")).text
+    assert (await client.post(f"/panel/contact/{item.id}/reply", data={"response": "Staff answer"})).status_code == 303
     login(client, editor)
-    assert "Staff answer" in (await client.get("/admin/contact")).text
+    assert "Staff answer" in (await client.get("/panel/contact")).text
     logs = list(await db_session.scalars(select(AuditLog)))
     assert all("alert('private')" not in log.label + log.changes and "Staff answer" not in log.label + log.changes for log in logs)
 
@@ -170,11 +170,11 @@ async def test_contact_limits_and_csrf_are_enforced(client, db_session):
     editor, _, _ = await accounts(db_session)
     login(client, editor)
     for i in range(6):
-        assert (await client.post("/admin/contact", data={"subject": f"Question {i}", "body": "Problem details"})).status_code == 303
+        assert (await client.post("/panel/contact", data={"subject": f"Question {i}", "body": "Problem details"})).status_code == 303
     assert await db_session.scalar(select(func.count()).select_from(EditorMessage)) == 5
-    assert (await client.post("/admin/contact", data={"subject": "Too long", "body": "x" * 5001})).status_code == 422
+    assert (await client.post("/panel/contact", data={"subject": "Too long", "body": "x" * 5001})).status_code == 422
     client.headers.pop("X-CSRF-Token")
-    assert (await client.post("/admin/contact", data={"subject": "CSRF", "body": "No token"})).status_code == 403
+    assert (await client.post("/panel/contact", data={"subject": "CSRF", "body": "No token"})).status_code == 403
 
 
 async def test_new_translation_keys_are_complete():
@@ -189,7 +189,7 @@ async def test_bulk_publish_cannot_bypass_review(client, db_session):
     db_session.add(item)
     await db_session.commit()
     login(client, editor)
-    response = await client.post("/admin/downloads/bulk", data={"action": "publish", "download_ids": str(item.id)})
+    response = await client.post("/panel/downloads/bulk", data={"action": "publish", "download_ids": str(item.id)})
     assert response.status_code == 302
     await db_session.refresh(item)
     assert item.publication_pending and not item.is_active and not item.is_draft
@@ -201,7 +201,7 @@ async def test_stale_review_cannot_approve_changed_content(client, db_session):
     db_session.add(item)
     await db_session.commit()
     login(client, manager)
-    response = await client.post(f"/admin/review/{item.id}", data={"action": "approve", "revision": "2000-01-01T00:00:00"})
+    response = await client.post(f"/panel/review/{item.id}", data={"action": "approve", "revision": "2000-01-01T00:00:00"})
     assert response.status_code == 303
     await db_session.refresh(item)
     assert item.publication_pending and not item.is_active
@@ -236,7 +236,7 @@ async def test_invalid_editor_form_returns_validation_page_not_server_error(clie
     db_session.add(item)
     await db_session.commit()
     login(client, editor)
-    response = await client.post(f"/admin/downloads/{item.id}/edit", data={"title": "Valid title", "external_url": "invalid"})
+    response = await client.post(f"/panel/downloads/{item.id}/edit", data={"title": "Valid title", "external_url": "invalid"})
     assert response.status_code == 422
 
 
@@ -248,13 +248,13 @@ async def test_live_media_replacement_cannot_bypass_editor_review(client, db_ses
     path = root / "approved.zip"
     path.write_bytes(b"approved contents")
     db_session.add_all([
-        MediaAsset(path="/admin/media/files/approved.zip", owner_id=editor.id),
+        MediaAsset(path="/panel/media/files/approved.zip", owner_id=editor.id),
         Download(title="Approved binary", slug="approved-binary", owner_id=editor.id,
                  file_type="local", file_path=str(path), is_active=True),
     ])
     await db_session.commit()
     login(client, editor)
-    response = await client.post("/admin/media/replace-file", data={"path": "/admin/media/files/approved.zip"}, files={"file": ("replacement.zip", b"unreviewed", "application/zip")})
+    response = await client.post("/panel/media/replace-file", data={"path": "/panel/media/files/approved.zip"}, files={"file": ("replacement.zip", b"unreviewed", "application/zip")})
     assert response.status_code == 409
     assert path.read_bytes() == b"approved contents"
 
@@ -268,7 +268,7 @@ async def test_public_version_history_changes_require_review(client, db_session)
     db_session.add(entry)
     await db_session.commit()
     login(client, editor)
-    assert (await client.post(f"/admin/downloads/{item.id}/version-history/{entry.id}/edit", data={"version": "2.0"})).status_code == 302
+    assert (await client.post(f"/panel/downloads/{item.id}/version-history/{entry.id}/edit", data={"version": "2.0"})).status_code == 302
     await db_session.refresh(item)
     assert item.publication_pending and not item.is_active
 
@@ -280,6 +280,6 @@ async def test_verified_editor_can_publish_a_previously_pending_item(client, db_
     db_session.add(item)
     await db_session.commit()
     login(client, editor)
-    await client.post("/admin/downloads/bulk", data={"action": "publish", "download_ids": str(item.id)})
+    await client.post("/panel/downloads/bulk", data={"action": "publish", "download_ids": str(item.id)})
     await db_session.refresh(item)
     assert item.is_active and not item.publication_pending

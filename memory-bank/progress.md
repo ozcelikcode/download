@@ -2,6 +2,8 @@
 
 ## Working capabilities
 
+- Shared `/panel` routes, UTF-8/localized permission responses, and password-confirmed self-service account closure retaining all owned site data and immutable ownership anchors. Last-administrator protection and stale-session invalidation are covered by regression tests.
+
 - Configurable IANA display zones in General Settings, with daylight saving support and unchanged UTC storage/logging. Audit, dashboard, requests, correspondence, reports, and shared date filters follow the selected zone. Time-zone settings and known previous backup schemas are covered by regression tests.
 
 - Public sign-in navigation and registration applications, with password-confirmed administrator/manager approval or rejection. Pending applicants cannot sign in; approved accounts start as unverified editors. HTTPS, CSRF, keyed quotas, queue limits, and four translations are covered.
@@ -19,13 +21,15 @@
 
 ## In progress
 
+- Latest request items 4–7: personal/default manager/editor media quotas, editor category request workflow/permission changes, editor analytics and staff statistics. None is claimed complete by the panel/account increment.
+
 - Review nuanced Spanish/French phrasing beyond the verified complete catalog-key coverage.
 - Remove remaining legacy Turkish code comments and docstrings without changing user-facing behavior.
 - Keep all Markdown project documentation in English.
 
 ## Verification
 
-The registration increment passes 382 tests with warnings treated as errors, including the optional Web Crypto harness. Global `/login`, old-bookmark redirection, native form submission through to both staff review lists, dashboard queue counts, receipt forgery prevention, approval boundaries, pending-access denial, duplicate/conflicting credentials, replay rejection, public CSRF, queue limits, remote HTTPS enforcement, all four languages, pagination, and prior backup-schema compatibility pass. Unavailable usernames produce explicit warnings; successful receipts are emitted only after a commit. A disposable live HTTP application was persisted, verified, and removed without creating an account. Live migration head is `y2d4f6a8b903`; populated-copy upgrade preserves existing row counts with valid integrity/foreign keys. The private recovery snapshot is retained under `Documents/Project Archives/download/migration-snapshots/2026-10-04/`; disposable migration copies are automatically removed.
+The registration increment passes 396 tests with warnings treated as errors, including the optional Web Crypto harness. Global `/login`, old-bookmark redirection, native form submission through to both staff review lists, dashboard queue counts, receipt forgery prevention, approval boundaries, pending-access denial, duplicate/conflicting credentials, replay rejection, public CSRF, queue limits, remote HTTPS enforcement, all four languages, pagination, and prior backup-schema compatibility pass. Unavailable usernames produce explicit warnings; successful receipts are emitted only after a commit. A disposable live HTTP application was persisted, verified, and removed without creating an account. Live migration head is `y2d4f6a8b903`; populated-copy upgrade preserves existing row counts with valid integrity/foreign keys. The private recovery snapshot is retained under `Documents/Project Archives/download/migration-snapshots/2026-10-04/`; disposable migration copies are automatically removed.
 
 The maintenance increment passes 338 tests with warnings treated as errors, including the shipped browser Web Crypto recovery/export/import protocol, authenticated encryption tampering rejection, latest-plus-seven-history retention, latest-backup protection, admin boundaries, all trash-retention options, pending-request family safety, public hiding, reviewed import, scheduler catch-up/manual operation, and database/media rollback after a failed restore. Live migration head is `w0b2d4f6a781`; populated-copy upgrade, SQLite integrity and foreign keys pass, and user/content/taxonomy/page/media row counts match the pre-migration recovery copy. Alembic detects no missing operations. New frontend JavaScript syntax checks and live lifespan/home/sign-in smoke checks pass. Actual browser visual review remains pending because a browser executable is unavailable in the local test runtime.
 

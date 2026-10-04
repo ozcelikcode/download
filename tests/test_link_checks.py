@@ -33,7 +33,7 @@ async def test_click_updates_report_and_repeated_click_reuses_result(
     result = await db_session.get(LinkCheck, download.id)
     assert result.status == status
     assert result.http_status == code
-    assert "Clicked link" in (await admin_client.get(f"/admin/links?state={status}")).text
+    assert "Clicked link" in (await admin_client.get(f"/panel/links?state={status}")).text
 
 
 async def test_click_rechecks_expired_result_and_discards_changed_url(
@@ -156,11 +156,11 @@ async def test_report_saves_results_and_hides_stale_checks(admin_client, db_sess
     async def check(url):
         return link_checks.LinkResult(status="broken", http_status=404, message="Bulunamadı")
     monkeypatch.setattr(reports, "check_link", check)
-    assert (await admin_client.post(f"/admin/links/{download.id}/check")).status_code == 303
+    assert (await admin_client.post(f"/panel/links/{download.id}/check")).status_code == 303
     result = await db_session.get(LinkCheck, download.id)
     assert result.http_status == 404
-    page = await admin_client.get("/admin/links?state=broken")
+    page = await admin_client.get("/panel/links?state=broken")
     assert "Broken link" in page.text
     await crud.update_download(db_session, download, DownloadUpdate(external_url="https://example.com/new"))
-    page = await admin_client.get("/admin/links?state=unchecked")
+    page = await admin_client.get("/panel/links?state=unchecked")
     assert "Broken link" in page.text

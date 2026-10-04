@@ -26,7 +26,7 @@ from app.templating import templates
 
 public_router = APIRouter(tags=["pages"])
 admin_router = APIRouter(
-    prefix="/admin/pages",
+    prefix="/panel/pages",
     tags=["admin-pages"],
     dependencies=[Depends(require_csrf), Depends(require_admin)],
 )
@@ -143,7 +143,7 @@ async def create_page(
         await session.rollback()
         return _editor_response(request, Page(**raw), error=translate(request, "page_slug_taken"), status_code=422)
     request.session["flash_message"] = translate(request, "page_saved")
-    return _redirect(f"/admin/pages/{page.id}/edit")
+    return _redirect(f"/panel/pages/{page.id}/edit")
 
 
 @admin_router.get("/{page_id}/edit")
@@ -195,7 +195,7 @@ async def update_page(
         await session.rollback()
         return _editor_response(request, Page(id=page_id, **raw), error=translate(request, "page_slug_taken"), status_code=422)
     request.session["flash_message"] = translate(request, "page_saved")
-    return _redirect(f"/admin/pages/{page_id}/edit")
+    return _redirect(f"/panel/pages/{page_id}/edit")
 
 
 @admin_router.post("/{page_id}/delete")
@@ -213,7 +213,7 @@ async def delete_page(
     add_event(session, "trash", "pages", page.title, entity_id=page.id)
     await session.commit()
     request.session["flash_message"] = translate(request, "page_trashed")
-    return _redirect("/admin/pages")
+    return _redirect("/panel/pages")
 
 
 @admin_router.get("/trash")
@@ -250,7 +250,7 @@ async def restore_page(
     add_event(session, "restore", "pages", page.title, entity_id=page.id)
     await session.commit()
     request.session["flash_message"] = translate(request, "page_restored")
-    return _redirect("/admin/pages/trash")
+    return _redirect("/panel/pages/trash")
 
 
 @admin_router.post("/{page_id}/purge")
@@ -265,4 +265,4 @@ async def purge_page(
     await session.delete(page)
     await session.commit()
     request.session["flash_message"] = translate(request, "page_deleted")
-    return _redirect("/admin/pages/trash")
+    return _redirect("/panel/pages/trash")

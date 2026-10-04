@@ -82,7 +82,7 @@
 <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
   <div class="min-w-0">
     <div class="breadcrumb mb-1">
-      <a href="/admin">{{ t(request, 'management') }}</a>
+      <a href="/panel">{{ t(request, 'management') }}</a>
       <span class="breadcrumb-sep">›</span>
       <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}{{ t(request, 'edit') }}{% else %}{{ t(request, 'new_file') }}{% endif %}</span>
     </div>
@@ -93,7 +93,7 @@
       {% if edit_mode and not download.is_draft %}{{ t(request, 'manual_save_help') }}{% else %}{{ t(request, 'publish_explicit') }}{% endif %}
     </p>
   </div>
-  <a href="/admin" class="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+  <a href="/panel" class="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
     <i data-lucide="arrow-left" class="w-4 h-4"></i>
     {{ t(request, 'back') }}
   </a>
@@ -108,7 +108,7 @@
 {% endif %}
 
 <form id="application-form" method="post"
-  action="{% if edit_mode %}/admin/downloads/{{ download.id }}/edit{% else %}/admin/downloads/new{% endif %}"
+  action="{% if edit_mode %}/panel/downloads/{{ download.id }}/edit{% else %}/panel/downloads/new{% endif %}"
   enctype="multipart/form-data"
   data-autosave="{{ 'true' if not edit_mode or download.is_draft else 'false' }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -327,7 +327,7 @@
         </div>
         {% else %}
         <p class="text-sm text-slate-400 dark:text-slate-500 p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
-          {{ t(request, 'no_tags_add') }} <a href="/admin/tags" class="text-blue-600 dark:text-blue-400 hover:underline">{{ t(request, 'add') }} →</a>
+          {{ t(request, 'no_tags_add') }} <a href="/panel/tags" class="text-blue-600 dark:text-blue-400 hover:underline">{{ t(request, 'add') }} →</a>
         </p>
         {% endif %}
       </div>
@@ -394,7 +394,7 @@
       <i data-lucide="save" class="w-4 h-4"></i>
       <span id="application-save-label">{% if edit_mode and not download.is_draft %}{{ t(request, 'save_changes') }}{% else %}{{ t(request, 'save_application') }}{% endif %}</span>
     </button>
-    <a href="/admin/downloads" class="inline-flex items-center gap-1.5 justify-center w-full px-4 py-2 mt-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+    <a href="/panel/downloads" class="inline-flex items-center gap-1.5 justify-center w-full px-4 py-2 mt-2 text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
       <i data-lucide="x" class="w-3.5 h-3.5"></i>
       {{ t(request, 'cancel') }}
     </a>
@@ -732,7 +732,7 @@
       previewButton.addEventListener('click', function () {
         if (previewButton.disabled || !draftId.value) return;
         window.open(
-          '/admin/downloads/' + encodeURIComponent(draftId.value) + '/preview',
+          '/panel/downloads/' + encodeURIComponent(draftId.value) + '/preview',
           '_blank',
           'noopener,noreferrer'
         );
@@ -784,7 +784,7 @@
       }
       const startedAtRevision = revision;
       setStatus('saving', window.formMessages.autosaving, window.formMessages.safeToLeave);
-      requestInFlight = csrfFetch('/admin/downloads/drafts/autosave', {
+      requestInFlight = csrfFetch('/panel/downloads/drafts/autosave', {
         method: 'POST',
         body: draftFormData(),
         keepalive: Boolean(keepalive),
@@ -842,7 +842,7 @@
         setStatus('saving', window.formMessages.fileUploading, file.name);
         const data = new FormData();
         data.append('file', file);
-        fileUploadInFlight = csrfFetch('/admin/media/upload-file', {
+        fileUploadInFlight = csrfFetch('/panel/media/upload-file', {
           method: 'POST', body: data, headers: { Accept: 'application/json' },
         }).then(async function (response) {
           const result = await response.json();
@@ -1107,7 +1107,7 @@
         }
         showProgress(label || window.formMessages.imageUploading);
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/admin/upload/icon-image');
+        xhr.open('POST', '/panel/upload/icon-image');
         xhr.setRequestHeader("X-CSRF-Token", document.querySelector('meta[name="csrf-token"]').content);
 
         // Yükleme %0-85 aralığını kapsar; sunucu görseli sıkıştırırken
@@ -1165,11 +1165,11 @@
         fd.append('url', url);
         fd.append('token', token);
 
-        csrfFetch('/admin/upload/icon-image-url', { method: 'POST', body: fd })
+        csrfFetch('/panel/upload/icon-image-url', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(window.formMessages.downloadStartFailed); return r.json(); })
           .then(function () {
             const poll = setInterval(function () {
-              csrfFetch('/admin/upload/progress/' + token)
+              csrfFetch('/panel/upload/progress/' + token)
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                   setProgress(data.percent || 0);
@@ -1214,7 +1214,7 @@
         if (current) {
           const fd = new FormData();
           fd.append('path', current);
-          csrfFetch('/admin/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
+          csrfFetch('/panel/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
         }
         resetToInput();
       });
@@ -1228,7 +1228,7 @@
         const fd = new FormData();
         fd.append('path', current);
         fd.append('size', '256');
-        csrfFetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
+        csrfFetch('/panel/upload/icon-auto-crop', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(window.formMessages.actionFailed); return r.json(); })
           .then(function (data) {
             hideProgress();
@@ -1236,7 +1236,7 @@
             if (current !== data.path) {
               const delFd = new FormData();
               delFd.append('path', current);
-              csrfFetch('/admin/upload/icon-image-delete', { method: 'POST', body: delFd }).catch(function () {});
+              csrfFetch('/panel/upload/icon-image-delete', { method: 'POST', body: delFd }).catch(function () {});
             }
           })
           .catch(function (e) {
@@ -1349,7 +1349,7 @@
               if (oldPath && oldPath !== newPath) {
                 const fd = new FormData();
                 fd.append('path', oldPath);
-                csrfFetch('/admin/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
+                csrfFetch('/panel/upload/icon-image-delete', { method: 'POST', body: fd }).catch(function () {});
               }
             })
             .catch(function (e) { window.showAdminNotice(e.message || window.formMessages.contentSaveFailed); });
@@ -1392,12 +1392,12 @@
         if (!newVersion) { window.showAdminNotice(window.formMessages.versionRequired); return; }
         const fd = new FormData();
         fd.append('version', newVersion);
-        csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/edit', { method: 'POST', body: fd })
+        csrfFetch('/panel/downloads/' + downloadId + '/version-history/' + entryId + '/edit', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
           .catch(function () { window.showAdminNotice(window.formMessages.contentSaveFailed); });
       } else if (action === 'delete') {
         window.showAdminConfirm(window.formMessages.versionDeleteConfirm, function () {
-          csrfFetch('/admin/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
+          csrfFetch('/panel/downloads/' + downloadId + '/version-history/' + entryId + '/delete', { method: 'POST' })
             .then(function (r) { if (!r.ok) throw new Error(); return window.location.reload(); })
             .catch(function () { window.showAdminNotice({{ t(request, 'delete_failed')|tojson }}); });
         });

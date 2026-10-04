@@ -60,22 +60,22 @@ async def test_hidden_content_blocks_all_public_paths(admin_client, client, db_s
     db_session.add(item)
     await db_session.commit()
     assert (await client.get("/download/hidden-regression")).status_code == 200
-    result = await admin_client.post("/admin/downloads/bulk", data={"action": "hide", "download_ids": [item.id]})
+    result = await admin_client.post("/panel/downloads/bulk", data={"action": "hide", "download_ids": [item.id]})
     assert result.status_code == 302
     await db_session.refresh(item)
     assert item.is_hidden and item.is_active
     assert (await client.get("/download/hidden-regression")).status_code == 404
     assert "hidden-regression" not in (await client.get("/sitemap.xml")).text
     assert "Hidden regression" not in (await client.get("/")).text
-    assert "Hidden regression" in (await admin_client.get("/admin/downloads?status_filter=hidden")).text
+    assert "Hidden regression" in (await admin_client.get("/panel/downloads?status_filter=hidden")).text
 
 
 async def test_form_and_category_move_layout(admin_client, db_session):
     db_session.add(Category(name="Layout source", slug="layout-source"))
     await db_session.commit()
-    html = (await admin_client.get("/admin/categories")).text
+    html = (await admin_client.get("/panel/categories")).text
     assert 'id="category-move-modal"' in html and 'data-lucide="arrow-right"' in html
-    html = (await admin_client.get("/admin/downloads/new")).text
+    html = (await admin_client.get("/panel/downloads/new")).text
     assert html.index('name="is_featured"') < html.index('name="is_active"') < html.index('name="is_hidden"')
 
 
@@ -104,14 +104,14 @@ async def test_retention_off_and_pending_family_safe(db_session):
 async def test_retention_choices_and_countdown(admin_client, db_session, days):
     actor = await password(db_session)
     login(admin_client, actor)
-    response = await admin_client.post("/admin/settings/maintenance/retention", data={"days": days, "current_password": PASSWORD})
+    response = await admin_client.post("/panel/settings/maintenance/retention", data={"days": days, "current_password": PASSWORD})
     assert response.status_code == 303
     db_session.expire_all()
     assert (await crud.get_site_settings(db_session)).trash_retention_days == (days or None)
     item = Download(title="Timed trash", slug="timed-trash", deleted_at=datetime.now(timezone.utc))
     db_session.add(item)
     await db_session.commit()
-    html = (await admin_client.get("/admin/downloads/trash")).text
+    html = (await admin_client.get("/panel/downloads/trash")).text
     assert ('data-trash-expires=' in html) == bool(days)
 
 
@@ -121,24 +121,24 @@ async def test_backup_admin_boundaries_and_csrf(client, db_session):
         db_session.add(user)
         await db_session.commit()
         login(client, user)
-        assert (await client.get("/admin/backups")).status_code == 403
-        assert (await client.get("/admin/backups/status")).status_code == 403
-        assert (await client.post("/admin/backups/manual", data={"current_password": PASSWORD})).status_code == 403
+        assert (await client.get("/panel/backups")).status_code == 403
+        assert (await client.get("/panel/backups/status")).status_code == 403
+        assert (await client.post("/panel/backups/manual", data={"current_password": PASSWORD})).status_code == 403
 
 
 async def test_key_schedule_and_queue(admin_client, db_session, key_pair):
     actor = await password(db_session)
     login(admin_client, actor)
-    assert (await admin_client.get("/admin/backups")).status_code == 200
+    assert (await admin_client.get("/panel/backups")).status_code == 200
     data = {"public_key": key_pair[1], "current_password": PASSWORD, "recovery_saved": "true"}
-    assert (await admin_client.post("/admin/backups/key", data=data)).status_code == 303
+    assert (await admin_client.post("/panel/backups/key", data=data)).status_code == 303
     assert (await db_session.get(BackupPolicy, 1)).public_key == key_pair[1]
-    assert (await admin_client.post("/admin/backups/schedule", data={"current_password": PASSWORD, "enabled": "true", "interval_days": 3})).status_code == 303
-    assert (await admin_client.post("/admin/backups/manual", data={"current_password": PASSWORD})).status_code == 303
+    assert (await admin_client.post("/panel/backups/schedule", data={"current_password": PASSWORD, "enabled": "true", "interval_days": 3})).status_code == 303
+    assert (await admin_client.post("/panel/backups/manual", data={"current_password": PASSWORD})).status_code == 303
     db_session.expire_all()
     policy = await db_session.get(BackupPolicy, 1)
     assert policy.interval_days == 3 and policy.enabled and policy.requested
-    html = (await admin_client.get("/admin/backups")).text
+    html = (await admin_client.get("/panel/backups")).text
     assert 'id="backup-import-form"' in html and 'name="private_key"' not in html
 
 
@@ -258,22 +258,22 @@ async def test_reviewed_import_restore_route(admin_client, db_session, key_pair)
     account = await crud.get_site_settings(db_session)
     account.site_name = "Current site confirmation"
     await db_session.commit()
-    response = await admin_client.post("/admin/backups/import", data={"current_password": PASSWORD}, files={"file": ("incoming.zip", plain, "application/zip")})
+    response = await admin_client.post("/panel/backups/import", data={"current_password": PASSWORD}, files={"file": ("incoming.zip", plain, "application/zip")})
     assert response.status_code == 200
     url = response.json()["redirect_url"]
     assert (await admin_client.get(url)).status_code == 200
     token = url.split("stage=", 1)[1]
-    wrong = await admin_client.post("/admin/backups/restore", data={"current_password": PASSWORD, "token": token, "confirmation": "Wrong name", "irreversible": "true"})
+    wrong = await admin_client.post("/panel/backups/restore", data={"current_password": PASSWORD, "token": token, "confirmation": "Wrong name", "irreversible": "true"})
     assert wrong.status_code == 303
     db_session.expire_all()
     assert (await crud.get_site_settings(db_session)).site_name == "Current site confirmation"
-    response = await admin_client.post("/admin/backups/restore", data={"current_password": PASSWORD, "token": token, "confirmation": "Current site confirmation", "irreversible": "true"})
+    response = await admin_client.post("/panel/backups/restore", data={"current_password": PASSWORD, "token": token, "confirmation": "Current site confirmation", "irreversible": "true"})
     assert response.status_code == 303 and response.headers["location"] == "/login"
     db_session.expunge_all()
     assert (await crud.get_site_settings(db_session)).site_name == "Download Sitesi"
     assert (await db_session.get(BackupPolicy, 1)).public_key == key_pair[1]
     assert len(backups.list_backups()) == 1  # Required pre-restore safety backup.
-    assert (await admin_client.get("/admin/backups")).status_code != 200
+    assert (await admin_client.get("/panel/backups")).status_code != 200
 
 
 async def test_scheduler_interval_and_manual_off_mode(db_session, monkeypatch, key_pair):

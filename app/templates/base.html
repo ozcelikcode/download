@@ -70,7 +70,7 @@
       {{ site_logo('header') }}
     </a>
 
-    {# Nav (desktop) — /admin/settings/menu üzerinden yönetilir #}
+    {# Nav (desktop) — /panel/settings/menu üzerinden yönetilir #}
     <nav class="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto">
       {% for item in menu_items | default([]) %}
       <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
@@ -98,11 +98,11 @@
         <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
       </button>
       <div id="admin-menu" role="menu" class="hidden absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm shadow-lg py-1 z-50">
-        <a href="/admin" role="menuitem"
+        <a href="/panel" role="menuitem"
           class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
           <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> {{ t(request, 'admin_panel') }}
         </a>
-        <form method="post" action="/admin/logout">
+        <form method="post" action="/panel/logout">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button type="submit" role="menuitem"
           class="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> {{ t(request, 'logout') }}
@@ -148,7 +148,7 @@
     </button>
   </div>
 
-  {# Mobile dropdown menu — /admin/settings/menu üzerinden yönetilir #}
+  {# Mobile dropdown menu — /panel/settings/menu üzerinden yönetilir #}
   <div id="mobile-menu" class="hidden md:hidden border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-1">
     {% for item in menu_items | default([]) %}
     <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}
@@ -281,7 +281,7 @@
     <div class="flex items-center gap-1.5">
       {{ site_logo('footer') }}
     </div>
-    {# Footer bağlantıları — /admin/settings/menu üzerinden yönetilir #}
+    {# Footer bağlantıları — /panel/settings/menu üzerinden yönetilir #}
     <div class="flex items-center gap-4 flex-wrap">
       {% for item in footer_menu_items | default([]) %}
       <a href="{{ item.url | safe_navigation_url }}" {% if item.open_in_new_tab %}target="_blank" rel="noopener"{% endif %}

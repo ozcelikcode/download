@@ -73,16 +73,16 @@ async def test_admin_health_counts_database_and_storage_issues(db_session):
 
 
 async def test_admin_dashboard_renders_health_center(admin_client):
-    response = await admin_client.get("/admin")
+    response = await admin_client.get("/panel")
 
     assert response.status_code == 200
     assert "Sağlık Merkezi" in response.text
     assert "Kontrol edilen alanlarda sorun görünmüyor" in response.text
-    assert 'href="/admin/links?state=broken"' in response.text
-    assert 'href="/admin/downloads?status_filter=draft"' in response.text
-    assert 'href="/admin/downloads?category_id=uncategorized"' in response.text
+    assert 'href="/panel/links?state=broken"' in response.text
+    assert 'href="/panel/downloads?status_filter=draft"' in response.text
+    assert 'href="/panel/downloads?category_id=uncategorized"' in response.text
     assert "0.0 B" in response.text
-    assert 'href="/admin/site-health"' in response.text
+    assert 'href="/panel/site-health"' in response.text
 
 
 async def test_admin_uncategorized_health_link_filters_content(admin_client, db_session):
@@ -115,7 +115,7 @@ async def test_admin_uncategorized_health_link_filters_content(admin_client, db_
     )
     await db_session.commit()
 
-    response = await admin_client.get("/admin/downloads?category_id=uncategorized")
+    response = await admin_client.get("/panel/downloads?category_id=uncategorized")
 
     assert response.status_code == 200
     assert "Kategorisiz kayıt" in response.text

@@ -49,25 +49,25 @@ async def test_new_languages_render_public_admin_and_report_pages(
     assert home.status_code == 200
     assert f'<html lang="{language}">' in home.text
     assert home_label in home.text
-    general = await admin_client.get("/admin/settings/general")
+    general = await admin_client.get("/panel/settings/general")
     assert general.status_code == 200
     assert settings_label in general.text
     assert [general.text.index(f'value="{code}" class="peer sr-only"') for code in ("en", "es", "fr", "tr")] == sorted(
         general.text.index(f'value="{code}" class="peer sr-only"') for code in ("en", "es", "fr", "tr")
     )
-    report = await admin_client.get("/admin/links")
+    report = await admin_client.get("/panel/links")
     assert report.status_code == 200
     assert report_label in report.text
 
 
 async def _set_language(admin_client: AsyncClient, language: str) -> None:
     response = await admin_client.post(
-        "/admin/settings/language",
+        "/panel/settings/language",
         data={"language": language},
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/admin/settings/general"
+    assert response.headers["location"] == "/panel/settings/general"
 
 
 async def test_admin_language_controls_site_and_admin_without_translating_content(
@@ -93,7 +93,7 @@ async def test_admin_language_controls_site_and_admin_without_translating_conten
     assert 'property="og:locale" content="en_US"' in public_page.text
     assert 'rel="canonical"' in public_page.text
 
-    admin_page = await admin_client.get("/admin/settings/general")
+    admin_page = await admin_client.get("/panel/settings/general")
     assert '<html lang="en">' in admin_page.text
     assert "Site and Admin Language" in admin_page.text
     assert "Save Language" in admin_page.text
@@ -115,12 +115,12 @@ async def test_custom_menu_translates_but_hero_text_remains_raw(
     admin_client: AsyncClient, client: AsyncClient
 ):
     response = await admin_client.post(
-        "/admin/settings/menu",
+        "/panel/settings/menu",
         data={"label": "Hakkımızda", "label_en": "About", "url": "/about", "location": "navbar", "is_active": "true"},
     )
     assert response.status_code == 302
     response = await admin_client.post(
-        "/admin/settings/appearance",
+        "/panel/settings/appearance",
         data={
             "logo_mode": "icon_text", "hero_enabled": "true", "hero_background": "mesh",
             "component_type": ["title", "search"], "component_text": ["Türkçe Hero", "Uygulama ara"],
@@ -140,10 +140,10 @@ async def test_custom_menu_translates_but_hero_text_remains_raw(
 async def test_invalid_language_is_rejected_and_current_language_remains(admin_client: AsyncClient):
     await _set_language(admin_client, "en")
     response = await admin_client.post(
-        "/admin/settings/language", data={"language": "de"}, follow_redirects=False
+        "/panel/settings/language", data={"language": "de"}, follow_redirects=False
     )
     assert response.status_code == 302
-    page = await admin_client.get("/admin/settings/general")
+    page = await admin_client.get("/panel/settings/general")
     assert '<html lang="en">' in page.text
     assert 'value="en" class="peer sr-only" checked' in page.text
 
@@ -154,18 +154,18 @@ async def test_english_admin_pages_render_from_the_shared_setting(
     await _set_language(admin_client, "en")
     await crud.create_tag(db_session, TagCreate(name="Rendered tag"))
     pages = {
-        "/admin": "Overview and site statistics",
-        "/admin/site-health": "Technical checks",
-        "/admin/downloads": "Search by title",
-        "/admin/downloads/new": "Add New Download",
-        "/admin/categories": "New Category",
-        "/admin/tags": "New Tag",
-        "/admin/media": "All images and files uploaded",
-        "/admin/links": "Latest check results",
-        "/admin/audit": "Admin changes and errors",
-        "/admin/settings/account": "Your account",
-        "/admin/settings/appearance": "Live Preview",
-        "/admin/settings/menu": "Visibility Limits",
+        "/panel": "Overview and site statistics",
+        "/panel/site-health": "Technical checks",
+        "/panel/downloads": "Search by title",
+        "/panel/downloads/new": "Add New Download",
+        "/panel/categories": "New Category",
+        "/panel/tags": "New Tag",
+        "/panel/media": "All images and files uploaded",
+        "/panel/links": "Latest check results",
+        "/panel/audit": "Admin changes and errors",
+        "/panel/settings/account": "Your account",
+        "/panel/settings/appearance": "Live Preview",
+        "/panel/settings/menu": "Visibility Limits",
     }
     for path, expected in pages.items():
         response = await admin_client.get(path)
@@ -193,12 +193,12 @@ async def test_language_switch_translates_saved_reports_filters_and_detail(
         ("fr", "Le fichier ou la page de destination est introuvable.", "Archive", "Audio", "par page", "Compatibilité"),
     ):
         await _set_language(admin_client, language)
-        for path in ("/admin/links", "/admin/site-health"):
+        for path in ("/panel/links", "/panel/site-health"):
             page = await admin_client.get(path)
             assert page.status_code == 200
             assert expected in page.text
             assert "Kullanıcının Başlığı" in page.text
-        media = await admin_client.get("/admin/media?tab=files")
+        media = await admin_client.get("/panel/media?tab=files")
         assert f'>{archive}</option>' in media.text
         assert f'>{audio}</option>' in media.text
         assert f'24 / {per_page}</option>' in media.text
@@ -214,7 +214,7 @@ async def test_english_publish_error_and_saved_success_report(
 ):
     await _set_language(admin_client, "en")
     draft = await crud.create_download_draft(db_session, "english-error", "Deneme")
-    response = await admin_client.post(f"/admin/downloads/{draft.id}/edit", data={
+    response = await admin_client.post(f"/panel/downloads/{draft.id}/edit", data={
         "title": "Deneme", "file_type": "external", "external_url": "invalid",
         "submission_intent": "publish", "icon_type": "auto",
     }, headers={"Accept": "application/json"})

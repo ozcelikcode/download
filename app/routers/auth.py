@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authentication"], dependencies=[Depends(require_csrf)])
 
 
+@router.get("/admin", include_in_schema=False)
+@router.get("/admin/{path:path}", include_in_schema=False)
+async def legacy_panel(path: str = "") -> RedirectResponse:
+    """Redirect old read-only bookmarks; mutations use the protected new routes."""
+    return RedirectResponse("/login" if path == "login" else "/panel/" + path, status_code=303)
+
+
 @router.get("/login", name="login")
 async def login_get(request: Request) -> Response:
     return templates.TemplateResponse(request=request, name="admin/login.html", context={"request": request})
@@ -70,7 +77,7 @@ async def login_post(
     add_event(session, "login", "login", "Staff session opened", actor=username)
     await session.commit()
     token = create_admin_session_token(user.username, user.password_hash, site_settings.session_generation, user_id=user.id)
-    response = RedirectResponse("/admin", status_code=302)
+    response = RedirectResponse("/panel", status_code=302)
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
@@ -81,5 +88,3 @@ async def login_post(
     )
     logger.info("Staff login succeeded: user_id=%d", user.id)
     return response
-
-

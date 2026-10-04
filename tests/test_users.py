@@ -19,11 +19,11 @@ async def _staff_cookie(client, db_session, role: str, username: str) -> User:
 
 async def test_editor_cannot_reach_settings_or_private_page(client, db_session):
     await _staff_cookie(client, db_session, "editor", "editor-one")
-    assert (await client.get("/admin/categories")).status_code == 200
-    assert (await client.get("/admin/settings")).status_code == 403
-    assert (await client.get("/admin/audit")).status_code == 403
-    assert (await client.get("/admin/users")).status_code == 403
-    assert (await client.get("/admin/settings/account")).status_code == 200
+    assert (await client.get("/panel/categories")).status_code == 200
+    assert (await client.get("/panel/settings")).status_code == 403
+    assert (await client.get("/panel/audit")).status_code == 403
+    assert (await client.get("/panel/users")).status_code == 403
+    assert (await client.get("/panel/settings/account")).status_code == 200
 
 
 async def test_manager_delete_request_needs_admin_review(client, db_session):
@@ -32,16 +32,16 @@ async def test_manager_delete_request_needs_admin_review(client, db_session):
     private_page = Page(title="Confidential", slug="confidential", body_html="secret", visibility="private", is_published=True)
     db_session.add(private_page)
     await db_session.commit()
-    assert (await client.get("/admin/settings/general")).status_code == 200
-    assert (await client.get("/admin/settings/maintenance")).status_code == 403
-    assert (await client.get("/admin/audit")).status_code == 403
-    assert (await client.get(f"/admin/pages/{private_page.id}/edit")).status_code == 404
+    assert (await client.get("/panel/settings/general")).status_code == 200
+    assert (await client.get("/panel/settings/maintenance")).status_code == 403
+    assert (await client.get("/panel/audit")).status_code == 403
+    assert (await client.get(f"/panel/pages/{private_page.id}/edit")).status_code == 404
     assert (await client.get("/page/confidential")).status_code == 404
-    assert (await client.post("/admin/pages", data={"title": "Secret", "visibility": "private"})).status_code == 403
-    assert (await client.post(f"/admin/users/{editor.id}/request-delete")).status_code == 303
+    assert (await client.post("/panel/pages", data={"title": "Secret", "visibility": "private"})).status_code == 403
+    assert (await client.post(f"/panel/users/{editor.id}/request-delete")).status_code == 303
     await db_session.refresh(editor)
     assert editor.deletion_requested_by is not None and editor.is_active
-    assert (await client.post(f"/admin/users/1/request-delete")).status_code == 403
+    assert (await client.post(f"/panel/users/1/request-delete")).status_code == 403
 
 
 async def test_admin_can_replace_another_but_not_last_admin(client, db_session):
@@ -49,16 +49,16 @@ async def test_admin_can_replace_another_but_not_last_admin(client, db_session):
     first.password_hash = hash_admin_password(PASSWORD)
     await db_session.commit()
     client.cookies.set(SESSION_COOKIE, create_admin_session_token(first.username, first.password_hash, user_id=first.id), domain="test.local", path="/")
-    created = await client.post("/admin/users", data={"username": "second-admin", "password": PASSWORD, "role": "admin", "current_password": PASSWORD})
+    created = await client.post("/panel/users", data={"username": "second-admin", "password": PASSWORD, "role": "admin", "current_password": PASSWORD})
     assert created.status_code == 303
     second = await db_session.scalar(select(User).where(User.username == "second-admin"))
     assert second is not None
-    assert (await client.post(f"/admin/users/{first.id}/delete", data={"current_password": PASSWORD})).status_code == 303
+    assert (await client.post(f"/panel/users/{first.id}/delete", data={"current_password": PASSWORD})).status_code == 303
     await db_session.refresh(first)
     assert not first.is_active
-    assert (await client.get("/admin/users")).status_code == 302
+    assert (await client.get("/panel/users")).status_code == 302
     client.cookies.set(SESSION_COOKIE, create_admin_session_token(second.username, second.password_hash, user_id=second.id), domain="test.local", path="/")
-    assert (await client.post(f"/admin/users/{second.id}/delete", data={"current_password": PASSWORD})).status_code == 303
+    assert (await client.post(f"/panel/users/{second.id}/delete", data={"current_password": PASSWORD})).status_code == 303
     await db_session.refresh(second)
     assert second.is_active
     count = await db_session.scalar(select(func.count()).select_from(User).where(User.role == "admin", User.is_active.is_(True)))
@@ -90,7 +90,7 @@ async def test_account_mutation_rechecks_actor_role_after_password_verification(
         return True
 
     monkeypatch.setattr(users, "verify_password_async", demote_actor_during_verification)
-    response = await admin_client.post(f"/admin/users/{target.id}/delete", data={"current_password": PASSWORD})
+    response = await admin_client.post(f"/panel/users/{target.id}/delete", data={"current_password": PASSWORD})
     assert response.status_code == 403
     await db_session.refresh(target)
     assert target.is_active

@@ -2,14 +2,14 @@
 {% block title %}{{ t(request, 'settings') }} — {{ t(request, 'appearance') }}{% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
-<div class="mb-6">{{ page_heading(request, t(request, 'appearance'), t(request, 'appearance_page_help'), t(request, 'settings'), '/admin/settings') }}</div>
+<div class="mb-6">{{ page_heading(request, t(request, 'appearance'), t(request, 'appearance_page_help'), t(request, 'settings'), '/panel/settings') }}</div>
 {% set active_settings_tab = 'appearance' %}
 {% include "admin/_settings_tabs.html" %}
 
 <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-5">
   <h2 class="text-sm font-semibold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4 text-slate-400"></i>{{ t(request, 'color_theme') }}</h2>
   <p class="form-hint mb-3">{{ t(request, 'color_theme_help') }}</p>
-  <form method="post" action="/admin/settings/theme" class="space-y-4">
+  <form method="post" action="/panel/settings/theme" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
       {% for color, label, hex in [('blue', t(request, 'blue'), '#356fd4'), ('green', t(request, 'green'), '#247a4d'), ('red', t(request, 'red'), '#bf4f58'), ('yellow', t(request, 'yellow'), '#9a6a0c'), ('cream', t(request, 'cream'), '#8a6735'), ('amoled', t(request, 'amoled'), '#a1a1aa')] %}
@@ -25,7 +25,7 @@
   </form>
 </section>
 
-<form method="post" action="/admin/settings/appearance" enctype="multipart/form-data" class="space-y-5">
+<form method="post" action="/panel/settings/appearance" enctype="multipart/form-data" class="space-y-5">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
 
   <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">

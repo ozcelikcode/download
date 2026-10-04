@@ -20,7 +20,7 @@ async def test_public_layout_has_keyboard_navigation_landmarks(client: AsyncClie
 async def test_admin_layout_exposes_accessible_dialog_controls(
     admin_client: AsyncClient,
 ):
-    response = await admin_client.get("/admin")
+    response = await admin_client.get("/panel")
 
     assert response.status_code == 200
     assert 'class="skip-link"' in response.text

@@ -4,14 +4,14 @@
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
 <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-  {{ page_heading(request, t(request, 'trash'), t(request, 'editor_trash_help') if request.state.admin_role == 'editor' else t(request, 'trash_help'), t(request, 'contents'), '/admin/downloads') }}
-  <div class="flex gap-2">{% if request.state.admin_role != 'editor' %}<a href="/admin/pages/trash" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'pages') }}</a>{% endif %}<a href="/admin/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a></div>
+  {{ page_heading(request, t(request, 'trash'), t(request, 'editor_trash_help') if request.state.admin_role == 'editor' else t(request, 'trash_help'), t(request, 'contents'), '/panel/downloads') }}
+  <div class="flex gap-2">{% if request.state.admin_role != 'editor' %}<a href="/panel/pages/trash" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'pages') }}</a>{% endif %}<a href="/panel/downloads" class="btn-secondary py-2 px-3 text-sm">{{ t(request, 'contents') }}</a></div>
 </div>
 
-{% if request.state.admin_role == 'admin' %}<a href="/admin/settings/maintenance#trash-retention" class="btn-secondary text-sm mb-4"><i data-lucide="timer" class="w-4 h-4"></i>{{ t(request, 'trash_retention') }}</a>{% endif %}
+{% if request.state.admin_role == 'admin' %}<a href="/panel/settings/maintenance#trash-retention" class="btn-secondary text-sm mb-4"><i data-lucide="timer" class="w-4 h-4"></i>{{ t(request, 'trash_retention') }}</a>{% endif %}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden">
   {% if items %}
-  <form id="trash-bulk-form" method="post" action="/admin/downloads/trash/bulk">
+  <form id="trash-bulk-form" method="post" action="/panel/downloads/trash/bulk">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
       <label class="flex items-center gap-2 mr-2 text-sm">

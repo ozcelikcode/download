@@ -50,7 +50,7 @@ _SITEMAP_NAMESPACE = "http://www.sitemaps.org/schemas/sitemap/0.9"
 @router.get("/robots.txt", include_in_schema=False)
 async def robots_txt() -> PlainTextResponse:
     """Arama motorlarına herkese açık sayfaları ve sitemap konumunu bildir."""
-    lines = ["User-agent: *", "Allow: /", "Disallow: /admin", "Disallow: /dl/"]
+    lines = ["User-agent: *", "Allow: /", "Disallow: /panel", "Disallow: /dl/"]
     base_url, _, _ = inspect_public_base_url()
     if base_url:
         lines.append(f"Sitemap: {base_url}/sitemap.xml")

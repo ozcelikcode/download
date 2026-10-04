@@ -89,7 +89,7 @@
   if (root.dataset.queued === 'true') {
     const timer = setInterval(async () => {
       try {
-        const response = await fetch('/admin/backups/status', {credentials: 'same-origin'});
+        const response = await fetch('/panel/backups/status', {credentials: 'same-origin'});
         if (!response.ok) { clearInterval(timer); return; }
         const data = await response.json();
         if (data.latest !== (root.dataset.latest || null) || data.error) { clearInterval(timer); window.location.reload(); }

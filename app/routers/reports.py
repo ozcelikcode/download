@@ -22,7 +22,7 @@ from app.models import AuditLog, Download, FileType, LinkCheck
 from app.security import require_csrf
 from app.templating import templates
 
-router = APIRouter(prefix="/admin", tags=["reports"], dependencies=[Depends(require_csrf), Depends(require_admin)])
+router = APIRouter(prefix="/panel", tags=["reports"], dependencies=[Depends(require_csrf), Depends(require_admin)])
 PAGE_SIZE = 20
 STATUSES = {"unchecked": "Kontrol edilmedi", "ok": "Erişilebilir", "broken": "Kırık", "restricted": "Erişim sınırlı", "error": "Kontrol hatası", "blocked": "Engellendi"}
 STATUSES_EN = {"unchecked": "Not checked", "ok": "Available", "broken": "Broken", "restricted": "Restricted", "error": "Check failed", "blocked": "Blocked"}
@@ -110,7 +110,7 @@ async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends
     rows = (await session.execute(select(Download.id, Download.external_url).where(Download.file_type == FileType.external, Download.deleted_at.is_(None)).order_by(Download.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
     await session.rollback()  # Ağ kontrolü sırasında SQLite okuma işlemi açık tutulmaz.
     await _check_downloads(session, [(r.id, r.external_url or "") for r in rows])
-    return RedirectResponse(f"/admin/links?page={page}", status_code=303)
+    return RedirectResponse(f"/panel/links?page={page}", status_code=303)
 
 
 @router.post("/links/{download_id}/check", name="admin_link_check")
@@ -120,7 +120,7 @@ async def check_one(download_id: int, session: AsyncSession = Depends(get_db)) -
         raise HTTPException(status_code=404, detail="Dış bağlantı bulunamadı.")
     await session.rollback()
     await _check_downloads(session, [(row.id, row.external_url or "")])
-    return RedirectResponse("/admin/links", status_code=303)
+    return RedirectResponse("/panel/links", status_code=303)
 
 
 @router.get("/audit", name="admin_audit")

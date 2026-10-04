@@ -36,7 +36,7 @@ async def _update_media_asset_path(
 ) -> None:
     relative_source = source.relative_to(public_root).as_posix()
     old_web_path = f"/static/uploads/{quote(relative_source, safe='/')}"
-    new_web_path = f"/admin/media/files/{quote(target.name)}"
+    new_web_path = f"/panel/media/files/{quote(target.name)}"
     old_asset = await session.scalar(select(MediaAsset).where(MediaAsset.path == old_web_path))
     new_asset = await session.scalar(select(MediaAsset).where(MediaAsset.path == new_web_path))
     if old_asset is None:

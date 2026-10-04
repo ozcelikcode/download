@@ -24,6 +24,8 @@ def media_path(value: str | None, origin: str | None = None) -> Path | None:
     path = unquote(parsed.path)
     if path.startswith("/static/uploads/"):
         candidate = public_root / path.removeprefix("/static/uploads/")
+    elif path.startswith("/panel/media/files/"):
+        candidate = private_root / path.removeprefix("/panel/media/files/")
     elif path.startswith("/admin/media/files/"):
         candidate = private_root / path.removeprefix("/admin/media/files/")
     elif not parsed.scheme and not parsed.netloc:
@@ -71,7 +73,7 @@ async def media_usage(session: AsyncSession, origin: str | None = None, *, all_o
             usage.setdefault(path, []).append({
                 "id": download.id, "title": download.title,
                 "owner_id": download.owner_id,
-                "url": f"/admin/downloads/{download.id}/edit",
+                "url": f"/panel/downloads/{download.id}/edit",
             })
     if all_owners:
         pages = await session.scalars(select(Page))
@@ -79,12 +81,12 @@ async def media_usage(session: AsyncSession, origin: str | None = None, *, all_o
             parser = _MediaReferences(origin)
             parser.feed(page.body_html)
             for path in parser.paths:
-                usage.setdefault(path, []).append({"id": page.id, "title": page.title, "owner_id": None, "url": f"/admin/pages/{page.id}/edit"})
+                usage.setdefault(path, []).append({"id": page.id, "title": page.title, "owner_id": None, "url": f"/panel/pages/{page.id}/edit"})
         account = await session.scalar(select(SiteSettings))
         if account:
             for value in (account.logo_light_path, account.logo_dark_path, account.hero_image_path):
                 if path := media_path(value, origin):
-                    usage.setdefault(path, []).append({"id": account.id, "title": "Site settings", "owner_id": None, "url": "/admin/settings/appearance"})
+                    usage.setdefault(path, []).append({"id": account.id, "title": "Site settings", "owner_id": None, "url": "/panel/settings/appearance"})
     return usage
 
 

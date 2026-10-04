@@ -32,7 +32,7 @@ async def test_latest_version_external_link_is_localized(
     admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ):
     response = await admin_client.post(
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         data={
             "title": "Always Fresh",
             "version": "v1.0",
@@ -55,7 +55,7 @@ async def test_latest_version_external_link_is_localized(
     assert "Güncel sürüm" in turkish.text
     assert "Güncel sürüm" in (await client.get("/")).text
     language_response = await admin_client.post(
-        "/admin/settings/language", data={"language": "en"}
+        "/panel/settings/language", data={"language": "en"}
     )
     assert language_response.status_code == 302
     english = await client.get(f"/download/{download.slug}")
@@ -148,7 +148,7 @@ async def test_download_log_does_not_store_client_address(db_session: AsyncSessi
 async def test_editor_keeps_optional_fields_available_without_crowding_new_form(
     admin_client: AsyncClient, db_session: AsyncSession,
 ):
-    new_form = await admin_client.get("/admin/downloads/new")
+    new_form = await admin_client.get("/panel/downloads/new")
     assert new_form.status_code == 200
     icon_section = re.search(r'<details id="icon-options"[^>]*>', new_form.text)
     assert icon_section is not None and " open" not in icon_section.group()
@@ -159,7 +159,7 @@ async def test_editor_keeps_optional_fields_available_without_crowding_new_form(
     assert 'id="application-save-button"' in new_form.text
 
     download = await _create_external(db_session, title="Icon settings", icon_type="zip")
-    edit_form = await admin_client.get(f"/admin/downloads/{download.id}/edit")
+    edit_form = await admin_client.get(f"/panel/downloads/{download.id}/edit")
     icon_section = re.search(r'<details id="icon-options"[^>]*>', edit_form.text)
     assert icon_section is not None and " open" in icon_section.group()
 
@@ -187,7 +187,7 @@ async def test_admin_form_sets_official_source(
     admin_client: AsyncClient, db_session: AsyncSession
 ):
     response = await admin_client.post(
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         data={
             "title": "Üçüncü Parti Araç",
             "file_type": "external",

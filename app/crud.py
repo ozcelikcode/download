@@ -619,23 +619,24 @@ async def get_media_display_names(session: AsyncSession, paths: List[str]) -> di
     """Verilen yollar için (varsa) özel görünen adları toplu olarak döndürür."""
     if not paths:
         return {}
-    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_(paths)))
-    return {row.path: row.display_name for row in result.scalars().all() if row.display_name}
+    assets = await get_media_assets_info(session, paths)
+    return {path: row.display_name for path, row in assets.items() if row.display_name}
 
 
 async def get_media_assets_info(session: AsyncSession, paths: List[str]) -> dict[str, MediaAsset]:
     """Verilen yollar için tüm meta veriyi (görünen ad, yükleyen, tarih) toplu döndürür."""
     if not paths:
         return {}
-    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_(paths)))
-    return {row.path: row for row in result.scalars().all()}
+    aliases = set(paths) | {path.replace("/panel/media/files/", "/admin/media/files/", 1) for path in paths}
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_(aliases)))
+    return {row.path.replace("/admin/media/files/", "/panel/media/files/", 1): row for row in result.scalars().all()}
 
 
 async def record_media_upload(session: AsyncSession, path: str, uploaded_by: str) -> None:
     """Yeni bir dosya/görsel yüklendiğinde 'kim, ne zaman' bilgisini kaydeder.
     Kayıt zaten varsa (ör. daha önce yeniden adlandırılmışsa) yalnızca
     uploaded_by boşsa doldurur — mevcut görünen adı ezmez."""
-    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_({path, path.replace("/panel/media/files/", "/admin/media/files/", 1)})))
     asset = result.scalar_one_or_none()
     if asset is None:
         session.add(MediaAsset(path=path, uploaded_by=uploaded_by))
@@ -650,7 +651,7 @@ async def set_media_display_name(
     """Bir dosya yolu için görünen adı ayarlar; boş verilirse özel adı kaldırır
     (varsayılan olarak fiziksel dosya adı gösterilmeye devam eder)."""
     display_name = (display_name or "").strip() or None
-    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_({path, path.replace("/panel/media/files/", "/admin/media/files/", 1)})))
     asset = result.scalar_one_or_none()
 
     if asset is None:
@@ -669,7 +670,7 @@ async def set_media_display_name(
 
 async def delete_media_asset(session: AsyncSession, path: str) -> None:
     """Bir dosya silindiğinde ona ait görünen ad kaydını da temizler."""
-    result = await session.execute(select(MediaAsset).where(MediaAsset.path == path))
+    result = await session.execute(select(MediaAsset).where(MediaAsset.path.in_({path, path.replace("/panel/media/files/", "/admin/media/files/", 1)})))
     asset = result.scalar_one_or_none()
     if asset:
         await session.delete(asset)

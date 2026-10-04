@@ -44,19 +44,19 @@ async def test_timezone_setting_permissions(client, db_session, role):
     await db_session.commit()
     token = create_admin_session_token(user.username, user.password_hash, user_id=user.id)
     client.cookies.set(SESSION_COOKIE, token, domain="test.local", path="/")
-    response = await client.post("/admin/settings/timezone", data={"site_timezone": "Europe/Istanbul"})
+    response = await client.post("/panel/settings/timezone", data={"site_timezone": "Europe/Istanbul"})
     account = await db_session.scalar(select(SiteSettings))
     if role == "editor":
         assert response.status_code == 403 and account.site_timezone == "UTC"
     else:
         assert response.status_code == 302 and account.site_timezone == "Europe/Istanbul"
-        page = await client.get("/admin/settings/general")
+        page = await client.get("/panel/settings/general")
         assert 'value="Europe/Istanbul" selected' in page.text
         assert templates.env.globals["site_timezone"] == "Europe/Istanbul"
 
 
 async def test_invalid_zone_does_not_change_settings(admin_client, db_session):
-    response = await admin_client.post("/admin/settings/timezone", data={"site_timezone": "Invalid/Zone"})
+    response = await admin_client.post("/panel/settings/timezone", data={"site_timezone": "Invalid/Zone"})
     assert response.status_code == 302
     assert (await db_session.scalar(select(SiteSettings))).site_timezone == "UTC"
 
@@ -65,8 +65,8 @@ async def test_audit_uses_selected_zone_without_changing_records(admin_client, d
     row = AuditLog(actor="anonymous", action="error", entity="request", label="GET <unmatched> → 404", level="error", changes="{}", created_at=datetime(2026, 10, 4, 8, 57, 31))
     db_session.add(row)
     await db_session.commit()
-    await admin_client.post("/admin/settings/timezone", data={"site_timezone": "Europe/Istanbul"})
-    html = (await admin_client.get("/admin/audit")).text
+    await admin_client.post("/panel/settings/timezone", data={"site_timezone": "Europe/Istanbul"})
+    html = (await admin_client.get("/panel/audit")).text
     assert "04.10.2026 11:57:31" in html
     assert "Europe/Istanbul" in html
     assert "04.10.2026 08:57:31 UTC" not in html

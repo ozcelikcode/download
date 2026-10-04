@@ -7,13 +7,13 @@
 <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
   {{ page_heading(request, t(request, 'contents'), t(request, 'contents_page_help')) }}
   <div class="flex flex-wrap items-center gap-2">
-    <a href="/admin/downloads/trash" class="btn-secondary py-2 px-3 text-sm shrink-0"><i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i><span>{{ t(request, 'trash') }}</span></a>
-    <a href="/admin/downloads/new" class="btn-primary shrink-0 whitespace-nowrap"><i data-lucide="plus" class="w-4 h-4 shrink-0"></i>{{ t(request, 'new_file') }}</a>
+    <a href="/panel/downloads/trash" class="btn-secondary py-2 px-3 text-sm shrink-0"><i data-lucide="trash-2" class="w-3.5 h-3.5 shrink-0"></i><span>{{ t(request, 'trash') }}</span></a>
+    <a href="/panel/downloads/new" class="btn-primary shrink-0 whitespace-nowrap"><i data-lucide="plus" class="w-4 h-4 shrink-0"></i>{{ t(request, 'new_file') }}</a>
   </div>
 </div>
 
 {# Arama + filtre — tek satır, kompakt #}
-<form method="get" action="/admin/downloads"
+<form method="get" action="/panel/downloads"
   class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-4 transition-colors">
   <div class="flex flex-wrap items-center gap-2">
     <div class="relative flex-1 min-w-[160px]">
@@ -56,7 +56,7 @@
       {{ t(request, 'filter') }}
     </button>
     {% if active_filter_count %}
-    <a href="/admin/downloads" title="{{ t(request, 'filter_clear') }}"
+    <a href="/panel/downloads" title="{{ t(request, 'filter_clear') }}"
       class="shrink-0 inline-flex items-center gap-1 p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors">
       <i data-lucide="x" class="w-4 h-4"></i>
     </a>
@@ -88,7 +88,7 @@
 
   {% if downloads %}
   {% set return_to = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
-  <form id="download-bulk-form" method="post" action="/admin/downloads/bulk?return_to={{ return_to|urlencode }}">
+  <form id="download-bulk-form" method="post" action="/panel/downloads/bulk?return_to={{ return_to|urlencode }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   </form>
     <div id="download-bulk-bar" class="hidden px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-wrap items-center gap-2">
@@ -201,13 +201,13 @@
                 <i data-lucide="external-link" class="w-3 h-3"></i>
                 {{ t(request, 'view') }}
               </a>{% endif %}
-              <a href="/admin/downloads/{{ d.id }}/edit"
+              <a href="/panel/downloads/{{ d.id }}/edit"
                 class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                        border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 {{ t(request, 'edit') }}
               </a>
-              <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
+              <form method="post" action="/panel/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit" data-confirm-message="{{ tf(request, 'trash_named_confirm', name=d.title) }}"
                   class="btn-danger py-1.5 px-2.5">
@@ -233,7 +233,7 @@
               <i data-lucide="{{ d.icon_type | icon_name(d.file_type, d.icon_extension) }}" class="w-4 h-4" aria-hidden="true"></i>
             </div>
             <div class="min-w-0 flex-1">
-              <a href="/admin/downloads/{{ d.id }}/edit" class="font-medium text-sm text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 break-words">{{ d.title }}</a>
+              <a href="/panel/downloads/{{ d.id }}/edit" class="font-medium text-sm text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 break-words">{{ d.title }}</a>
               {% if d.is_latest_version or d.version %}<p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ t(request, 'current_version') if d.is_latest_version else d.version }}</p>{% endif %}
             </div>
             {% if d.is_featured %}<span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-sm bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 shrink-0"><i data-lucide="star" class="w-3 h-3" aria-hidden="true"></i>{{ t(request, 'pinned') }}</span>{% endif %}
@@ -248,8 +248,8 @@
 
           <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             {% if d.is_active and not d.is_draft and not d.is_hidden %}<a href="/download/{{ d.slug }}" target="_blank" rel="noopener noreferrer" class="btn-secondary py-1.5 px-2.5 text-xs"><i data-lucide="external-link" class="w-3 h-3" aria-hidden="true"></i>{{ t(request, 'view') }}</a>{% endif %}
-            <a href="/admin/downloads/{{ d.id }}/edit" class="btn-secondary py-1.5 px-2.5 text-xs"><i data-lucide="pencil" class="w-3 h-3" aria-hidden="true"></i>{{ t(request, 'edit') }}</a>
-            <form method="post" action="/admin/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="ml-auto">
+            <a href="/panel/downloads/{{ d.id }}/edit" class="btn-secondary py-1.5 px-2.5 text-xs"><i data-lucide="pencil" class="w-3 h-3" aria-hidden="true"></i>{{ t(request, 'edit') }}</a>
+            <form method="post" action="/panel/downloads/{{ d.id }}/delete?return_to={{ return_to|urlencode }}" class="ml-auto">
               <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
               <button type="submit" data-confirm-message="{{ tf(request, 'trash_named_confirm', name=d.title) }}" class="btn-danger py-1.5 px-2.5" aria-label="{{ tf(request, 'trash_named_confirm', name=d.title) }}"><i data-lucide="trash-2" class="w-3 h-3" aria-hidden="true"></i></button>
             </form>
@@ -289,9 +289,9 @@
     <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
     <p class="text-sm">{{ t(request, 'no_records') }}</p>
     {% if active_filter_count %}
-    <a href="/admin/downloads" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">{{ t(request, 'filter_clear') }}</a>
+    <a href="/panel/downloads" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mt-2 inline-block">{{ t(request, 'filter_clear') }}</a>
     {% else %}
-    <a href="/admin/downloads/new" class="btn-primary mt-3 inline-flex">
+    <a href="/panel/downloads/new" class="btn-primary mt-3 inline-flex">
       <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ t(request, 'add_first_file') }}
     </a>
     {% endif %}

@@ -12,6 +12,6 @@
     {% if not page.is_published %}<p class="text-xs text-amber-600 dark:text-amber-400 mb-4">{{ t(request, 'page_draft_preview') }}</p>{% endif %}
     <div class="prose-description text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{{ safe_body | safe }}</div>
   </article>
-  {% if is_admin %}<div class="mt-4 text-right"><a href="/admin/pages/{{ page.id }}/edit" class="btn-secondary text-xs">{{ t(request, 'edit_page') }}</a></div>{% endif %}
+  {% if is_admin %}<div class="mt-4 text-right"><a href="/panel/pages/{{ page.id }}/edit" class="btn-secondary text-xs">{{ t(request, 'edit_page') }}</a></div>{% endif %}
 </div>
 {% endblock %}

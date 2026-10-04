@@ -7,7 +7,7 @@ import pytest
 
 async def test_public_and_admin_layouts_load_shared_toast_system(client, admin_client):
     public_page = await client.get("/")
-    admin_page = await admin_client.get("/admin")
+    admin_page = await admin_client.get("/panel")
 
     for response in (public_page, admin_page):
         assert response.status_code == 200
@@ -18,7 +18,7 @@ async def test_public_and_admin_layouts_load_shared_toast_system(client, admin_c
 
 async def test_server_flash_message_is_forwarded_to_shared_toast(admin_client):
     created = await admin_client.post(
-        "/admin/settings/session-duration", data={"session_max_age_minutes": "480"}
+        "/panel/settings/session-duration", data={"session_max_age_minutes": "480"}
     )
     assert created.status_code == 302
 
@@ -33,9 +33,9 @@ async def test_server_flash_message_is_forwarded_to_shared_toast(admin_client):
 @pytest.mark.parametrize(
     ("endpoint", "name", "success_message"),
     [
-        ("/admin/tags", "Toast Etiketi", "“Toast Etiketi” etiketi eklendi."),
+        ("/panel/tags", "Toast Etiketi", "“Toast Etiketi” etiketi eklendi."),
         (
-            "/admin/categories",
+            "/panel/categories",
             "Toast Kategorisi",
             "“Toast Kategorisi” kategorisi eklendi.",
         ),
@@ -56,9 +56,9 @@ async def test_taxonomy_creation_shows_success_toast(
 @pytest.mark.parametrize(
     ("endpoint", "name", "error_message"),
     [
-        ("/admin/tags", "Tekrarlı Etiket", "Bu etiket adı zaten kullanılıyor."),
+        ("/panel/tags", "Tekrarlı Etiket", "Bu etiket adı zaten kullanılıyor."),
         (
-            "/admin/categories",
+            "/panel/categories",
             "Tekrarlı Kategori",
             "Bu kategori adı zaten kullanılıyor.",
         ),
@@ -78,7 +78,7 @@ async def test_duplicate_taxonomy_creation_shows_error_toast(
 
 
 async def test_media_archive_replays_success_feedback_after_refresh(admin_client):
-    page = await admin_client.get("/admin/media")
+    page = await admin_client.get("/panel/media")
 
     assert page.status_code == 200
     assert "sessionStorage.setItem('admin-media-feedback'" in page.text

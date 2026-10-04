@@ -13,7 +13,7 @@ from app.schemas import DownloadCreate
 async def test_used_media_cannot_be_deleted(admin_client, db_session, field):
     if field == "file_path":
         file = settings.download_path / "paket.zip"
-        url = "/admin/media/files/" + quote(file.name)
+        url = "/panel/media/files/" + quote(file.name)
         tab = "files"
     else:
         file = settings.upload_path / "icons" / "görsel dosya.png"
@@ -30,12 +30,12 @@ async def test_used_media_cannot_be_deleted(admin_client, db_session, field):
         values[field] = url
     download = await crud.create_download(db_session, DownloadCreate(**values))
     await crud.record_media_upload(db_session, url, "admin")
-    response = await admin_client.post("/admin/media/delete-file", data={"path": url})
+    response = await admin_client.post("/panel/media/delete-file", data={"path": url})
     assert response.status_code == 409
     assert response.json()["detail"]["downloads"][0]["id"] == download.id
     assert file.read_bytes() == b"original"
     assert await db_session.scalar(select(MediaAsset).where(MediaAsset.path == url))
-    page = await admin_client.get(f"/admin/media?tab={tab}")
+    page = await admin_client.get(f"/panel/media?tab={tab}")
     assert "Bağlı içerik" in page.text
 
 
@@ -46,13 +46,13 @@ async def test_icon_delete_is_also_protected(admin_client, db_session):
     await crud.create_download(db_session, DownloadCreate(
         title="Icon user", external_url="https://example.com", icon_image_path="/static/uploads/icons/used.png",
     ))
-    response = await admin_client.post("/admin/upload/icon-image-delete", data={"path": "/static/uploads/icons/used.png"})
+    response = await admin_client.post("/panel/upload/icon-image-delete", data={"path": "/static/uploads/icons/used.png"})
     assert response.status_code == 409
     assert icon.exists()
 
 
 async def test_delete_rejects_outside_path(admin_client):
-    response = await admin_client.post("/admin/media/delete-file", data={"path": "/static/uploads/../../download.db"})
+    response = await admin_client.post("/panel/media/delete-file", data={"path": "/static/uploads/../../download.db"})
     assert response.status_code == 400
 
 
@@ -64,7 +64,7 @@ async def test_admin_media_file_does_not_follow_symlink_outside_storage(
     settings.download_path.mkdir(parents=True, exist_ok=True)
     (settings.download_path / "linked.txt").symlink_to(outside)
 
-    response = await admin_client.get("/admin/media/files/linked.txt")
+    response = await admin_client.get("/panel/media/files/linked.txt")
     assert response.status_code == 404
     assert "private content" not in response.text
 
@@ -75,6 +75,6 @@ async def test_absolute_current_origin_reference_is_protected(admin_client, db_s
     await crud.create_download(db_session, DownloadCreate(
         title="Absolute reference", external_url="https://example.com", description='<img src="http://test/static/uploads/used.png">',
     ))
-    response = await admin_client.post("/admin/media/delete-file", data={"path": "/static/uploads/used.png"})
+    response = await admin_client.post("/panel/media/delete-file", data={"path": "/static/uploads/used.png"})
     assert response.status_code == 409
     assert file.exists()

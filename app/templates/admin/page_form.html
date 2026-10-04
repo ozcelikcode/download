@@ -9,11 +9,11 @@
 {% from "admin/_page_heading.html" import render as page_heading %}
 <div class="max-w-5xl">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    {{ page_heading(request, t(request, 'edit_page') if page else t(request, 'new_page'), t(request, 'pages_help'), t(request, 'pages'), '/admin/pages') }}
+    {{ page_heading(request, t(request, 'edit_page') if page else t(request, 'new_page'), t(request, 'pages_help'), t(request, 'pages'), '/panel/pages') }}
     {% if page and page.id %}<a href="/page/{{ page.slug }}" target="_blank" rel="noopener noreferrer" class="btn-secondary text-xs"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>{{ t(request, 'view') }}</a>{% endif %}
   </div>
   {% if error %}<p role="alert" class="mb-4 p-3 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-sm">{{ error }}</p>{% endif %}
-  <form id="page-form" method="post" action="{{ '/admin/pages/' ~ page.id ~ '/edit' if page and page.id else '/admin/pages' }}" class="space-y-5">
+  <form id="page-form" method="post" action="{{ '/panel/pages/' ~ page.id ~ '/edit' if page and page.id else '/panel/pages' }}" class="space-y-5">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 space-y-4">
       <div><label for="page-title" class="form-label">{{ t(request, 'title') }}</label><input id="page-title" name="title" class="form-input" maxlength="200" required value="{{ page.title if page else '' }}"></div>
@@ -33,7 +33,7 @@
       <button type="submit" name="is_published" value="true" class="btn-primary">{{ t(request, 'publish') }}</button>
     </div>
   </form>
-  {% if page and page.id %}<form id="page-delete-form" method="post" action="/admin/pages/{{ page.id }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>{% endif %}
+  {% if page and page.id %}<form id="page-delete-form" method="post" action="/panel/pages/{{ page.id }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>{% endif %}
 </div>
 {% endblock %}
 {% block scripts %}

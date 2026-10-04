@@ -22,6 +22,7 @@ from app.i18n import translate, system_message
 from app.routers import admin, pages, public, reports, setup, users, workflows, backups as backup_routes
 from app.routers import registrations
 from app.routers import auth
+from app.routers import account
 from app import backups, maintenance_jobs
 from app.models import SiteSettings
 from sqlalchemy import select
@@ -130,6 +131,7 @@ app.add_middleware(LifecycleMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(setup.router)
 app.include_router(auth.router)
+app.include_router(account.router)
 app.include_router(public.router)
 app.include_router(pages.public_router)
 app.include_router(admin.router)
@@ -149,13 +151,22 @@ async def localized_http_error(request: Request, exc: HTTPException):
     if exc.status_code >= 400 and exc.status_code not in {401, 404, 429}:
         await _record_public_error(request, exc.status_code)
     detail = exc.detail
+    if exc.status_code == 403 and (detail is None or detail == "Forbidden"):
+        detail = translate(request, "permission_denied")
     if isinstance(detail, str):
         detail = system_message(request, detail)
     elif isinstance(detail, dict) and isinstance(detail.get("message"), str):
         detail = {**detail, "message": system_message(request, detail["message"])}
-    return await http_exception_handler(
+    if exc.status_code == 403 and "text/html" in request.headers.get("accept", ""):
+        return templates.TemplateResponse(request=request, name="errors/403.html", context={
+            "page_title": translate(request, "permission_denied"), "sidebar_categories": [],
+            "sidebar_tags": [], "category_counts": {}, "hide_sidebar": True,
+        }, status_code=403, headers=exc.headers)
+    response = await http_exception_handler(
         request, HTTPException(exc.status_code, detail=detail, headers=exc.headers)
     )
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
 
 
 @app.exception_handler(404)

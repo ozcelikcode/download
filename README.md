@@ -21,9 +21,13 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 - SSRF protection for outbound URL checks and remote icon imports
 - Locally served Lucide, Quill, and Cropper.js assets
 
-Sign in at `/login` and apply at `/register`. The staff dashboard links to pending applications at `/admin/registrations`; only administrators/managers can review them. Existing usernames do not create another account or application. Unavailable usernames show a conflict warning without distinguishing an account from a pending request. A success receipt appears only after a new request is committed. `/admin/login` is only a redirect for old bookmarks.
+Sign in at `/login` and apply at `/register`. The staff dashboard links to pending applications at `/panel/registrations`; only administrators/managers can review them. Existing usernames do not create another account or application. Unavailable usernames show a conflict warning without distinguishing an account from a pending request. A success receipt appears only after a new request is committed. `/panel/login` is only a redirect for old bookmarks.
 
 Choose the display time zone in **Settings → General**, after the language options. IANA zones support daylight saving automatically. Stored timestamps and console logs remain UTC; changing the display zone does not rewrite historical records. The initial display zone is UTC.
+
+All staff roles use `/panel`; changing this address is not a substitute for authorization. Old `/admin` GET bookmarks redirect to the new routes, where the same permissions are enforced. Existing private media URLs and metadata remain compatible. Permission-denied browser pages are localized HTML; API errors explicitly declare UTF-8.
+
+**Settings → Account → Delete my account** requires the current password, the exact current username, and explicit acknowledgment. Closure invalidates sign-in credentials and sessions, but preserves content, taxonomy, media, and correspondence. A non-login identity tombstone anchors existing ownership; the last active administrator cannot close their account.
 
 ## Requirements
 

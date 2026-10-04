@@ -177,7 +177,7 @@
 <div id="tab-panel-images" data-tab-panel {% if active_tab != 'images' %}class="hidden"{% endif %}>
 
   {# Araç çubuğu: arama + sayfa boyutu + yükle + görünüm #}
-  <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
+  <form method="get" action="/panel/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
     <div class="flex flex-wrap items-center gap-2">
       <input type="hidden" name="tab" value="images">
       <input type="hidden" name="files_q" value="{{ files.q }}">
@@ -354,7 +354,7 @@
 <div id="tab-panel-files" data-tab-panel {% if active_tab != 'files' %}class="hidden"{% endif %}>
 
   {# Araç çubuğu: arama + tür/OS filtresi + sayfa boyutu + yükle + görünüm #}
-  <form method="get" action="/admin/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
+  <form method="get" action="/panel/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
     <div class="flex flex-wrap items-center gap-2">
       <input type="hidden" name="tab" value="files">
       <input type="hidden" name="images_q" value="{{ images.q }}">
@@ -737,7 +737,7 @@
         // İkon görselleri (yalnızca fresh upload'ta) sunucuda sıkıştırılır;
         // yanıt gelene kadar çubuk boş görünmesin diye %85-97 arasında
         // yavaşça ilerleyen bir "sıkıştırılıyor" aşaması gösterilir.
-        const willCompress = url === '/admin/upload/icon-image' && !(extraFields && extraFields.replace_path);
+        const willCompress = url === '/panel/upload/icon-image' && !(extraFields && extraFields.replace_path);
         let compressTimer = null;
         function startCompressPhase() {
           if (compressTimer || !willCompress) return;
@@ -817,7 +817,7 @@
       imagesUploadBtn.addEventListener('click', function () { imagesUploadInput.click(); });
       imagesUploadInput.addEventListener('change', async function () {
         if (!imagesUploadInput.files.length) return;
-        const result = await uploadQueue('/admin/upload/icon-image', imagesUploadInput.files);
+        const result = await uploadQueue('/panel/upload/icon-image', imagesUploadInput.files);
         finishUploadQueue(result, 'image', imagesUploadInput);
       });
     }
@@ -829,7 +829,7 @@
       filesUploadBtn.addEventListener('click', function () { filesUploadInput.click(); });
       filesUploadInput.addEventListener('change', async function () {
         if (!filesUploadInput.files.length) return;
-        const result = await uploadQueue('/admin/media/upload-file', filesUploadInput.files);
+        const result = await uploadQueue('/panel/media/upload-file', filesUploadInput.files);
         finishUploadQueue(result, 'file', filesUploadInput);
       });
     }
@@ -839,7 +839,7 @@
       const fd = new FormData();
       fd.append('path', path);
       fd.append('display_name', displayName);
-      return csrfFetch('/admin/media/rename', { method: 'POST', body: fd }).then(async function (response) {
+      return csrfFetch('/panel/media/rename', { method: 'POST', body: fd }).then(async function (response) {
         if (!response.ok) {
           const data = await response.json().catch(function () { return {}; });
           throw new Error(data.detail || data.message || window.mediaMessages.saveFailed);
@@ -961,7 +961,7 @@
         if (!blob) return;
         const file = new File([blob], 'cropped.png', { type: 'image/png' });
         // replace_path: aynı link üzerine yazılır, sıkıştırma uygulanmaz.
-        uploadOne('/admin/upload/icon-image', file, window.mediaMessages.croppedImageSaving, { replace_path: cropTargetPath })
+        uploadOne('/panel/upload/icon-image', file, window.mediaMessages.croppedImageSaving, { replace_path: cropTargetPath })
           .then(function () {
             hideUploadProgress();
             closeCropModal();
@@ -981,7 +981,7 @@
       fd.append('path', path);
       fd.append('size', '256');
       fd.append('in_place', 'true');
-      csrfFetch('/admin/upload/icon-auto-crop', { method: 'POST', body: fd })
+      csrfFetch('/panel/upload/icon-auto-crop', { method: 'POST', body: fd })
         .then(function (r) { if (!r.ok) throw new Error(window.mediaMessages.actionFailed); return r.json(); })
         .then(function () {
           hideUploadProgress();
@@ -1031,7 +1031,7 @@
             window.AppToast.show(window.mediaMessages.nameSaved, { type: 'success' });
             return;
           }
-          return uploadOne('/admin/media/replace-file', newFile, window.mediaMessages.fileReplacing, { path: path })
+          return uploadOne('/panel/media/replace-file', newFile, window.mediaMessages.fileReplacing, { path: path })
             .then(function () {
               hideUploadProgress();
               closeFileEditModal();
@@ -1047,7 +1047,7 @@
     // ── Silme ────────────────────────────────────────────────
     function handleDelete(path, kind) {
       window.showAdminConfirm(window.mediaMessages.itemDeleteConfirm, function () {
-        const endpoint = kind === 'image' ? '/admin/upload/icon-image-delete' : '/admin/media/delete-file';
+        const endpoint = kind === 'image' ? '/panel/upload/icon-image-delete' : '/panel/media/delete-file';
         const fd = new FormData();
         fd.append('path', path);
         csrfFetch(endpoint, { method: 'POST', body: fd })

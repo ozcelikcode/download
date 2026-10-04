@@ -42,7 +42,7 @@ def isolated_uploads(tmp_path, monkeypatch):
 def isolated_branding_globals():
     """Site kimliği (isim/ikon/renk), `templates.env.globals` içinde tutulan
     process-genelinde mutable bir durumdur. Bir test bunu değiştirirse (ör.
-    /admin/settings/branding), diğer testlere sızmasın diye önceki/sonraki
+    /panel/settings/branding), diğer testlere sızmasın diye önceki/sonraki
     değeri yedekleyip geri yükler."""
     keys = ["site_name", "site_language", "site_icon", "site_icon_color_light", "site_icon_color_dark", "logo_mode", "logo_light_path", "logo_dark_path", "theme_color", "theme_accent_light", "theme_accent_dark", "theme_surface_light", "theme_surface_dark", "theme_border_light", "theme_border_dark"]
     keys.append("site_timezone")

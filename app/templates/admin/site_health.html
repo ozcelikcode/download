@@ -99,7 +99,7 @@
       <i data-lucide="search-check" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>{{ t(request, 'seo_settings') }}
     </h2>
     <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'seo_settings_help') }}</p>
-    <form method="post" action="/admin/settings/seo" class="space-y-4 max-w-2xl">
+    <form method="post" action="/panel/settings/seo" class="space-y-4 max-w-2xl">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
       <div>
         <label for="seo-home-title" class="form-label">{{ t(request, 'seo_home_title') }}</label>

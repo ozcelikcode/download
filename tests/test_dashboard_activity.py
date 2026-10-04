@@ -56,7 +56,7 @@ async def test_dashboard_renders_recent_activity(admin_client, db_session):
                 action="error",
                 level="error",
                 entity="request",
-                label="GET /admin → 500",
+                label="GET /panel → 500",
                 changes="{}",
                 created_at=datetime(2026, 1, 2, 11, 30, tzinfo=timezone.utc),
             ),
@@ -64,21 +64,21 @@ async def test_dashboard_renders_recent_activity(admin_client, db_session):
     )
     await db_session.commit()
 
-    response = await admin_client.get("/admin")
+    response = await admin_client.get("/panel")
 
     assert response.status_code == 200
     assert "Son İşlemler" in response.text
-    assert 'href="/admin/audit"' in response.text
-    assert "GET /admin → 500" in response.text
+    assert 'href="/panel/audit"' in response.text
+    assert "GET /panel → 500" in response.text
     assert "hata oluştu" in response.text
     assert "Araçlar" in response.text
     assert "eklendi" in response.text
-    assert response.text.index("GET /admin → 500") < response.text.index("Araçlar")
+    assert response.text.index("GET /panel → 500") < response.text.index("Araçlar")
     assert 'datetime="2026-01-02T11:30:00' in response.text
 
 
 async def test_dashboard_activity_has_empty_state(admin_client):
-    response = await admin_client.get("/admin")
+    response = await admin_client.get("/panel")
 
     assert response.status_code == 200
     assert "Henüz kayıtlı bir işlem yok." in response.text

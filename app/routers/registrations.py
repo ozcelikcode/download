@@ -80,14 +80,14 @@ async def apply(request: Request, username: str = Form(...), password: str = For
     return RedirectResponse("/register?received=true", status_code=303)
 
 
-@router.get("/admin/registrations", dependencies=[Depends(require_admin)])
+@router.get("/panel/registrations", dependencies=[Depends(require_admin)])
 async def requests(request: Request, page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)) -> Response:
     if request.state.admin_role not in {"admin", "manager"}:
         raise HTTPException(403)
     total = await session.scalar(select(func.count()).select_from(RegistrationRequest)) or 0
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
     if page > total_pages:
-        return RedirectResponse(f"/admin/registrations?page={total_pages}", status_code=303)
+        return RedirectResponse(f"/panel/registrations?page={total_pages}", status_code=303)
     rows = (await session.scalars(select(RegistrationRequest).order_by(RegistrationRequest.created_at, RegistrationRequest.id)
                                   .offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE))).all()
     return templates.TemplateResponse(request=request, name="admin/registrations.html", context={
@@ -98,7 +98,7 @@ async def requests(request: Request, page: int = Query(1, ge=1), session: AsyncS
     })
 
 
-@router.post("/admin/registrations/{request_id}", dependencies=[Depends(require_admin)])
+@router.post("/panel/registrations/{request_id}", dependencies=[Depends(require_admin)])
 async def review(request_id: int, request: Request, action: str = Form(...), current_password: str = Form(...),
                  session: AsyncSession = Depends(get_db)) -> Response:
     role = request.state.admin_role
@@ -108,7 +108,7 @@ async def review(request_id: int, request: Request, action: str = Form(...), cur
     if not await _confirm_password(request, session, current_password):
         request.session["flash_message"] = translate(request, "wrong_current_password")
         request.session["flash_type"] = "error"
-        return RedirectResponse("/admin/registrations", status_code=303)
+        return RedirectResponse("/panel/registrations", status_code=303)
     await _lock_actor(request, session, role)
     applicant = await session.get(RegistrationRequest, request_id)
     if applicant is None:
@@ -119,7 +119,7 @@ async def review(request_id: int, request: Request, action: str = Form(...), cur
             await session.rollback()
             request.session["flash_message"] = translate(request, "registration_conflict")
             request.session["flash_type"] = "error"
-            return RedirectResponse("/admin/registrations", status_code=303)
+            return RedirectResponse("/panel/registrations", status_code=303)
         session.add(User(username=applicant.username, password_hash=applicant.password_hash, role="editor", is_verified=False))
         key = "registration_approved"
     add_event(session, "create" if action == "approve" else "delete", "users", "Registration approved" if action == "approve" else "Registration rejected",
@@ -132,4 +132,4 @@ async def review(request_id: int, request: Request, action: str = Form(...), cur
         key = "registration_conflict"
     request.session["flash_message"] = translate(request, key)
     request.session["flash_type"] = "error" if key == "registration_conflict" else "success"
-    return RedirectResponse("/admin/registrations", status_code=303)
+    return RedirectResponse("/panel/registrations", status_code=303)

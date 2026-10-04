@@ -2,7 +2,7 @@
 {% block title %}{{ t(request, 'settings') }} — {{ t(request, 'general') }}<section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mt-6">
   <h2 class="text-sm font-semibold">{{ t(request, 'timezone_title') }}</h2>
   <p class="text-xs text-slate-500 mt-1 mb-4">{{ t(request, 'timezone_help') }}</p>
-  <form method="post" action="/admin/settings/timezone" class="flex flex-wrap items-end gap-3">
+  <form method="post" action="/panel/settings/timezone" class="flex flex-wrap items-end gap-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="w-full sm:w-auto min-w-0"><label class="form-label" for="site-timezone">{{ t(request, 'timezone_title') }}</label>
       <select id="site-timezone" name="site_timezone" class="form-input">{% for zone in timezone_choices %}<option value="{{ zone }}" {% if zone == site_settings.site_timezone %}selected{% endif %}>{{ zone }}</option>{% endfor %}</select>
@@ -15,7 +15,7 @@
 
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
-<div class="mb-6">{{ page_heading(request, t(request, 'general'), t(request, 'general_page_help'), t(request, 'settings'), '/admin/settings') }}</div>
+<div class="mb-6">{{ page_heading(request, t(request, 'general'), t(request, 'general_page_help'), t(request, 'settings'), '/panel/settings') }}</div>
 
 {% set active_settings_tab = 'general' %}
 {% include "admin/_settings_tabs.html" %}
@@ -29,7 +29,7 @@
   </h2>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_identity_help') }}</p>
 
-  <form method="post" action="/admin/settings/branding" class="space-y-4">
+  <form method="post" action="/panel/settings/branding" class="space-y-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div>
       <label class="form-label">{{ t(request, 'site_name') }}</label>
@@ -75,7 +75,7 @@
   </h2>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'site_language_help') }}</p>
   <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">{{ t(request, 'installed_content_language') }}: {{ dict(language_choices).get(site_settings.content_language, 'English') }} · {{ t(request, 'installed_content_language_help') }}</p>
-  <form method="post" action="/admin/settings/language" class="space-y-4">
+  <form method="post" action="/panel/settings/language" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <div class="grid grid-cols-2 gap-2 max-w-sm">
       {% for language_code, language_label in language_choices %}

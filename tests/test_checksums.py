@@ -16,7 +16,7 @@ async def test_checksum_matches_file_and_refreshes_after_replace(client, admin_c
     assert "Dosya adı" in response.text
     assert "package.zip" in response.text
     assert "Doğrudan indirme" in response.text
-    replaced = await admin_client.post("/admin/media/replace-file", data={"path": "/admin/media/files/package.zip"}, files={"file": ("package.zip", b"replaced", "application/zip")})
+    replaced = await admin_client.post("/panel/media/replace-file", data={"path": "/panel/media/files/package.zip"}, files={"file": ("package.zip", b"replaced", "application/zip")})
     assert replaced.status_code == 200
     updated = await client.get(f"/download/{download.slug}")
     assert hashlib.sha256(b"replaced").hexdigest() in updated.text

@@ -26,7 +26,7 @@ from app.security import require_csrf
 from app.templating import templates, refresh_site_branding_globals
 from app.trash_retention import RETENTION_DAYS
 
-router = APIRouter(prefix="/admin", dependencies=[Depends(require_csrf), Depends(require_admin)])
+router = APIRouter(prefix="/panel", dependencies=[Depends(require_csrf), Depends(require_admin)])
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +35,7 @@ def admin_only(request: Request) -> None:
         raise HTTPException(403)
 
 
-def redirect(request: Request, key: str, *, error: bool = False, target: str = "/admin/backups"):
+def redirect(request: Request, key: str, *, error: bool = False, target: str = "/panel/backups"):
     request.session["flash_message"] = translate(request, key)
     request.session["flash_type"] = "error" if error else "success"
     return RedirectResponse(target, status_code=303)
@@ -207,7 +207,7 @@ async def import_backup(request: Request, current_password: str = Form(...), fil
                 await run_in_threadpool(output.write, chunk)
         await run_in_threadpool(backups.validate_archive, stage)
         token = signer().dumps({"actor": request.state.admin_id, "generation": generation, "stage": stage.name, "digest": digest.hexdigest()})
-        return JSONResponse({"redirect_url": "/admin/backups?stage=" + token})
+        return JSONResponse({"redirect_url": "/panel/backups?stage=" + token})
     except backups.BackupError as exc:
         if stage is not None:
             await run_in_threadpool(backups.remove_stage, stage)
@@ -255,7 +255,7 @@ async def restore(request: Request, token: str = Form(...), confirmation: str = 
 @router.post("/settings/maintenance/retention")
 async def retention(request: Request, days: int = Form(...), current_password: str = Form(...),
                     session: AsyncSession = Depends(get_db)):
-    target = "/admin/settings/maintenance"
+    target = "/panel/settings/maintenance"
     if not await authorize(request, session, current_password):
         return redirect(request, "wrong_current_password", error=True, target=target)
     if days != 0 and days not in RETENTION_DAYS:

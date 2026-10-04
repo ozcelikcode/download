@@ -15,7 +15,7 @@ async def test_renaming_category_updates_slug_menu_and_related_content(admin_cli
     await db_session.commit()
     item_id, download_id = item.id, download.id
 
-    response = await admin_client.post(f"/admin/categories/{source_id}/edit", data={"name": "Yeni Ad", "description": "Yeni açıklama"})
+    response = await admin_client.post(f"/panel/categories/{source_id}/edit", data={"name": "Yeni Ad", "description": "Yeni açıklama"})
     assert response.status_code == 302
     db_session.expire_all()
     updated = await crud.get_category_by_id(db_session, source_id)
@@ -23,7 +23,7 @@ async def test_renaming_category_updates_slug_menu_and_related_content(admin_cli
     assert (await db_session.scalar(select(MenuItem.url).where(MenuItem.id == item_id))) == "/category/yeni-ad"
     assert (await db_session.scalar(select(Download.category_id).where(Download.id == download_id))) == source_id
 
-    response = await admin_client.post(f"/admin/categories/{source_id}/delete", data={"target_category_id": str(target_id)})
+    response = await admin_client.post(f"/panel/categories/{source_id}/delete", data={"target_category_id": str(target_id)})
     assert response.status_code == 302
     db_session.expire_all()
     assert await crud.get_category_by_id(db_session, source_id) is None
@@ -33,6 +33,6 @@ async def test_renaming_category_updates_slug_menu_and_related_content(admin_cli
 async def test_required_category_cannot_be_deleted(admin_client, db_session):
     required = await crud.ensure_required_category(db_session)
     required_id = required.id
-    response = await admin_client.post(f"/admin/categories/{required_id}/delete", data={"target_category_id": str(required_id)})
+    response = await admin_client.post(f"/panel/categories/{required_id}/delete", data={"target_category_id": str(required_id)})
     assert response.status_code == 302
     assert await crud.get_category_by_id(db_session, required_id) is not None

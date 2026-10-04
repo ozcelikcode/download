@@ -112,7 +112,7 @@ class LifecycleMiddleware:
             await self.app(scope, receive, send)
             return
         path = scope["path"]
-        exclusive = scope["method"] == "POST" and path in {"/setup", "/admin/settings/maintenance/confirm", "/admin/backups/restore"}
+        exclusive = scope["method"] == "POST" and path in {"/setup", "/panel/settings/maintenance/confirm", "/panel/backups/restore"}
         if exclusive:
             # Read the small confirmation body before taking the exclusive lock,
             # so an unauthenticated or slow POST cannot block the whole site.
@@ -177,13 +177,15 @@ class LifecycleMiddleware:
                     user = await authenticated_user(request.cookies.get(SESSION_COOKIE, ""), account, session)
                     if user:
                         body_limit = settings.max_upload_size_bytes + 1024 * 1024
-            if path in {"/setup", "/register", "/login", "/admin/login", "/admin/settings/account", "/admin/settings/timezone"} or path.startswith(("/admin/settings/maintenance/", "/admin/registrations/")):
+            if path in {"/setup", "/register", "/login", "/panel/login", "/panel/settings/account", "/panel/settings/timezone"} or path.startswith(("/panel/settings/maintenance/", "/panel/registrations/")):
                 body_limit = 16 * 1024
-            if path.startswith(("/admin/contact", "/admin/review")):
+            if path.startswith(("/panel/contact", "/panel/review")):
                 body_limit = 64 * 1024
-            if path.startswith("/admin/backups"):
+            if path == "/panel/account/close":
                 body_limit = 16 * 1024
-                if path == "/admin/backups/import" and scope["method"] == "POST":
+            if path.startswith("/panel/backups"):
+                body_limit = 16 * 1024
+                if path == "/panel/backups/import" and scope["method"] == "POST":
                     if user and user.role == "admin":
                         body_limit = max(1, min(settings.max_backup_size_mb, 8192)) * 1024 * 1024 + 1024 * 1024
             bundled_asset = posixpath.normpath(path).startswith(("/static/css/", "/static/js/", "/static/vendor/"))

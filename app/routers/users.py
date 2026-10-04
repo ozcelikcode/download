@@ -20,7 +20,7 @@ from app.security import clear_successful_attempt, require_csrf, reserve_login_a
 from app.templating import templates
 
 
-router = APIRouter(prefix="/admin/users", dependencies=[Depends(require_csrf), Depends(require_admin)])
+router = APIRouter(prefix="/panel/users", dependencies=[Depends(require_csrf), Depends(require_admin)])
 USERNAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{2,49}\Z")
 ROLES = {"admin", "manager", "editor"}
 
@@ -28,7 +28,7 @@ ROLES = {"admin", "manager", "editor"}
 def _back(request: Request, key: str, *, error: bool = False) -> RedirectResponse:
     request.session["flash_message"] = translate(request, key)
     request.session["flash_type"] = "error" if error else "success"
-    return RedirectResponse("/admin/users", status_code=303)
+    return RedirectResponse("/panel/users", status_code=303)
 
 
 def _forbid(request: Request) -> None:

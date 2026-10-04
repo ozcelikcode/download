@@ -2,29 +2,29 @@
 Admin router — şifre korumalı yönetim paneli.
 
 Rotalar:
-  GET  /admin/logout                 → Çıkış
-  GET  /admin                        → Dashboard (özet: son 5 içerik + istatistikler)
-  GET  /admin/downloads              → İçerikler (tam liste, arama/filtre/sayfalama)
-  GET  /admin/downloads/new          → Yeni dosya formu
-  POST /admin/downloads/new          → Dosya oluştur
-  GET  /admin/downloads/{id}/edit    → Düzenle formu
-  POST /admin/downloads/{id}/edit    → Dosya güncelle
-  POST /admin/downloads/{id}/delete  → İçeriği Silinenler'e taşı
-  GET  /admin/downloads/trash        → Silinenler
-  GET  /admin/categories             → Kategori listesi
-  POST /admin/categories             → Kategori oluştur
-  POST /admin/categories/{id}/edit   → Kategori güncelle
-  POST /admin/categories/{id}/delete → Kategori sil
-  GET  /admin/tags                   → Tag listesi
-  POST /admin/tags                   → Tag oluştur
-  POST /admin/tags/{id}/edit         → Tag güncelle
-  POST /admin/tags/{id}/delete       → Tag sil
-  GET  /admin/media                  → Medya arşivi (resim + dosya)
-  GET  /admin/settings/menu           → Menü düzenleme
-  POST /admin/settings/menu           → Menü öğesi oluştur
-  POST /admin/settings/menu/{id}/edit → Menü öğesi güncelle
-  POST /admin/settings/menu/{id}/delete → Menü öğesi sil
-  POST /admin/settings/menu/reorder   → Menü sırasını güncelle (AJAX)
+  GET  /panel/logout                 → Çıkış
+  GET  /panel                        → Dashboard (özet: son 5 içerik + istatistikler)
+  GET  /panel/downloads              → İçerikler (tam liste, arama/filtre/sayfalama)
+  GET  /panel/downloads/new          → Yeni dosya formu
+  POST /panel/downloads/new          → Dosya oluştur
+  GET  /panel/downloads/{id}/edit    → Düzenle formu
+  POST /panel/downloads/{id}/edit    → Dosya güncelle
+  POST /panel/downloads/{id}/delete  → İçeriği Silinenler'e taşı
+  GET  /panel/downloads/trash        → Silinenler
+  GET  /panel/categories             → Kategori listesi
+  POST /panel/categories             → Kategori oluştur
+  POST /panel/categories/{id}/edit   → Kategori güncelle
+  POST /panel/categories/{id}/delete → Kategori sil
+  GET  /panel/tags                   → Tag listesi
+  POST /panel/tags                   → Tag oluştur
+  POST /panel/tags/{id}/edit         → Tag güncelle
+  POST /panel/tags/{id}/delete       → Tag sil
+  GET  /panel/media                  → Medya arşivi (resim + dosya)
+  GET  /panel/settings/menu           → Menü düzenleme
+  POST /panel/settings/menu           → Menü öğesi oluştur
+  POST /panel/settings/menu/{id}/edit → Menü öğesi güncelle
+  POST /panel/settings/menu/{id}/delete → Menü öğesi sil
+  POST /panel/settings/menu/reorder   → Menü sırasını güncelle (AJAX)
 """
 
 from __future__ import annotations
@@ -101,7 +101,7 @@ import secrets
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_csrf)])
+router = APIRouter(prefix="/panel", tags=["admin"], dependencies=[Depends(require_csrf)])
 
 _ACTIVE_WEB_EXTENSIONS = {
     ".css", ".htm", ".html", ".js", ".mjs", ".svg", ".svgz", ".xhtml", ".xml",
@@ -158,7 +158,7 @@ def _same_admin_page(request: Request, fallback: str) -> str:
         parsed.scheme
         or parsed.netloc
         or "\\" in candidate
-        or parsed.path not in {"/admin"} and not parsed.path.startswith("/admin/")
+        or parsed.path not in {"/panel"} and not parsed.path.startswith("/panel/")
     ):
         return fallback
     return candidate
@@ -573,7 +573,7 @@ async def media_view(
     icons_dir = upload_root / "icons"
 
     images = _list_media_files(icons_dir, "/static/uploads/icons")
-    files = _list_media_files(settings.download_path, "/admin/media/files")
+    files = _list_media_files(settings.download_path, "/panel/media/files")
     usage = await media_usage(session, str(request.base_url))
     for item in images + files:
         item["used_by"] = usage.get(media_path(item["url"]), [])
@@ -659,7 +659,7 @@ async def media_upload_file(
     filename = _unique_upload_filename(file.filename)
     dest = upload_dir / filename
     await save_upload(file, dest)
-    web_path = f"/admin/media/files/{quote(filename)}"
+    web_path = f"/panel/media/files/{quote(filename)}"
     await crud.record_media_upload(session, web_path, _admin)
     logger.info("File added to media library")
     return {"path": web_path, "storage_path": str(dest), "name": filename}
@@ -674,7 +674,7 @@ async def media_file(
     safe_name = Path(unquote(filename or "")).name
     if not safe_name or safe_name != unquote(filename):
         raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
-    await require_owned_media(session, f"/admin/media/files/{quote(safe_name)}")
+    await require_owned_media(session, f"/panel/media/files/{quote(safe_name)}")
     root = settings.download_path.resolve()
     try:
         path = (root / safe_name).resolve()
@@ -1026,7 +1026,7 @@ async def content_list(
         remaining = {name: value for name, value in query_state.items() if name != key}
         filter_chips.append({
             "label": label,
-            "remove_url": "/admin/downloads" + ("?" + urlencode(remaining) if remaining else ""),
+            "remove_url": "/panel/downloads" + ("?" + urlencode(remaining) if remaining else ""),
         })
     flash_message = request.session.pop("flash_message", None)
 
@@ -1066,7 +1066,7 @@ async def download_bulk(
         request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_message"] = translate(request, "bulk_completed").format(count=count)
-    return _redirect(_same_admin_page(request, "/admin/downloads"))
+    return _redirect(_same_admin_page(request, "/panel/downloads"))
 
 
 @router.get("/downloads/trash", name="admin_download_trash")
@@ -1082,7 +1082,7 @@ async def download_trash(
     protected_ids = await protected_trash_ids(session, [item.id for item in items])
     total_pages = max(1, math.ceil(total / 20))
     if page > total_pages:
-        return _redirect(f"/admin/downloads/trash?page={total_pages}")
+        return _redirect(f"/panel/downloads/trash?page={total_pages}")
     return templates.TemplateResponse(request=request, name="admin/trash.html", context={
         "request": request,
         "items": items,
@@ -1115,7 +1115,7 @@ async def download_trash_bulk(
     else:
         key = "trash_rejected" if action == "reject" else "trash_restored" if action == "restore" else "trash_purged"
         request.session["flash_message"] = translate(request, key).format(count=count)
-    return _redirect("/admin/downloads/trash")
+    return _redirect("/panel/downloads/trash")
 
 
 # ---------------------------------------------------------------------------
@@ -1213,7 +1213,7 @@ async def download_new_post(
     file_path: Optional[str] = _stored_download_path(file_final_path)
     if file_type == "local" and upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
-        await crud.record_media_upload(session, f"/admin/media/files/{quote(Path(file_path).name)}", _admin)
+        await crud.record_media_upload(session, f"/panel/media/files/{quote(Path(file_path).name)}", _admin)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: AJAX ile önceden yüklenmiş/indirilmiş yerel dosya yolu.
@@ -1293,9 +1293,9 @@ async def download_new_post(
                                         else translate(request, "application_added").format(title=download.title))
     if _wants_json(request):
         return JSONResponse(
-            {"ok": True, "message": request.session["flash_message"], "redirect_url": "/admin/downloads"}
+            {"ok": True, "message": request.session["flash_message"], "redirect_url": "/panel/downloads"}
         )
-    return _redirect("/admin/downloads")
+    return _redirect("/panel/downloads")
 
 
 @router.post("/downloads/drafts/autosave", name="admin_download_draft_autosave")
@@ -1394,7 +1394,7 @@ async def download_draft_autosave(
         {
             "ok": True,
             "draft_id": draft.id,
-            "edit_url": f"/admin/downloads/{draft.id}/edit",
+            "edit_url": f"/panel/downloads/{draft.id}/edit",
             "saved_at": datetime.now().astimezone().isoformat(),
         }
     )
@@ -1482,7 +1482,7 @@ async def download_edit_post(
     file_path: Optional[str] = _stored_download_path(file_final_path) or download.file_path
     if upload_file and upload_file.filename:
         file_path = await _save_upload(upload_file)
-        await crud.record_media_upload(session, f"/admin/media/files/{quote(Path(file_path).name)}", _admin)
+        await crud.record_media_upload(session, f"/panel/media/files/{quote(Path(file_path).name)}", _admin)
 
     # ── İkon görseli ──────────────────────────────────────────────────────
     # Öncelik: (1) kullanıcı görseli sildi  (2) AJAX ile önceden yüklenmiş/
@@ -1582,29 +1582,29 @@ async def download_edit_post(
                 {
                     "ok": True,
                     "message": translate(request, "draft_saved"),
-                    "redirect_url": f"/admin/downloads/{download_id}/edit",
+                    "redirect_url": f"/panel/downloads/{download_id}/edit",
                 }
             )
-        return _redirect(f"/admin/downloads/{download_id}/edit")
+        return _redirect(f"/panel/downloads/{download_id}/edit")
 
     if publishing_draft:
         request.session["flash_message"] = (translate(request, "publication_submitted") if download.publication_pending
                                             else translate(request, "application_added").format(title=download.title))
         if _wants_json(request):
             return JSONResponse(
-                {"ok": True, "message": request.session["flash_message"], "redirect_url": "/admin/downloads"}
+                {"ok": True, "message": request.session["flash_message"], "redirect_url": "/panel/downloads"}
             )
-        return _redirect("/admin/downloads")
+        return _redirect("/panel/downloads")
     request.session["flash_message"] = translate(request, "publication_submitted" if download.publication_pending else "changes_saved")
     if _wants_json(request):
         return JSONResponse(
             {
                 "ok": True,
                 "message": translate(request, "saved_response"),
-                "redirect_url": f"/admin/downloads/{download_id}/edit",
+                "redirect_url": f"/panel/downloads/{download_id}/edit",
             }
         )
-    return _redirect(f"/admin/downloads/{download_id}/edit")
+    return _redirect(f"/panel/downloads/{download_id}/edit")
 
 
 # ---------------------------------------------------------------------------
@@ -1624,7 +1624,7 @@ async def download_delete(
 
     await crud.delete_download(session, download)
     request.session["flash_message"] = translate(request, "content_deleted").format(title=download.title)
-    return _redirect(_same_admin_page(request, "/admin/downloads"))
+    return _redirect(_same_admin_page(request, "/panel/downloads"))
 
 
 # ---------------------------------------------------------------------------
@@ -1653,7 +1653,7 @@ async def version_history_edit(
         raise HTTPException(status_code=422, detail="Sürüm boş olamaz.")
     await crud.update_version_history_entry(session, entry, version)
     request.session["flash_message"] = translate(request, "version_record_updated")
-    return _redirect(f"/admin/downloads/{download_id}/edit")
+    return _redirect(f"/panel/downloads/{download_id}/edit")
 
 
 @router.post(
@@ -1674,7 +1674,7 @@ async def version_history_delete(
         raise HTTPException(status_code=404, detail="Sürüm geçmişi kaydı bulunamadı.")
     await crud.delete_version_history_entry(session, entry)
     request.session["flash_message"] = translate(request, "version_record_deleted")
-    return _redirect(f"/admin/downloads/{download_id}/edit")
+    return _redirect(f"/panel/downloads/{download_id}/edit")
 
 
 # ---------------------------------------------------------------------------
@@ -1729,7 +1729,7 @@ async def category_create(
         request.session["flash_message"] = translate(request, "category_added").format(
             name=category.name
         )
-    return _redirect("/admin/categories")
+    return _redirect("/panel/categories")
 
 
 @router.post("/categories/{category_id}/edit", name="admin_category_edit")
@@ -1758,7 +1758,7 @@ async def category_edit(
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "category_updated")
-    return _redirect("/admin/categories")
+    return _redirect("/panel/categories")
 
 
 @router.post("/categories/{category_id}/delete", name="admin_category_delete")
@@ -1782,7 +1782,7 @@ async def category_delete(
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "category_deleted_transferred").format(count=moved)
-    return _redirect("/admin/categories")
+    return _redirect("/panel/categories")
 
 
 @router.post("/categories/{category_id}/move", name="admin_category_move")
@@ -1796,7 +1796,7 @@ async def category_move(
     moved = await crud.move_category_contents(session, category_id, target_category_id)
     request.session["flash_type"] = "success"
     request.session["flash_message"] = translate(request, "category_moved").format(count=moved)
-    return _redirect("/admin/categories")
+    return _redirect("/panel/categories")
 
 
 @router.post("/categories/bulk-delete", name="admin_category_bulk_delete")
@@ -1815,7 +1815,7 @@ async def category_bulk_delete(
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "categories_deleted_transferred").format(count=moved)
-    return _redirect("/admin/categories")
+    return _redirect("/panel/categories")
 
 
 # ---------------------------------------------------------------------------
@@ -1860,7 +1860,7 @@ async def tag_create(
         request.session["flash_message"] = translate(request, "tag_added").format(
             name=tag.name
         )
-    return _redirect("/admin/tags")
+    return _redirect("/panel/tags")
 
 
 @router.post("/tags/{tag_id}/edit", name="admin_tag_edit")
@@ -1893,7 +1893,7 @@ async def tag_edit(
     else:
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "tag_updated")
-    return _redirect("/admin/tags")
+    return _redirect("/panel/tags")
 
 
 @router.post("/tags/{tag_id}/delete", name="admin_tag_delete")
@@ -1912,7 +1912,7 @@ async def tag_delete(
     request.session["flash_message"] = translate(request, "tag_deleted").format(
         name=tag_name
     )
-    return _redirect("/admin/tags")
+    return _redirect("/panel/tags")
 
 
 @router.post("/tags/bulk-delete", name="admin_tag_bulk_delete")
@@ -1932,7 +1932,7 @@ async def tag_bulk_delete(
         request.session["flash_message"] = translate(request, "tags_deleted").format(
             count=count
         )
-    return _redirect("/admin/tags")
+    return _redirect("/panel/tags")
 
 
 # ---------------------------------------------------------------------------
@@ -1949,7 +1949,7 @@ class _StringOrderPayload(BaseModel):
 
 @router.get("/settings", name="admin_settings")
 async def settings_root_redirect(_admin: str = Depends(require_admin)):
-    return _redirect("/admin/settings/general")
+    return _redirect("/panel/settings/general")
 
 
 @router.get("/settings/general", name="admin_settings_general")
@@ -2118,7 +2118,7 @@ async def settings_appearance_update(
     )
     if payload.logo_mode in {"image", "image_text"} and not logo_light:
         request.session["flash_message"] = translate(request, "appearance_logo_required")
-        return _redirect("/admin/settings/appearance")
+        return _redirect("/panel/settings/appearance")
     updated = await crud.update_appearance_settings(
         session,
         **payload.model_dump(),
@@ -2128,7 +2128,7 @@ async def settings_appearance_update(
     )
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "appearance_updated")
-    return _redirect("/admin/settings/appearance")
+    return _redirect("/panel/settings/appearance")
 
 
 @router.post("/settings/menu-limits", name="admin_settings_menu_limits")
@@ -2145,7 +2145,7 @@ async def settings_menu_limits_update(
         session, navbar_limit, footer_limit, sidebar_category_limit, sidebar_tag_limit
     )
     request.session["flash_message"] = translate(request, "menu_limits_updated")
-    return _redirect("/admin/settings/menu")
+    return _redirect("/panel/settings/menu")
 
 
 @router.post("/settings/branding", name="admin_settings_branding")
@@ -2167,7 +2167,7 @@ async def settings_branding_update(
     updated = await crud.update_site_settings(session, data)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "branding_updated")
-    return _redirect("/admin/settings/general")
+    return _redirect("/panel/settings/general")
 
 
 @router.post("/settings/theme", name="admin_settings_theme")
@@ -2188,7 +2188,7 @@ async def settings_theme_update(
     ))
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "branding_updated")
-    return _redirect("/admin/settings/appearance")
+    return _redirect("/panel/settings/appearance")
 
 
 @router.post("/settings/seo", name="admin_settings_seo")
@@ -2211,7 +2211,7 @@ async def settings_seo_update(
         await crud.update_seo_settings(session, data)
         request.session["flash_type"] = "success"
         request.session["flash_message"] = translate(request, "seo_settings_updated")
-    return _redirect("/admin/site-health#seo-settings")
+    return _redirect("/panel/site-health#seo-settings")
 
 
 @router.post("/settings/language", name="admin_settings_language")
@@ -2228,7 +2228,7 @@ async def settings_language_update(
     else:
         refresh_site_branding_globals(updated)
         request.session["flash_message"] = translate(request, "language_updated")
-    return _redirect("/admin/settings/general")
+    return _redirect("/panel/settings/general")
 
 
 @router.post("/settings/timezone")
@@ -2248,7 +2248,7 @@ async def settings_timezone_update(
         refresh_site_branding_globals(account)
         request.session["flash_message"] = translate(request, "timezone_saved")
         request.session["flash_type"] = "success"
-    return _redirect("/admin/settings/general")
+    return _redirect("/panel/settings/general")
 
 
 @router.post("/settings/audit-log-limit", name="admin_settings_audit_log_limit")
@@ -2264,7 +2264,7 @@ async def settings_audit_log_limit_update(
         request.session["flash_message"] = system_message(request, str(exc))
     else:
         request.session["flash_message"] = translate(request, "audit_limit_updated")
-    return _redirect("/admin/audit")
+    return _redirect("/panel/audit")
 
 
 @router.post("/settings/account", name="admin_settings_account")
@@ -2285,7 +2285,7 @@ async def settings_account_update(
 
     if not await verify_password_async(current_password, effective_hash):
         request.session["flash_message"] = translate(request, "wrong_current_password")
-        return _redirect("/admin/settings/account")
+        return _redirect("/panel/settings/account")
 
     await clear_successful_attempt(session, attempt_id)
 
@@ -2295,22 +2295,22 @@ async def settings_account_update(
 
     if new_username and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{2,49}", new_username):
         request.session["flash_message"] = translate(request, "user_invalid")
-        return _redirect("/admin/settings/account")
+        return _redirect("/panel/settings/account")
 
     if new_password and new_password != new_password_confirm:
         request.session["flash_message"] = translate(request, "passwords_mismatch")
-        return _redirect("/admin/settings/account")
+        return _redirect("/panel/settings/account")
 
     if new_password and (len(new_password) < 12 or len(new_password.encode()) > 1024):
         request.session["flash_message"] = translate(request, "password_policy_failed")
-        return _redirect("/admin/settings/account")
+        return _redirect("/panel/settings/account")
 
     password_hash = await hash_password_async(new_password) if new_password else None
     if new_username and new_username != current_user.username:
         existing = await session.scalar(select(User).where(User.username == new_username))
         if existing:
             request.session["flash_message"] = translate(request, "username_taken")
-            return _redirect("/admin/settings/account")
+            return _redirect("/panel/settings/account")
         current_user.username = new_username
     if password_hash:
         current_user.password_hash = password_hash
@@ -2319,10 +2319,10 @@ async def settings_account_update(
     except IntegrityError:
         await session.rollback()
         request.session["flash_message"] = translate(request, "username_taken")
-        return _redirect("/admin/settings/account")
+        return _redirect("/panel/settings/account")
 
     request.session["flash_message"] = translate(request, "account_updated" if new_username or new_password else "no_changes")
-    return _redirect("/admin/settings/account")
+    return _redirect("/panel/settings/account")
 
 
 @router.post("/settings/session-duration", name="admin_settings_session_duration")
@@ -2335,7 +2335,7 @@ async def settings_session_duration_update(
     minutes = max(5, min(int(session_max_age_minutes), 60 * 24 * 30))  # 5 dk – 30 gün arası
     await crud.update_session_max_age(session, minutes)
     request.session["flash_message"] = translate(request, "session_updated")
-    return _redirect("/admin/settings/account")
+    return _redirect("/panel/settings/account")
 
 
 @router.post("/settings/avatar", name="admin_settings_avatar")
@@ -2349,7 +2349,7 @@ async def settings_avatar_update(
     updated = await crud.update_admin_avatar(session, admin_icon, admin_icon_color)
     refresh_site_branding_globals(updated)
     request.session["flash_message"] = translate(request, "profile_icon_updated")
-    return _redirect("/admin/settings/account")
+    return _redirect("/panel/settings/account")
 
 
 @router.post("/settings/categories/reorder", name="admin_categories_reorder")
@@ -2413,7 +2413,7 @@ async def menu_item_create(
     limit = site_settings.navbar_limit if location == "navbar" else site_settings.footer_limit
     if len(await crud.get_menu_items(session, location=location)) >= limit:
         request.session["flash_message"] = translate(request, "menu_limit_reached").format(count=limit)
-        return _redirect("/admin/settings/menu")
+        return _redirect("/panel/settings/menu")
     data = MenuItemCreate(
         label=label, label_en=label_en or None, url=url, icon=icon or None,
         is_active=is_active, open_in_new_tab=open_in_new_tab,
@@ -2421,7 +2421,7 @@ async def menu_item_create(
     )
     await crud.create_menu_item(session, data)
     request.session["flash_message"] = translate(request, "menu_item_added").format(label=label)
-    return _redirect("/admin/settings/menu")
+    return _redirect("/panel/settings/menu")
 
 
 @router.post("/settings/menu/from-source", name="admin_menu_from_source")
@@ -2440,7 +2440,7 @@ async def menu_item_from_source(
     items = await crud.get_menu_items(session, location=location)
     if len(items) >= limit:
         request.session["flash_message"] = translate(request, "menu_limit_reached").format(count=limit)
-        return _redirect("/admin/settings/menu")
+        return _redirect("/panel/settings/menu")
     if source_type == "category":
         source = await crud.get_category_by_id(session, source_id)
         label, url, icon = (source.name, f"/category/{source.slug}", "folder") if source else (None, None, None)
@@ -2461,10 +2461,10 @@ async def menu_item_from_source(
         raise HTTPException(status_code=404, detail="Kaynak bulunamadı.")
     if any(item.url == url for item in items):
         request.session["flash_message"] = translate(request, "menu_source_duplicate")
-        return _redirect("/admin/settings/menu")
+        return _redirect("/panel/settings/menu")
     await crud.create_menu_item(session, MenuItemCreate(label=label, url=url, icon=icon, location=location))
     request.session["flash_message"] = translate(request, "menu_source_added").format(label=label)
-    return _redirect("/admin/settings/menu")
+    return _redirect("/panel/settings/menu")
 
 
 @router.post("/settings/menu/{item_id}/edit", name="admin_menu_item_edit")
@@ -2494,7 +2494,7 @@ async def menu_item_edit(
     )
     await crud.update_menu_item(session, item, data)
     request.session["flash_message"] = translate(request, "menu_item_updated")
-    return _redirect("/admin/settings/menu")
+    return _redirect("/panel/settings/menu")
 
 
 @router.post("/settings/menu/{item_id}/delete", name="admin_menu_item_delete")
@@ -2507,7 +2507,7 @@ async def menu_item_delete(
     if not item:
         raise HTTPException(status_code=404, detail="Menü öğesi bulunamadı.")
     await crud.delete_menu_item(session, item)
-    return _redirect("/admin/settings/menu")
+    return _redirect("/panel/settings/menu")
 
 
 @router.post("/settings/menu/reorder", name="admin_menu_reorder")

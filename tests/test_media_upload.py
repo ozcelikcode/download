@@ -132,7 +132,7 @@ async def test_icon_upload_compresses_large_image(admin_client: AsyncClient):
     big_image = _make_png_bytes(2400, 1800)
 
     response = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("buyuk.png", big_image, "image/png")},
     )
     assert response.status_code == 200
@@ -150,7 +150,7 @@ async def test_icon_upload_compresses_large_image(admin_client: AsyncClient):
 
 async def test_icon_upload_rejects_non_image(admin_client: AsyncClient):
     response = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("belge.txt", b"merhaba", "text/plain")},
     )
     assert response.status_code == 400
@@ -158,7 +158,7 @@ async def test_icon_upload_rejects_non_image(admin_client: AsyncClient):
 
 async def test_icon_upload_rejects_spoofed_image_content_type(admin_client: AsyncClient):
     response = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("sahte.png", b"<script>alert(1)</script>", "image/png")},
     )
     assert response.status_code == 400
@@ -167,7 +167,7 @@ async def test_icon_upload_rejects_spoofed_image_content_type(admin_client: Asyn
 
 async def test_invalid_icon_replacement_preserves_existing_file(admin_client: AsyncClient):
     original = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("orijinal.png", _make_png_bytes(40, 40), "image/png")},
     )
     path = original.json()["path"]
@@ -175,7 +175,7 @@ async def test_invalid_icon_replacement_preserves_existing_file(admin_client: As
     original_bytes = disk_path.read_bytes()
 
     replaced = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         data={"replace_path": path},
         files={"file": ("sahte.png", b"gorsel-degil", "image/png")},
     )
@@ -187,13 +187,13 @@ async def test_invalid_icon_replacement_preserves_existing_file(admin_client: As
 async def test_icon_auto_crop_produces_square_png(admin_client: AsyncClient):
     wide_image = _make_png_bytes(400, 150, color=(0, 128, 255))
     upload_resp = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("genis.png", wide_image, "image/png")},
     )
     original_path = upload_resp.json()["path"]
 
     crop_resp = await admin_client.post(
-        "/admin/upload/icon-auto-crop",
+        "/panel/upload/icon-auto-crop",
         data={"path": original_path, "size": "256"},
     )
     assert crop_resp.status_code == 200
@@ -208,7 +208,7 @@ async def test_icon_auto_crop_produces_square_png(admin_client: AsyncClient):
 
 async def test_icon_auto_crop_missing_source_returns_404(admin_client: AsyncClient):
     response = await admin_client.post(
-        "/admin/upload/icon-auto-crop",
+        "/panel/upload/icon-auto-crop",
         data={"path": "/static/uploads/icons/olmayan-dosya.png", "size": "256"},
     )
     assert response.status_code == 404
@@ -216,14 +216,14 @@ async def test_icon_auto_crop_missing_source_returns_404(admin_client: AsyncClie
 
 async def test_media_upload_file_generic_and_unique_name(admin_client: AsyncClient):
     first = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("kurulum.zip", b"sahte-zip-icerigi", "application/zip")},
     )
     assert first.status_code == 200
     first_name = first.json()["name"]
 
     second = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("kurulum.zip", b"baska-icerik", "application/zip")},
     )
     second_name = second.json()["name"]
@@ -247,7 +247,7 @@ async def test_media_upload_rejects_active_web_content(
     admin_client: AsyncClient, filename: str, content_type: str
 ):
     response = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": (filename, b"active-content", content_type)},
     )
     assert response.status_code == 400
@@ -256,7 +256,7 @@ async def test_media_upload_rejects_active_web_content(
 
 async def test_media_delete_file_removes_from_disk(admin_client: AsyncClient):
     upload_resp = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("gecici.txt", b"icerik", "text/plain")},
     )
     name = upload_resp.json()["name"]
@@ -264,7 +264,7 @@ async def test_media_delete_file_removes_from_disk(admin_client: AsyncClient):
     assert disk_path.exists()
 
     delete_resp = await admin_client.post(
-        "/admin/media/delete-file", data={"path": f"/admin/media/files/{name}"}
+        "/panel/media/delete-file", data={"path": f"/panel/media/files/{name}"}
     )
     assert delete_resp.status_code == 200
     assert not disk_path.exists()
@@ -272,7 +272,7 @@ async def test_media_delete_file_removes_from_disk(admin_client: AsyncClient):
 
 async def test_media_upload_requires_admin_session(client: AsyncClient):
     response = await client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("x.txt", b"x", "text/plain")},
     )
     assert response.status_code == 302
@@ -285,13 +285,13 @@ async def test_media_upload_requires_admin_session(client: AsyncClient):
 
 async def test_icon_replace_in_place_keeps_same_link(admin_client: AsyncClient):
     original = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("orijinal.png", _make_png_bytes(300, 300, (10, 20, 30)), "image/png")},
     )
     path = original.json()["path"]
 
     replaced = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         data={"replace_path": path},
         files={"file": ("kirpilmis.png", _make_png_bytes(150, 150, (200, 0, 0)), "image/png")},
     )
@@ -306,7 +306,7 @@ async def test_icon_replace_in_place_keeps_same_link(admin_client: AsyncClient):
 async def test_icon_replace_in_place_skips_recompression(admin_client: AsyncClient):
     """replace_path verildiğinde sıkıştırma uygulanmamalı — boyut küçültme yapılmamalı."""
     original = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("kucuk.png", _make_png_bytes(200, 200), "image/png")},
     )
     path = original.json()["path"]
@@ -315,7 +315,7 @@ async def test_icon_replace_in_place_skips_recompression(admin_client: AsyncClie
     # devrede olsaydı küçültülürdü, replace_path ile küçültülmemeli.
     oversized = _make_png_bytes(MAX_DIMENSION + 400, 900)
     replaced = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         data={"replace_path": path},
         files={"file": ("buyuk.png", oversized, "image/png")},
     )
@@ -328,13 +328,13 @@ async def test_icon_replace_in_place_skips_recompression(admin_client: AsyncClie
 
 async def test_icon_auto_crop_in_place_keeps_same_link(admin_client: AsyncClient):
     upload_resp = await admin_client.post(
-        "/admin/upload/icon-image",
+        "/panel/upload/icon-image",
         files={"file": ("genis.png", _make_png_bytes(400, 150), "image/png")},
     )
     path = upload_resp.json()["path"]
 
     crop_resp = await admin_client.post(
-        "/admin/upload/icon-auto-crop",
+        "/panel/upload/icon-auto-crop",
         data={"path": path, "size": "128", "in_place": "true"},
     )
     assert crop_resp.status_code == 200
@@ -347,14 +347,14 @@ async def test_icon_auto_crop_in_place_keeps_same_link(admin_client: AsyncClient
 
 async def test_media_replace_file_keeps_same_link(admin_client: AsyncClient):
     upload_resp = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("kurulum.zip", b"eski-icerik", "application/zip")},
     )
     name = upload_resp.json()["name"]
-    path = f"/admin/media/files/{name}"
+    path = f"/panel/media/files/{name}"
 
     replace_resp = await admin_client.post(
-        "/admin/media/replace-file",
+        "/panel/media/replace-file",
         data={"path": path},
         files={"file": ("yeni.zip", b"yeni-icerik", "application/zip")},
     )
@@ -366,8 +366,8 @@ async def test_media_replace_file_keeps_same_link(admin_client: AsyncClient):
 
 async def test_media_replace_file_missing_source_returns_404(admin_client: AsyncClient):
     response = await admin_client.post(
-        "/admin/media/replace-file",
-        data={"path": "/admin/media/files/olmayan.zip"},
+        "/panel/media/replace-file",
+        data={"path": "/panel/media/files/olmayan.zip"},
         files={"file": ("x.zip", b"x", "application/zip")},
     )
     assert response.status_code == 404
@@ -381,13 +381,13 @@ async def test_media_rename_sets_and_clears_display_name(
     admin_client: AsyncClient, db_session: AsyncSession
 ):
     upload_resp = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("2847fc6c5ca8.jpg", b"icerik", "image/jpeg")},
     )
-    path = f"/admin/media/files/{upload_resp.json()['name']}"
+    path = f"/panel/media/files/{upload_resp.json()['name']}"
 
     rename_resp = await admin_client.post(
-        "/admin/media/rename", data={"path": path, "display_name": "Tatil Fotoğrafı"}
+        "/panel/media/rename", data={"path": path, "display_name": "Tatil Fotoğrafı"}
     )
     assert rename_resp.status_code == 200
 
@@ -395,7 +395,7 @@ async def test_media_rename_sets_and_clears_display_name(
     assert names[path] == "Tatil Fotoğrafı"
 
     # Boş ad gönderilirse özel ad kaldırılır (varsayılan dosya adına döner).
-    await admin_client.post("/admin/media/rename", data={"path": path, "display_name": ""})
+    await admin_client.post("/panel/media/rename", data={"path": path, "display_name": ""})
     names_after = await crud.get_media_display_names(db_session, [path])
     assert path not in names_after
 
@@ -404,13 +404,13 @@ async def test_media_delete_also_clears_display_name(
     admin_client: AsyncClient, db_session: AsyncSession
 ):
     upload_resp = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("belge.pdf", b"icerik", "application/pdf")},
     )
-    path = f"/admin/media/files/{upload_resp.json()['name']}"
-    await admin_client.post("/admin/media/rename", data={"path": path, "display_name": "Kılavuz"})
+    path = f"/panel/media/files/{upload_resp.json()['name']}"
+    await admin_client.post("/panel/media/rename", data={"path": path, "display_name": "Kılavuz"})
 
-    await admin_client.post("/admin/media/delete-file", data={"path": path})
+    await admin_client.post("/panel/media/delete-file", data={"path": path})
 
     names = await crud.get_media_display_names(db_session, [path])
     assert path not in names
@@ -418,13 +418,13 @@ async def test_media_delete_also_clears_display_name(
 
 async def test_media_page_shows_display_name(admin_client: AsyncClient):
     upload_resp = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("orijinal-ad.zip", b"icerik", "application/zip")},
     )
-    path = f"/admin/media/files/{upload_resp.json()['name']}"
+    path = f"/panel/media/files/{upload_resp.json()['name']}"
     await admin_client.post(
-        "/admin/media/rename", data={"path": path, "display_name": "Özel Görünen Ad"}
+        "/panel/media/rename", data={"path": path, "display_name": "Özel Görünen Ad"}
     )
 
-    page = await admin_client.get("/admin/media")
+    page = await admin_client.get("/panel/media")
     assert "Özel Görünen Ad" in page.text

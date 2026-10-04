@@ -21,7 +21,7 @@ async def test_autosave_creates_and_updates_one_hidden_draft(
         "icon_type": "auto",
         "is_official_source": "true",
     }
-    created = await admin_client.post("/admin/downloads/drafts/autosave", data=payload)
+    created = await admin_client.post("/panel/downloads/drafts/autosave", data=payload)
 
     assert created.status_code == 200
     draft_id = created.json()["draft_id"]
@@ -33,7 +33,7 @@ async def test_autosave_creates_and_updates_one_hidden_draft(
     assert (await client.get(f"/download/{draft.slug}")).status_code == 404
 
     payload.update({"draft_id": str(draft_id), "title": "Tam Başlık"})
-    updated = await admin_client.post("/admin/downloads/drafts/autosave", data=payload)
+    updated = await admin_client.post("/panel/downloads/drafts/autosave", data=payload)
     db_session.expire_all()
     items, total = await crud.get_downloads_paginated(
         db_session, include_inactive=True, status="draft"
@@ -45,7 +45,7 @@ async def test_autosave_creates_and_updates_one_hidden_draft(
     assert items[0].title == "Tam Başlık"
 
     repeated = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={**payload, "draft_id": ""},
     )
     _, repeated_total = await crud.get_downloads_paginated(
@@ -59,7 +59,7 @@ async def test_publish_finalizes_draft_and_regenerates_slug(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     autosave = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-2",
             "title": "A",
@@ -71,7 +71,7 @@ async def test_publish_finalizes_draft_and_regenerates_slug(
     draft_id = autosave.json()["draft_id"]
 
     saved = await admin_client.post(
-        f"/admin/downloads/{draft_id}/edit",
+        f"/panel/downloads/{draft_id}/edit",
         data={
             "title": "Final Uygulama",
             "file_type": "external",
@@ -86,7 +86,7 @@ async def test_publish_finalizes_draft_and_regenerates_slug(
     download = await crud.get_download_by_id(db_session, draft_id)
 
     assert saved.status_code == 200
-    assert saved.json()["redirect_url"] == "/admin/downloads"
+    assert saved.json()["redirect_url"] == "/panel/downloads"
     assert download is not None
     assert download.is_draft is False
     assert download.is_active is True
@@ -98,7 +98,7 @@ async def test_save_keeps_draft_unpublished_and_returns_to_edit_page(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     autosave = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-save-only",
             "title": "Kaydedilen Taslak",
@@ -110,7 +110,7 @@ async def test_save_keeps_draft_unpublished_and_returns_to_edit_page(
     draft_id = autosave.json()["draft_id"]
 
     saved = await admin_client.post(
-        f"/admin/downloads/{draft_id}/edit",
+        f"/panel/downloads/{draft_id}/edit",
         data={
             "title": "Kaydedilen Taslak",
             "file_type": "external",
@@ -124,7 +124,7 @@ async def test_save_keeps_draft_unpublished_and_returns_to_edit_page(
     draft = await crud.get_download_by_id(db_session, draft_id)
 
     assert saved.status_code == 200
-    assert saved.json()["redirect_url"] == f"/admin/downloads/{draft_id}/edit"
+    assert saved.json()["redirect_url"] == f"/panel/downloads/{draft_id}/edit"
     assert draft is not None
     assert draft.is_draft is True
     assert draft.is_active is False
@@ -135,7 +135,7 @@ async def test_incomplete_draft_cannot_be_finalized(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     autosave = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-3",
             "title": "Eksik Uygulama",
@@ -146,7 +146,7 @@ async def test_incomplete_draft_cannot_be_finalized(
     draft_id = autosave.json()["draft_id"]
 
     response = await admin_client.post(
-        f"/admin/downloads/{draft_id}/edit",
+        f"/panel/downloads/{draft_id}/edit",
         data={
             "title": "Eksik Uygulama",
             "file_type": "external",
@@ -167,7 +167,7 @@ async def test_autosave_preserves_partial_url_but_publish_rejects_it(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     autosaved = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-partial-url",
             "title": "Kısmi URL",
@@ -184,12 +184,12 @@ async def test_autosave_preserves_partial_url_but_publish_rejects_it(
     assert draft is not None
     assert draft.external_url == "jjj"
     assert draft.is_draft is True
-    draft_form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")
+    draft_form = await admin_client.get(f"/panel/downloads/{draft_id}/edit")
     assert draft_form.status_code == 200
     assert 'id="application-publish-button" type="button"' in draft_form.text
 
     finalized = await admin_client.post(
-        f"/admin/downloads/{draft_id}/edit",
+        f"/panel/downloads/{draft_id}/edit",
         data={
             "title": "Kısmi URL",
             "file_type": "external",
@@ -216,7 +216,7 @@ async def test_new_download_requires_explicit_publish_intent(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     response = await admin_client.post(
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         data={
             "title": "Yanlışlıkla Yayınlanmamalı",
             "file_type": "external",
@@ -239,13 +239,13 @@ async def test_local_file_is_uploaded_before_draft_autosave(
     admin_client: AsyncClient, db_session: AsyncSession
 ) -> None:
     upload = await admin_client.post(
-        "/admin/media/upload-file",
+        "/panel/media/upload-file",
         files={"file": ("uygulama.zip", b"archive-content", "application/zip")},
     )
     storage_path = upload.json()["storage_path"]
 
     autosave = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-local",
             "title": "Lokal Uygulama",
@@ -264,7 +264,7 @@ async def test_local_file_is_uploaded_before_draft_autosave(
 
 
 async def test_draft_form_exposes_live_save_controls(admin_client: AsyncClient) -> None:
-    response = await admin_client.get("/admin/downloads/new")
+    response = await admin_client.get("/panel/downloads/new")
 
     assert response.status_code == 200
     assert 'id="save-status"' in response.text
@@ -280,7 +280,7 @@ async def test_draft_form_exposes_live_save_controls(admin_client: AsyncClient) 
     assert "if (autosaveEnabled && !shouldPublish)" in response.text
     assert "(!autosaveEnabled || shouldPublish) && !form.reportValidity()" in response.text
     assert 'data-autosave="true"' in response.text
-    assert "/admin/downloads/drafts/autosave" in response.text
+    assert "/panel/downloads/drafts/autosave" in response.text
     preview_button = re.search(r'<button id="application-preview-button"[^>]*>', response.text)
     assert preview_button is not None and 'type="button" disabled' in preview_button.group(0)
     assert "grid-cols-[minmax(0,1fr)_6rem]" in response.text
@@ -293,7 +293,7 @@ async def test_saved_draft_can_be_previewed_only_by_admin(
     admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ) -> None:
     autosave = await admin_client.post(
-        "/admin/downloads/drafts/autosave",
+        "/panel/downloads/drafts/autosave",
         data={
             "draft_token": "draft-token-preview",
             "title": "Önizleme Taslağı",
@@ -307,13 +307,13 @@ async def test_saved_draft_can_be_previewed_only_by_admin(
     draft = await crud.get_download_by_id(db_session, draft_id)
     assert draft is not None
 
-    preview_url = f"/admin/downloads/{draft_id}/preview"
+    preview_url = f"/panel/downloads/{draft_id}/preview"
     anonymous = await client.get(preview_url, follow_redirects=False)
     assert anonymous.status_code == 302
     assert anonymous.headers["location"] == "/login"
 
     preview = await admin_client.get(preview_url)
-    edit_form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")
+    edit_form = await admin_client.get(f"/panel/downloads/{draft_id}/edit")
     public_detail = await client.get(f"/download/{draft.slug}")
     preview_button = re.search(
         r'<button id="application-preview-button"[^>]*>', edit_form.text
@@ -326,7 +326,7 @@ async def test_saved_draft_can_be_previewed_only_by_admin(
     assert 'rel="canonical"' not in preview.text
     assert "Taslak önizlemesi" in preview.text
     assert "Yayımlanmadan kontrol edilecek içerik." in preview.text
-    assert f'href="/admin/downloads/{draft_id}/edit"' in preview.text
+    assert f'href="/panel/downloads/{draft_id}/edit"' in preview.text
     assert f'href="/dl/{draft.slug}"' not in preview.text
     assert public_detail.status_code == 404
 
@@ -343,7 +343,7 @@ async def test_preview_rejects_published_download(
         ),
     )
 
-    response = await admin_client.get(f"/admin/downloads/{published.id}/preview")
+    response = await admin_client.get(f"/panel/downloads/{published.id}/preview")
 
     assert response.status_code == 404
 
@@ -369,7 +369,7 @@ async def test_empty_draft_fields_round_trip_without_breaking_publish(
             if tag == "input" and attributes.get("name"):
                 self.values[attributes["name"]] = attributes.get("value", "")
 
-    form = await admin_client.get(f"/admin/downloads/{draft_id}/edit")
+    form = await admin_client.get(f"/panel/downloads/{draft_id}/edit")
     inputs = Inputs()
     inputs.feed(form.text)
     for name in ("version", "external_url", "icon_image_url"):
@@ -377,7 +377,7 @@ async def test_empty_draft_fields_round_trip_without_breaking_publish(
     assert 'src="None"' not in form.text
 
     published = await admin_client.post(
-        f"/admin/downloads/{draft_id}/edit",
+        f"/panel/downloads/{draft_id}/edit",
         data={
             "title": "Boş alanlar", "file_type": "external", "icon_type": "auto",
             "external_url": "https://example.com/download.zip",
@@ -399,7 +399,7 @@ async def test_invalid_icon_url_reports_the_field_without_internal_details(
 ) -> None:
     draft = await crud.create_download_draft(db_session, "invalid-icon", "Deneme")
     response = await admin_client.post(
-        f"/admin/downloads/{draft.id}/edit",
+        f"/panel/downloads/{draft.id}/edit",
         data={
             "title": "Deneme", "file_type": "external", "icon_type": "auto",
             "external_url": "https://example.com/download.zip",

@@ -26,7 +26,7 @@
       </div>
       {% endif %}
 
-      <form method="post" action="/admin/tags" class="space-y-3">
+      <form method="post" action="/panel/tags" class="space-y-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
         <div>
           <label for="tag-name" class="form-label">{{ t(request, 'name') }} <span class="text-red-500">*</span></label>
@@ -46,7 +46,7 @@
   {# Sağ: Etiket listesi #}
   <div class="lg:col-span-2">
     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm overflow-hidden transition-colors">
-      <form id="tag-bulk-form" method="post" action="/admin/tags/bulk-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>
+      <form id="tag-bulk-form" method="post" action="/panel/tags/bulk-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"></form>
       <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'existing_tags') }}</h2><button id="tag-bulk-delete" type="submit" form="tag-bulk-form" data-confirm-message="{{ t(request, 'delete_warning') }}" class="hidden btn-danger py-1 px-2 text-xs">{{ t(request, 'bulk_delete') }}</button>
       </div>
@@ -76,7 +76,7 @@
                 <i data-lucide="pencil" class="w-3 h-3"></i>
                 {{ t(request, 'edit') }}
               </button>
-              <form method="post" action="/admin/tags/{{ tag.id }}/delete" class="inline">
+              <form method="post" action="/panel/tags/{{ tag.id }}/delete" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
                 <button type="submit" data-confirm-message="{{ tf(request, 'delete_named_confirm', name='#' ~ tag.name) }}"
                   class="btn-danger py-1.5 px-2.5">
@@ -88,7 +88,7 @@
 
           {# Düzenleme formu (gizli) #}
           <form id="tag-edit-{{ tag.id }}" method="post"
-            action="/admin/tags/{{ tag.id }}/edit"
+            action="/panel/tags/{{ tag.id }}/edit"
             class="hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
             <div class="flex items-center gap-2">

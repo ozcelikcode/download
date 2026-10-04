@@ -3,7 +3,7 @@
 
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
-<div class="mb-6">{{ page_heading(request, t(request, 'account'), t(request, 'staff_account_help'), t(request, 'settings'), '/admin/settings') }}</div>
+<div class="mb-6">{{ page_heading(request, t(request, 'account'), t(request, 'staff_account_help'), t(request, 'settings'), '/panel/settings') }}</div>
 
 {% set active_settings_tab = 'account' %}
 {% include "admin/_settings_tabs.html" %}
@@ -15,7 +15,7 @@
   </h2>
   {% if request.state.admin_role != 'editor' %}
   {# Profil ikonu #}
-  <form method="post" action="/admin/settings/avatar" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
+  <form method="post" action="/panel/settings/avatar" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label class="form-label">{{ t(request, 'profile_icon') }}</label>
     <div class="flex items-center gap-2">
@@ -56,7 +56,7 @@
   {% endif %}
 
   {# Kullanıcı adı / şifre #}
-  <form method="post" action="/admin/settings/account" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
+  <form method="post" action="/panel/settings/account" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'change_credentials') }}</p>
 
@@ -94,7 +94,7 @@
 
   {% if request.state.admin_role == 'admin' %}
   {# Session duration is a site-wide security setting. #}
-  <form method="post" action="/admin/settings/session-duration" class="space-y-3">
+  <form method="post" action="/panel/settings/session-duration" class="space-y-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'session_duration') }}</p>
     <div class="flex items-center gap-2">
@@ -110,6 +110,18 @@
   </form>
   {% endif %}
 </div>
+
+<section class="border border-slate-200 dark:border-slate-800 rounded-sm p-5 mt-6">
+  <h2 class="text-sm font-semibold">{{ t(request, 'account_close') }}</h2>
+  <p class="text-xs text-slate-500 mt-2 mb-4">{{ t(request, 'account_close_help') }}</p>
+  <form method="post" action="/panel/account/close" class="space-y-3 max-w-md">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label class="block"><span class="form-label">{{ t(request, 'current_password') }}</span><input name="current_password" type="password" required maxlength="1024" autocomplete="current-password" class="form-input"></label>
+    <label class="block"><span class="form-label">{{ t(request, 'account_close_username') }}</span><input name="confirmation" required maxlength="50" autocomplete="off" class="form-input" placeholder="{{ effective_admin_username }}"></label>
+    <label class="flex items-start gap-2 text-xs"><input type="checkbox" name="acknowledged" value="true" required><span>{{ t(request, 'account_close_ack') }}</span></label>
+    <button type="submit" class="btn-danger"><i data-lucide="user-minus" class="w-4 h-4"></i>{{ t(request, 'account_close') }}</button>
+  </form>
+</section>
 
 {% endblock %}
 

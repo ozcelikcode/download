@@ -55,9 +55,9 @@ async def test_global_login_and_legacy_bookmark(client):
     assert 'action="/login"' in response.text
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-robots-tag"] == "noindex, nofollow"
-    legacy = await client.get("/admin/login")
+    legacy = await client.get("/panel/login")
     assert legacy.status_code == 303 and legacy.headers["location"] == "/login"
-    assert (await client.get("/admin")).headers["location"] == "/login"
+    assert (await client.get("/panel")).headers["location"] == "/login"
 
 
 @pytest.mark.parametrize("role", ["admin", "manager"])
@@ -74,10 +74,10 @@ async def test_native_registration_form_reaches_staff_panel(client, db_session, 
     pending = await db_session.scalar(select(RegistrationRequest).where(RegistrationRequest.username == "native-form-applicant"))
     assert pending is not None
     await staff(client, db_session, role)
-    dashboard = (await client.get("/admin")).text
-    assert 'href="/admin/registrations"' in dashboard
+    dashboard = (await client.get("/panel")).text
+    assert 'href="/panel/registrations"' in dashboard
     assert '<span class="font-semibold">1</span>' in dashboard
-    assert "native-form-applicant" in (await client.get("/admin/registrations")).text
+    assert "native-form-applicant" in (await client.get("/panel/registrations")).text
 
 
 async def test_receipt_cannot_be_fabricated_with_query_parameter(client):
@@ -126,9 +126,9 @@ async def test_staff_approval_creates_only_unverified_editor(client, db_session,
     assert (await submit(client)).status_code == 303
     row = await db_session.scalar(select(RegistrationRequest))
     reviewer = await staff(client, db_session, role)
-    html = (await client.get("/admin/registrations")).text
+    html = (await client.get("/panel/registrations")).text
     assert "applicant" in html and row.password_hash not in html
-    response = await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD, "role": "admin"})
+    response = await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD, "role": "admin"})
     assert response.status_code == 303
     user = await db_session.scalar(select(User).where(User.username == "applicant"))
     assert user.role == "editor" and user.is_active and not user.is_verified
@@ -137,14 +137,14 @@ async def test_staff_approval_creates_only_unverified_editor(client, db_session,
     client.cookies.delete(SESSION_COOKIE, domain="test.local", path="/")
     response = await client.post("/login", data={"username": "applicant", "password": PASSWORD})
     assert response.status_code == 302
-    assert (await client.get("/admin/registrations")).status_code == 403
+    assert (await client.get("/panel/registrations")).status_code == 403
 
 
 async def test_reject_removes_request_and_credentials(client, db_session):
     await submit(client)
     row = await db_session.scalar(select(RegistrationRequest))
     await staff(client, db_session, "manager")
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "reject", "current_password": PASSWORD})).status_code == 303
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "reject", "current_password": PASSWORD})).status_code == 303
     db_session.expunge_all()
     assert await db_session.get(RegistrationRequest, row.id) is None
     assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is None
@@ -153,20 +153,20 @@ async def test_reject_removes_request_and_credentials(client, db_session):
 async def test_editor_and_anonymous_cannot_review(client, db_session):
     await submit(client)
     row = await db_session.scalar(select(RegistrationRequest))
-    assert (await client.get("/admin/registrations")).status_code == 302
+    assert (await client.get("/panel/registrations")).status_code == 302
     await staff(client, db_session, "editor")
-    assert (await client.get("/admin/registrations")).status_code == 403
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
+    assert (await client.get("/panel/registrations")).status_code == 403
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
 
 
 async def test_password_and_csrf_required_for_review(client, db_session):
     await submit(client)
     row = await db_session.scalar(select(RegistrationRequest))
     await staff(client, db_session, "manager")
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": "wrong"})).status_code == 303
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": "wrong"})).status_code == 303
     assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is None
     csrf = client.headers.pop("X-CSRF-Token")
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
     assert (await submit(client, username="without-csrf")).status_code == 403
     client.headers["X-CSRF-Token"] = csrf
 
@@ -183,9 +183,9 @@ async def test_pagination(client, db_session):
     db_session.add_all(RegistrationRequest(username=f"pending-{i}", password_hash="hash", created_at=datetime.now(timezone.utc) + timedelta(seconds=i)) for i in range(21))
     await db_session.commit()
     await staff(client, db_session, "manager")
-    html = (await client.get("/admin/registrations")).text
+    html = (await client.get("/panel/registrations")).text
     assert 'href="?page=2"' in html and "pending-20" not in html
-    assert "pending-20" in (await client.get("/admin/registrations?page=2")).text
+    assert "pending-20" in (await client.get("/panel/registrations?page=2")).text
 
 
 async def test_full_queue_has_uniform_responses(client, db_session, monkeypatch):
@@ -205,13 +205,13 @@ async def test_approval_cannot_replace_existing_user_or_be_replayed(client, db_s
     db_session.add(existing)
     await db_session.commit()
     digest = existing.password_hash
-    response = await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})
+    response = await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})
     assert response.status_code == 303
     await db_session.refresh(existing)
     assert existing.role == "manager" and existing.password_hash == digest
     assert await db_session.get(RegistrationRequest, row.id) is not None
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "reject", "current_password": PASSWORD})).status_code == 303
-    assert (await client.post(f"/admin/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 404
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "reject", "current_password": PASSWORD})).status_code == 303
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 404
     assert await db_session.scalar(select(func.count()).select_from(User).where(User.username == "applicant")) == 1
 
 

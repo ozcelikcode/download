@@ -176,7 +176,7 @@ async def _finding_from_query(
     items = [
         HealthItem(
             title=row.title,
-            href=f"/admin/downloads/{row.id}/edit",
+            href=f"/panel/downloads/{row.id}/edit",
             detail=getattr(row, "message", None),
         )
         for row in rows
@@ -213,7 +213,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             session,
             key="broken_links",
             severity="critical",
-            href="/admin/links?state=broken",
+            href="/panel/links?state=broken",
             statement=broken_links,
         ))
 
@@ -236,9 +236,9 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="missing_files",
             severity="critical",
             count=len(missing_rows),
-            href="/admin/downloads?file_type_filter=local",
+            href="/panel/downloads?file_type_filter=local",
             items=[
-                HealthItem(title=title, href=f"/admin/downloads/{download_id}/edit")
+                HealthItem(title=title, href=f"/panel/downloads/{download_id}/edit")
                 for download_id, title in missing_rows[:8]
             ],
         ))
@@ -257,7 +257,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             session,
             key="uncategorized",
             severity="warning",
-            href="/admin/downloads?category_id=uncategorized",
+            href="/panel/downloads?category_id=uncategorized",
             statement=uncategorized,
         ))
 
@@ -266,7 +266,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="unused_media",
             severity="info",
             count=summary.unused_media,
-            href="/admin/media",
+            href="/panel/media",
         ))
 
     draft_statement = select(Download.id, Download.title).where(
@@ -280,7 +280,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             session,
             key="drafts",
             severity="info",
-            href="/admin/downloads?status_filter=draft",
+            href="/panel/downloads?status_filter=draft",
             statement=draft_statement,
         ))
 
@@ -311,9 +311,9 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_missing_description",
             severity="warning",
             count=len(without_description),
-            href="/admin/downloads",
+            href="/panel/downloads",
             items=[
-                HealthItem(title=row.title, href=f"/admin/downloads/{row.id}/edit")
+                HealthItem(title=row.title, href=f"/panel/downloads/{row.id}/edit")
                 for row in without_description[:8]
             ],
         ))
@@ -332,7 +332,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_home_metadata_missing",
             severity="info",
             count=missing_home_metadata,
-            href="/admin/site-health#seo-settings",
+            href="/panel/site-health#seo-settings",
             recommendation_key="health_recommendation_seo_home_missing",
         ))
 
@@ -343,7 +343,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
                 key="seo_home_title_long",
                 severity="info",
                 count=1,
-                href="/admin/site-health#seo-settings",
+                href="/panel/site-health#seo-settings",
                 recommendation_key="health_recommendation_seo_home_title",
             ))
 
@@ -354,7 +354,7 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
                 key="seo_home_description_long",
                 severity="info",
                 count=1,
-                href="/admin/site-health#seo-settings",
+                href="/panel/site-health#seo-settings",
                 recommendation_key="health_recommendation_seo_home_description",
             ))
 
@@ -368,9 +368,9 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_long_titles",
             severity="info",
             count=len(long_title_rows),
-            href="/admin/downloads",
+            href="/panel/downloads",
             items=[
-                HealthItem(title=row.title, href=f"/admin/downloads/{row.id}/edit")
+                HealthItem(title=row.title, href=f"/panel/downloads/{row.id}/edit")
                 for row in long_title_rows[:8]
             ],
         ))
@@ -395,9 +395,9 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_category_descriptions",
             severity="info",
             count=category_count,
-            href="/admin/categories",
+            href="/panel/categories",
             items=[
-                HealthItem(title=row.name, href="/admin/categories")
+                HealthItem(title=row.name, href="/panel/categories")
                 for row in category_rows
             ],
         ))
@@ -419,11 +419,11 @@ async def get_admin_site_health(session: AsyncSession) -> AdminSiteHealth:
             key="seo_long_category_descriptions",
             severity="info",
             count=long_category_count,
-            href="/admin/categories",
+            href="/panel/categories",
             items=[
                 HealthItem(
                     title=row.name,
-                    href=f"/admin/categories#cat-view-{row.id}",
+                    href=f"/panel/categories#cat-view-{row.id}",
                 )
                 for row in long_category_rows
             ],

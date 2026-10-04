@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ t(request, 'permission_denied') }}{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto my-12 text-center border border-slate-200 dark:border-slate-800 rounded-sm p-6">
+  <i data-lucide="shield-alert" class="w-8 h-8 mx-auto mb-4 text-slate-500"></i>
+  <h1 class="text-lg font-semibold">{{ t(request, 'permission_denied') }}</h1>
+  <a href="/panel" class="btn-secondary mt-5">{{ t(request, 'dashboard') }}</a>
+</section>
+{% endblock %}

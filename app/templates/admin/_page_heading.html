@@ -1,7 +1,7 @@
 {% macro render(request, title, description='', parent_label='', parent_url='') %}
 <div class="min-w-0">
   <nav class="breadcrumb mb-1" aria-label="{{ t(request, 'navigation') }}">
-    <a href="/admin">{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'management') }}</a>
+    <a href="/panel">{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'management') }}</a>
     <span class="breadcrumb-sep">›</span>
     {% if parent_label and parent_url %}
     <a href="{{ parent_url }}">{{ parent_label }}</a>

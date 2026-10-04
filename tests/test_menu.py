@@ -28,7 +28,7 @@ async def test_create_menu_item_appears_in_public_nav(
     admin_client: AsyncClient, db_session: AsyncSession
 ):
     response = await admin_client.post(
-        "/admin/settings/menu",
+        "/panel/settings/menu",
         data={
             "label": "Blog",
             "url": "/blog",
@@ -50,15 +50,15 @@ async def test_create_menu_item_appears_in_public_nav(
 
 
 async def test_reorder_persists_position(admin_client: AsyncClient, db_session: AsyncSession):
-    await admin_client.post("/admin/settings/menu", data={"label": "Birinci", "url": "/a"})
-    await admin_client.post("/admin/settings/menu", data={"label": "İkinci", "url": "/b"})
+    await admin_client.post("/panel/settings/menu", data={"label": "Birinci", "url": "/a"})
+    await admin_client.post("/panel/settings/menu", data={"label": "İkinci", "url": "/b"})
 
     items = await crud.get_menu_items(db_session)
     assert [i.label for i in items] == ["Birinci", "İkinci"]
 
     reversed_ids = [i.id for i in reversed(items)]
     response = await admin_client.post(
-        "/admin/settings/menu/reorder", json={"ids": reversed_ids}
+        "/panel/settings/menu/reorder", json={"ids": reversed_ids}
     )
     assert response.status_code == 200
     assert response.json() == {"ok": True}
@@ -71,14 +71,14 @@ async def test_inactive_menu_item_hidden_from_public_nav(
     admin_client: AsyncClient, db_session: AsyncSession
 ):
     await admin_client.post(
-        "/admin/settings/menu",
+        "/panel/settings/menu",
         data={"label": "Taslak Sayfa", "url": "/taslak", "is_active": "true"},
     )
     item = (await crud.get_menu_items(db_session))[0]
 
     # is_active alanı formda gönderilmezse False'a düşer (checkbox mantığı)
     await admin_client.post(
-        f"/admin/settings/menu/{item.id}/edit",
+        f"/panel/settings/menu/{item.id}/edit",
         data={"label": "Taslak Sayfa", "url": "/taslak"},
     )
 
@@ -90,11 +90,11 @@ async def test_inactive_menu_item_hidden_from_public_nav(
 
 
 async def test_update_menu_item(admin_client: AsyncClient, db_session: AsyncSession):
-    await admin_client.post("/admin/settings/menu", data={"label": "Eski Ad", "url": "/x"})
+    await admin_client.post("/panel/settings/menu", data={"label": "Eski Ad", "url": "/x"})
     item_id = (await crud.get_menu_items(db_session))[0].id
 
     response = await admin_client.post(
-        f"/admin/settings/menu/{item_id}/edit",
+        f"/panel/settings/menu/{item_id}/edit",
         data={
             "label": "Yeni Ad",
             "url": "/y",
@@ -116,22 +116,22 @@ async def test_update_menu_item(admin_client: AsyncClient, db_session: AsyncSess
 
 
 async def test_delete_menu_item(admin_client: AsyncClient, db_session: AsyncSession):
-    await admin_client.post("/admin/settings/menu", data={"label": "Silinecek", "url": "/z"})
+    await admin_client.post("/panel/settings/menu", data={"label": "Silinecek", "url": "/z"})
     item = (await crud.get_menu_items(db_session))[0]
 
-    response = await admin_client.post(f"/admin/settings/menu/{item.id}/delete")
+    response = await admin_client.post(f"/panel/settings/menu/{item.id}/delete")
     assert response.status_code == 302
 
     assert await crud.get_menu_items(db_session) == []
 
 
 async def test_menu_settings_requires_admin_session(client: AsyncClient):
-    response = await client.get("/admin/settings/menu")
+    response = await client.get("/panel/settings/menu")
     assert response.status_code == 302
     assert response.headers["location"] == "/login"
 
     response = await client.post(
-        "/admin/settings/menu", data={"label": "X", "url": "/x"}
+        "/panel/settings/menu", data={"label": "X", "url": "/x"}
     )
     assert response.status_code == 302
     assert response.headers["location"] == "/login"

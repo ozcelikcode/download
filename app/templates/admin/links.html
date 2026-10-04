@@ -6,14 +6,14 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     {{ page_heading(request, t(request, 'link_report'), tf(request, 'link_report_help', count=total)) }}
     {% if state == 'all' and rows %}
-    <form method="post" action="/admin/links/check?page={{ page }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent={{ t(request, 'checking')|tojson }}">
+    <form method="post" action="/panel/links/check?page={{ page }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent={{ t(request, 'checking')|tojson }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
       <button class="btn-primary" type="submit">{{ t(request, 'check_page_links') }}</button>
     </form>
     {% endif %}
   </div>
   <p class="text-xs text-slate-500">{{ t(request, 'link_check_help') }}</p>
-  <form method="get" action="/admin/links" class="flex items-center gap-2">
+  <form method="get" action="/panel/links" class="flex items-center gap-2">
     <label for="link-state" class="text-sm">{{ t(request, 'status') }}</label>
     <select class="form-input w-auto" name="state" id="link-state"><option value="all">{{ t(request, 'all') }}</option>{% for key, label in statuses.items() %}<option value="{{ key }}" {% if key == state %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
     <button type="submit" class="btn-primary">{{ t(request, 'filter') }}</button>
@@ -23,10 +23,10 @@
       <thead class="text-xs text-slate-500 border-b border-slate-200 dark:border-slate-800"><tr><th class="p-3">{{ t(request, 'contents') }}</th><th class="p-3">{{ t(request, 'status') }}</th><th class="p-3">{{ t(request, 'last_check') }}</th><th class="p-3">{{ t(request, 'action') }}</th></tr></thead>
       <tbody>{% for download, check in rows %}
         <tr class="border-b border-slate-100 dark:border-slate-800">
-          <td class="p-3"><a class="text-blue-600 dark:text-blue-400 hover:underline" href="/admin/downloads/{{ download.id }}/edit">{{ download.title }}</a><div class="text-xs text-slate-500 break-all mt-1">{{ download.source_domain or t(request, 'missing_address') }}</div></td>
+          <td class="p-3"><a class="text-blue-600 dark:text-blue-400 hover:underline" href="/panel/downloads/{{ download.id }}/edit">{{ download.title }}</a><div class="text-xs text-slate-500 break-all mt-1">{{ download.source_domain or t(request, 'missing_address') }}</div></td>
           <td class="p-3"><span class="font-medium {% if check and check.status == 'broken' %}text-red-600{% elif check and check.status == 'ok' %}text-green-600{% endif %}">{{ statuses[check.status] if check else statuses.unchecked }}</span>{% if check %}<p class="text-xs text-slate-500 mt-1">{% if check.http_status %}HTTP {{ check.http_status }} · {% endif %}{{ system_message(request, check.message) }}</p>{% endif %}</td>
           <td class="p-3 whitespace-nowrap text-xs">{{ check.checked_at | format_date('%d.%m.%Y %H:%M') if check else '—' }}</td>
-          <td class="p-3"><form method="post" action="/admin/links/{{ download.id }}/check"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="text-blue-600 dark:text-blue-400 hover:underline" type="submit">{{ t(request, 'check') }}</button></form></td>
+          <td class="p-3"><form method="post" action="/panel/links/{{ download.id }}/check"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="text-blue-600 dark:text-blue-400 hover:underline" type="submit">{{ t(request, 'check') }}</button></form></td>
         </tr>
       {% else %}<tr><td colspan="4" class="p-8 text-center text-slate-500">{{ t(request, 'no_links') }}</td></tr>{% endfor %}</tbody>
     </table>

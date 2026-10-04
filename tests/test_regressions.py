@@ -37,7 +37,7 @@ async def test_local_upload_preserves_existing_file(admin_client: AsyncClient):
     original = settings.upload_path / "setup.zip"
     original.write_bytes(b"original")
     response = await admin_client.post(
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         data={
             "title": "New file",
             "file_type": "local",
@@ -53,7 +53,7 @@ async def test_local_upload_preserves_existing_file(admin_client: AsyncClient):
 async def test_local_upload_cannot_escape_upload_directory(admin_client: AsyncClient):
     outside = settings.upload_path.parent / "outside.zip"
     response = await admin_client.post(
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         data={
             "title": "Safe path",
             "file_type": "local",
@@ -67,10 +67,10 @@ async def test_local_upload_cannot_escape_upload_directory(admin_client: AsyncCl
 
 
 @pytest.mark.parametrize("endpoint,field,data", [
-    ("/admin/media/upload-file", "file", {}),
-    ("/admin/upload/icon-image", "file", {}),
+    ("/panel/media/upload-file", "file", {}),
+    ("/panel/upload/icon-image", "file", {}),
     (
-        "/admin/downloads/new",
+        "/panel/downloads/new",
         "upload_file",
         {"title": "Large", "file_type": "local", "submission_intent": "publish"},
     ),
@@ -90,7 +90,7 @@ async def test_rejected_replacement_preserves_original(admin_client, monkeypatch
     original.write_bytes(b"original")
     monkeypatch.setattr(settings, "max_upload_size_mb", 0)
     response = await admin_client.post(
-        "/admin/media/replace-file", data={"path": "/admin/media/files/setup.zip"},
+        "/panel/media/replace-file", data={"path": "/panel/media/files/setup.zip"},
         files={"file": ("new.zip", b"too large", "application/zip")},
     )
     assert response.status_code == 413

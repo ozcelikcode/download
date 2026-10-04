@@ -7,7 +7,7 @@
     <div>
       {{ page_heading(request, t(request, 'audit_history'), t(request, 'audit_intro') ~ ' · ' ~ t(request, 'audit_private_note')) }}
       <span class="audit-count mt-2 inline-flex">{{ tf(request, 'audit_record_count', count=total) }}</span>
-      <a href="/admin/settings/general" class="text-xs text-slate-500 ml-2">{{ t(request, 'timezone_title') }}: {{ site_timezone }}</a>
+      <a href="/panel/settings/general" class="text-xs text-slate-500 ml-2">{{ t(request, 'timezone_title') }}: {{ site_timezone }}</a>
     </div>
     <button id="audit-density-toggle" type="button" class="btn-secondary text-xs" aria-label="{{ t(request, 'audit_view_mode') }}" aria-controls="audit-list" aria-pressed="false">
       <i data-lucide="list-filter" class="w-3.5 h-3.5" aria-hidden="true"></i>
@@ -15,7 +15,7 @@
     </button>
   </header>
 
-  <form method="get" action="/admin/audit" class="audit-filter-bar" aria-label="{{ t(request, 'filter') }}">
+  <form method="get" action="/panel/audit" class="audit-filter-bar" aria-label="{{ t(request, 'filter') }}">
     <label for="audit-entity" class="form-label">{{ t(request, 'record_type') }}</label>
     <select class="form-input" name="entity" id="audit-entity">
       <option value="">{{ t(request, 'all') }}</option>
@@ -90,7 +90,7 @@
     <summary class="cursor-pointer p-4 text-sm font-medium">{{ t(request, 'maximum_records') }} · {{ site_settings.audit_log_max_records }}</summary>
     <div class="px-4 pb-4">
       <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ t(request, 'audit_help') }}</p>
-      <form method="post" action="/admin/settings/audit-log-limit" class="flex flex-wrap items-end gap-3">
+      <form method="post" action="/panel/settings/audit-log-limit" class="flex flex-wrap items-end gap-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
         <label class="block">
           <span class="form-label">{{ t(request, 'maximum_records') }}</span>

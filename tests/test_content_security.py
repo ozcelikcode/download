@@ -78,7 +78,7 @@ def test_safe_http_and_navigation_urls_are_normalized():
 
 async def test_menu_route_rejects_unsafe_url(admin_client, db_session: AsyncSession):
     response = await admin_client.post(
-        "/admin/settings/menu",
+        "/panel/settings/menu",
         data={"label": "Riskli", "url": "javascript:alert(1)", "is_active": "true"},
     )
     assert response.status_code == 422
@@ -134,7 +134,7 @@ async def test_category_name_cannot_become_an_inline_script(admin_client, db_ses
             if tag == "button" and values.get("data-category-delete") == str(category.id):
                 self.attributes = values
 
-    response = await admin_client.get("/admin/categories")
+    response = await admin_client.get("/panel/categories")
     parser = ButtonParser()
     parser.feed(response.text)
     assert parser.attributes is not None

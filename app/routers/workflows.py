@@ -16,7 +16,7 @@ from app.models import Download, EditorMessage
 from app.security import require_csrf
 from app.templating import templates
 
-router = APIRouter(prefix="/admin", dependencies=[Depends(require_csrf), Depends(require_admin)])
+router = APIRouter(prefix="/panel", dependencies=[Depends(require_csrf), Depends(require_admin)])
 
 
 def _staff(request: Request) -> None:
@@ -49,7 +49,7 @@ async def review_list(request: Request, session: AsyncSession = Depends(get_db),
     count = await session.scalar(select(func.count()).select_from(Download).where(*filters)) or 0
     pages = max(1, (count + 19) // 20)
     if page > pages:
-        return RedirectResponse(f"/admin/review?page={pages}", status_code=303)
+        return RedirectResponse(f"/panel/review?page={pages}", status_code=303)
     items = list(await session.scalars(select(Download).where(*filters).order_by(Download.updated_at, Download.id).offset((page - 1) * 20).limit(20)))
     return templates.TemplateResponse(request=request, name="admin/review.html", context={
         **_context(request), "items": items, "page": page, "pages": pages,
@@ -68,9 +68,9 @@ async def review_content(
     if item is None:
         raise HTTPException(404)
     if revision != item.updated_at.isoformat():
-        return _back(request, "/admin/review", "review_changed", error=True)
+        return _back(request, "/panel/review", "review_changed", error=True)
     if action not in {"approve", "reject"} or (action == "reject" and not reason.strip()):
-        return _back(request, "/admin/review", "review_reason_required", error=True)
+        return _back(request, "/panel/review", "review_reason_required", error=True)
     item.publication_pending = False
     item.publication_feedback = reason.strip() or None
     item.is_active = action == "approve"
@@ -78,7 +78,7 @@ async def review_content(
     item.draft_token = secrets.token_urlsafe(24) if item.is_draft else None
     add_event(session, action, "publication", "Editorial review completed", item.id)
     await session.commit()
-    return _back(request, "/admin/review", "review_saved")
+    return _back(request, "/panel/review", "review_saved")
 
 
 @router.get("/contact")
@@ -91,7 +91,7 @@ async def contact_list(request: Request, session: AsyncSession = Depends(get_db)
     count = await session.scalar(count_query) or 0
     pages = max(1, (count + 19) // 20)
     if page > pages:
-        return RedirectResponse(f"/admin/contact?page={pages}", status_code=303)
+        return RedirectResponse(f"/panel/contact?page={pages}", status_code=303)
     items = list(await session.scalars(query.order_by(EditorMessage.created_at.desc(), EditorMessage.id.desc()).offset((page - 1) * 20).limit(20)))
     return templates.TemplateResponse(request=request, name="admin/contact.html", context={
         **_context(request), "items": items, "page": page, "pages": pages,
@@ -107,20 +107,20 @@ async def send_message(
     if request.state.admin_role != "editor":
         raise HTTPException(403)
     if not subject.strip() or not body.strip():
-        return _back(request, "/admin/contact", "contact_invalid", error=True)
+        return _back(request, "/panel/contact", "contact_invalid", error=True)
     count = await session.scalar(select(func.count()).select_from(EditorMessage).where(
         EditorMessage.sender_id == request.state.admin_id,
         EditorMessage.created_at >= datetime.now(timezone.utc) - timedelta(hours=1),
     )) or 0
     if count >= 5:
         await session.rollback()
-        return _back(request, "/admin/contact", "contact_limited", error=True)
+        return _back(request, "/panel/contact", "contact_limited", error=True)
     item = EditorMessage(sender_id=request.state.admin_id, subject=subject.strip(), body=body.strip())
     session.add(item)
     await session.flush()
     add_event(session, "create", "contact", "Editor message submitted", item.id)
     await session.commit()
-    return _back(request, "/admin/contact", "contact_sent")
+    return _back(request, "/panel/contact", "contact_sent")
 
 
 @router.post("/contact/{message_id}/reply")
@@ -134,12 +134,12 @@ async def reply_message(
     if item is None:
         raise HTTPException(404)
     if not response.strip():
-        return _back(request, "/admin/contact", "contact_invalid", error=True)
+        return _back(request, "/panel/contact", "contact_invalid", error=True)
     if item.response is not None:
-        return _back(request, "/admin/contact", "contact_already_answered", error=True)
+        return _back(request, "/panel/contact", "contact_already_answered", error=True)
     item.response = response.strip()
     item.responded_by = request.state.admin_id
     item.responded_at = datetime.now(timezone.utc)
     add_event(session, "update", "contact", "Editor message answered", item.id)
     await session.commit()
-    return _back(request, "/admin/contact", "contact_answered")
+    return _back(request, "/panel/contact", "contact_answered")

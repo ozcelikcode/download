@@ -36,12 +36,12 @@ async def owner(client, session, password_hash):
 
 
 async def authorize(client, action="full", password=PASSWORD):
-    return await client.post("/admin/settings/maintenance/authorize", data={"action": action, "password": password})
+    return await client.post("/panel/settings/maintenance/authorize", data={"action": action, "password": password})
 
 
 async def confirm(client, page, name="Doğrulanacak Site"):
     nonce = re.search(r'name="nonce" value="([^"]+)"', page.text).group(1)
-    return await client.post("/admin/settings/maintenance/confirm", data={
+    return await client.post("/panel/settings/maintenance/confirm", data={
         "confirmation": name, "nonce": nonce, "irreversible": "yes",
     })
 
@@ -194,7 +194,7 @@ async def test_oversized_requests_rejected_before_form_parsing(client):
     assert response.status_code == 413
 
 
-@pytest.mark.parametrize("path", ["/setup", "/admin/settings/maintenance/confirm"])
+@pytest.mark.parametrize("path", ["/setup", "/panel/settings/maintenance/confirm"])
 async def test_slow_anonymous_confirmation_cannot_lock_public_site(client, path):
     started, release = asyncio.Event(), asyncio.Event()
 
@@ -216,10 +216,10 @@ async def test_slow_anonymous_confirmation_cannot_lock_public_site(client, path)
 async def test_public_admin_controls_reject_stale_session(admin_client, db_session, password_hash):
     account = await owner(admin_client, db_session, password_hash)
     download = await crud.create_download(db_session, DownloadCreate(title="Public test", external_url="https://example.com/file"))
-    assert f'/admin/downloads/{download.id}/edit' in (await admin_client.get(f"/download/{download.slug}")).text
+    assert f'/panel/downloads/{download.id}/edit' in (await admin_client.get(f"/download/{download.slug}")).text
     account.session_generation = "revoked"
     await db_session.commit()
-    assert f'/admin/downloads/{download.id}/edit' not in (await admin_client.get(f"/download/{download.slug}")).text
+    assert f'/panel/downloads/{download.id}/edit' not in (await admin_client.get(f"/download/{download.slug}")).text
 
 
 async def test_reset_has_rate_limit_and_csrf(admin_client, db_session, password_hash):
@@ -272,8 +272,8 @@ async def test_reset_scopes_preserve_only_expected_data(
     elif action == "uninstall":
         assert await db_session.scalar(select(func.count()).select_from(Category)) == 0
     admin_client.cookies.set(SESSION_COOKIE, old_token, domain="test.local", path="/")
-    assert (await admin_client.get("/admin")).status_code in {302, 303}
-    assert "/admin/downloads/" not in (await admin_client.get("/")).text
+    assert (await admin_client.get("/panel")).status_code in {302, 303}
+    assert "/panel/downloads/" not in (await admin_client.get("/")).text
     if action != "settings":
         assert await db_session.scalar(select(func.count()).select_from(AuditLog)) == 0
         assert await db_session.scalar(select(func.count()).select_from(MediaAsset)) == 0

@@ -58,7 +58,7 @@ class SecurityHeadersMiddleware:
                 if "referrer-policy" not in headers:
                     headers["Referrer-Policy"] = "same-origin"
                 path = scope["path"]
-                if path.startswith(("/admin", "/setup")) or path in {"/login", "/register"}:
+                if path.startswith(("/panel", "/setup")) or path in {"/login", "/register"}:
                     headers["Cache-Control"] = "no-store"
                     headers["X-Robots-Tag"] = "noindex, nofollow"
                 if path.startswith("/static/uploads/") and PurePosixPath(path).suffix.lower() in {
