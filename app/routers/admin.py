@@ -63,7 +63,7 @@ from sqlalchemy import select, func, text
 from app import crud
 from app.branding import SITE_ICON_COLORS
 from app.config import settings
-from app.content_security import normalize_navigation_url
+from app.content_security import normalize_navigation_url, safe_http_url
 from app.default_content import HERO_TEXT
 from app.database import AsyncSessionLocal
 from app.health import get_admin_site_health
@@ -320,7 +320,8 @@ async def _replace_icon_upload(file: UploadFile, existing_path: str, session: As
 _icon_fetch_progress: dict[str, dict] = {}
 
 
-async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_info: dict | None = None) -> None:
+async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_info: dict | None = None,
+                               square_size: int | None = None) -> None:
     """Stream an external image to staging, then validate, process, and publish it."""
     dest: Optional[Path] = None
     staged: Optional[Path] = None
@@ -355,7 +356,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
                     total = int(resp.headers.get("content-length") or 0)
                     if total > settings.max_upload_size_bytes:
                         raise ValueError("Dosya yükleme boyutu sınırını aşıyor.")
-                    ext = _REMOTE_IMAGE_TYPES[content_type]
+                    ext = ".png" if square_size else _REMOTE_IMAGE_TYPES[content_type]
                     icons_dir = settings.upload_path / "icons"
                     icons_dir.mkdir(parents=True, exist_ok=True)
                     filename = f"{uuid.uuid4().hex[:12]}{ext}"
@@ -379,7 +380,10 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
         validate_raster_image_file(staged)
-        compress_image_file(staged)
+        if square_size:
+            make_square_icon(staged, staged, size=square_size)
+        else:
+            compress_image_file(staged)
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
             session.info["audit_actor"] = uploaded_by
@@ -400,9 +404,10 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
             staged.unlink(missing_ok=True)
 
 
-async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str, actor_info: dict | None = None) -> None:
+async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str, actor_info: dict | None = None,
+                                  square_size: int | None = None) -> None:
     try:
-        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by, actor_info), timeout=60)
+        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by, actor_info, square_size), timeout=60)
     except TimeoutError:
         _icon_fetch_progress[token].update({"done": True, "error": "Bağlantı kontrolü zaman aşımına uğradı."})
 
@@ -2074,6 +2079,55 @@ async def settings_appearance_view(
             "page_title": "Görünüm",
         },
     )
+
+
+@router.post("/settings/favicon", name="admin_settings_favicon")
+async def settings_favicon_update(
+    request: Request, session: AsyncSession = Depends(get_db), _admin: str = Depends(require_admin),
+    favicon_file: Optional[UploadFile] = File(None), favicon_source: str = Form("file"),
+    favicon_web_url: str = Form("", max_length=2048), clear_favicon: bool = Form(False),
+):
+    from app.routers.users import _lock_actor
+
+    path: str | None = None
+    if not clear_favicon:
+        if favicon_source == "file" and favicon_file and favicon_file.filename:
+            filename = f"{uuid.uuid4().hex[:12]}.png"
+            destination = settings.upload_path / "icons" / filename
+            def prepare(staged: Path) -> None:
+                validate_raster_image_file(staged)
+                make_square_icon(staged, staged, size=128)
+            try:
+                await save_upload(favicon_file, destination, validator=prepare,
+                                  publisher=lambda staged, target: publish_media(session, staged, target))
+            except ValueError as exc:
+                raise HTTPException(400, translate(request, "favicon_invalid")) from exc
+            path = f"/static/uploads/icons/{filename}"
+        elif favicon_source == "url" and safe_http_url(favicon_web_url.strip()):
+            token = uuid.uuid4().hex
+            actor_info = dict(session.info)
+            await session.commit()
+            _icon_fetch_progress[token] = {"owner_id": request.state.admin_id, "percent": 0, "done": False, "error": None, "path": None}
+            try:
+                await _fetch_icon_with_timeout(favicon_web_url.strip(), token, _admin, actor_info, square_size=128)
+                result = _icon_fetch_progress[token]
+                if result.get("error") or not result.get("path"):
+                    raise HTTPException(400, system_message(request, result.get("error") or translate(request, "favicon_invalid")))
+                path = result["path"]
+            finally:
+                _icon_fetch_progress.pop(token, None)
+        else:
+            raise HTTPException(400, translate(request, "favicon_invalid"))
+    await _lock_actor(request, session, request.state.admin_role)
+    account = await crud.get_site_settings(session)
+    old = account.favicon_path
+    account.favicon_path = path
+    add_event(session, "update", "site_settings", "Site favicon updated", account.id,
+              {"favicon_path": [old, path]}, actor=request.state.admin_user)
+    await session.commit()
+    refresh_site_branding_globals(account)
+    request.session["flash_message"] = translate(request, "favicon_saved")
+    return _redirect("/panel/settings/appearance")
 
 
 @router.post("/settings/appearance", name="admin_settings_appearance_update")

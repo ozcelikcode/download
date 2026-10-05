@@ -2,6 +2,7 @@
 <html lang="{{ ui_language(request) }}">
 <head>
   <meta charset="UTF-8">
+  {% if favicon_url() %}<link rel="icon" type="image/png" href="{{ favicon_url() }}">{% endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% set resolved_title = meta_title if meta_title is defined and meta_title else (((page_title ~ ' — ') if page_title else '') ~ site_name) %}
   {% set resolved_description = meta_description if meta_description is defined and meta_description else t(request, 'meta_default') %}

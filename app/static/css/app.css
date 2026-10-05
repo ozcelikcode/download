@@ -733,3 +733,7 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
 .hero-bg-mesh { background-image: radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--theme-accent) 16%, transparent), transparent 38%), linear-gradient(135deg, var(--theme-panel), var(--theme-panel-muted)) !important; }
 .hero-bg-lines { background-image: repeating-linear-gradient(135deg, transparent 0 16px, color-mix(in srgb, var(--theme-accent) 7%, transparent) 16px 17px), linear-gradient(var(--theme-panel), var(--theme-panel-muted)) !important; }
 .hero-bg-image { position: relative; background-image: linear-gradient(color-mix(in srgb, var(--theme-panel) 82%, transparent), color-mix(in srgb, var(--theme-panel) 82%, transparent)), var(--hero-image), linear-gradient(135deg, var(--theme-panel), var(--theme-panel-muted)) !important; background-size: cover !important; background-position: center !important; }
+.panel-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.125rem; margin-left: .375rem; padding: .125rem .3rem; border-radius: 3px; background: var(--theme-panel-muted, #e2e8f0); color: inherit; font-size: .6875rem; font-weight: 600; }
+.panel-count.hidden { display: none; }
+.panel-message-link { display: block; width: 100%; padding: .75rem; text-align: left; font-size: .8125rem; border-radius: 3px; }
+.panel-message-link:hover, .panel-message-link:focus-visible { background: var(--theme-panel-muted, #f1f5f9); }

@@ -71,9 +71,12 @@ def fingerprint(pem: str) -> str:
     return hashlib.sha256(der).hexdigest()
 
 
-def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False, before_quotas: bool = False) -> str:
+def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False,
+                       before_quotas: bool = False, before_favicon: bool = False) -> str:
     schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
-                         if not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")
+                         if not ((before_favicon or before_quotas or before_timezone or before_registrations)
+                                 and table.name == "site_settings" and column.name == "favicon_path")
+                         and not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")
                          and not ((before_quotas or before_timezone or before_registrations)
                                   and ((table.name == "site_settings" and column.name in {"editor_media_quota_mb", "manager_media_quota_mb"})
                                        or (table.name == "users" and column.name == "media_quota_mb")))]
@@ -230,7 +233,8 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             legacy = manifest.get("schema") == schema_fingerprint(before_registrations=True)
             old_timezone = legacy or manifest.get("schema") == schema_fingerprint(before_timezone=True)
             old_quotas = old_timezone or manifest.get("schema") == schema_fingerprint(before_quotas=True)
-            if manifest.get("format") != 1 or (not old_quotas and manifest.get("schema") != schema_fingerprint()):
+            old_favicon = old_quotas or manifest.get("schema") == schema_fingerprint(before_favicon=True)
+            if manifest.get("format") != 1 or (not old_favicon and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
             if legacy:
@@ -239,6 +243,10 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             if legacy:
                 data["registration_requests"] = []
+            if old_favicon:
+                if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or "favicon_path" in data["site_settings"][0]:
+                    raise BackupError("backup_invalid")
+                data["site_settings"][0]["favicon_path"] = None
             if old_timezone:
                 if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or "site_timezone" in data["site_settings"][0]:
                     raise BackupError("backup_invalid")
@@ -263,6 +271,9 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             if len(data["site_settings"]) != 1 or len(data["site_lifecycle"]) != 1:
                 raise BackupError("backup_invalid")
             if data["site_lifecycle"][0]["id"] != 1:
+                raise BackupError("backup_invalid")
+            favicon = data["site_settings"][0]["favicon_path"]
+            if favicon is not None and (not isinstance(favicon, str) or not re.fullmatch(r"/static/uploads/icons/[a-f0-9]{12}\.png", favicon)):
                 raise BackupError("backup_invalid")
             from app.timezones import validate_timezone
             from app.storage_quota import validate_quota

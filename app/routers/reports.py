@@ -67,13 +67,15 @@ def report_labels(language: str, group: str) -> dict[str, str]:
         labels.update(publication=strings["review_title"], contact=strings["contact_title"])
     elif group == "actions":
         from app.i18n import TRANSLATIONS
-        labels.update(approve=strings["approve_publication"], reject=TRANSLATIONS.get(language, TRANSLATIONS["en"])["reject"])
+        translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
+        labels.update(approve=translated["registration_approve"], reject=translated["reject"])
     elif group == "fields":
         labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
         labels["site_timezone"] = TIMEZONE_STRINGS.get(language, TIMEZONE_STRINGS["en"])["timezone_title"]
         storage = STORAGE_STRINGS.get(language, STORAGE_STRINGS["en"])
         from app.i18n import TRANSLATIONS
         translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
+        labels["favicon_path"] = translated["favicon"]
         labels["media_quota_mb"] = storage["quota_override"] + " (MB)"
         for role in ("editor", "manager"):
             labels[f"{role}_media_quota_mb"] = translated[f"role_{role}"] + " · " + storage["media_quota"] + " (MB)"

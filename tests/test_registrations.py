@@ -128,12 +128,12 @@ async def test_staff_approval_creates_only_unverified_editor(client, db_session,
     reviewer = await staff(client, db_session, role)
     html = (await client.get("/panel/registrations")).text
     assert "applicant" in html and row.password_hash not in html
-    response = await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD, "role": "admin"})
+    response = await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "role": "admin"})
     assert response.status_code == 303
     user = await db_session.scalar(select(User).where(User.username == "applicant"))
     assert user.role == "editor" and user.is_active and not user.is_verified
     db_session.expunge_all()
-    assert await db_session.get(RegistrationRequest, row.id) is None
+    assert await db_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.id == row.id)) is None
     client.cookies.delete(SESSION_COOKIE, domain="test.local", path="/")
     response = await client.post("/login", data={"username": "applicant", "password": PASSWORD})
     assert response.status_code == 302
@@ -144,10 +144,12 @@ async def test_reject_removes_request_and_credentials(client, db_session):
     await submit(client)
     row = await db_session.scalar(select(RegistrationRequest))
     await staff(client, db_session, "manager")
-    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "reject", "current_password": PASSWORD})).status_code == 303
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "reject"})).status_code == 303
     db_session.expunge_all()
     assert await db_session.get(RegistrationRequest, row.id) is None
     assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is None
+    event = await db_session.scalar(select(AuditLog).where(AuditLog.label == "Registration rejected"))
+    assert event.action == "reject" and "applicant" in event.changes
 
 
 async def test_editor_and_anonymous_cannot_review(client, db_session):
@@ -159,16 +161,22 @@ async def test_editor_and_anonymous_cannot_review(client, db_session):
     assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
 
 
-async def test_password_and_csrf_required_for_review(client, db_session):
+async def test_review_needs_csrf_but_not_password(client, db_session):
     await submit(client)
     row = await db_session.scalar(select(RegistrationRequest))
     await staff(client, db_session, "manager")
-    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": "wrong"})).status_code == 303
-    assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is None
     csrf = client.headers.pop("X-CSRF-Token")
-    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "current_password": PASSWORD})).status_code == 403
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve"})).status_code == 403
+    assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is None
     assert (await submit(client, username="without-csrf")).status_code == 403
     client.headers["X-CSRF-Token"] = csrf
+    page = await client.get("/panel/registrations")
+    assert 'name="current_password"' not in page.text
+    assert (await client.post(f"/panel/registrations/{row.id}", data={"action": "approve"})).status_code == 303
+    assert await db_session.scalar(select(User.id).where(User.username == "applicant")) is not None
+    assert await db_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.id == row.id)) is None
+    event = await db_session.scalar(select(AuditLog).where(AuditLog.label == "Registration approved"))
+    assert event is not None and event.action == "approve" and "applicant" in event.changes
 
 
 async def test_application_quota_keeps_only_keyed_identifiers(client, db_session):
@@ -255,6 +263,7 @@ async def test_previous_backup_schema_remains_importable(db_session):
         manifest = json.loads(archive.read("manifest.json"))
         data = json.loads(archive.read("data.json"))
     del data["registration_requests"]
+    del data["site_settings"][0]["favicon_path"]
     del data["site_settings"][0]["site_timezone"]
     del data["site_settings"][0]["editor_media_quota_mb"]
     del data["site_settings"][0]["manager_media_quota_mb"]

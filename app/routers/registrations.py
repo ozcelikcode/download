@@ -1,4 +1,4 @@
-"""Bounded public applications and password-confirmed staff approval."""
+"""Bounded public applications and authenticated staff decisions."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from app.database import get_db
 from app.dependencies import get_request_ip, hash_password_async, require_admin
 from app.i18n import translate
 from app.models import RegistrationRequest, User
-from app.routers.users import USERNAME_PATTERN, _confirm_password, _lock_actor
+from app.routers.users import USERNAME_PATTERN, _lock_actor
 from app.security import require_csrf, reserve_login_attempt, require_secure_password_transport
 from app.templating import templates
 from app.routers.public import _sidebar_context
@@ -99,16 +99,11 @@ async def requests(request: Request, page: int = Query(1, ge=1), session: AsyncS
 
 
 @router.post("/panel/registrations/{request_id}", dependencies=[Depends(require_admin)])
-async def review(request_id: int, request: Request, action: str = Form(...), current_password: str = Form(...),
+async def review(request_id: int, request: Request, action: str = Form(...),
                  session: AsyncSession = Depends(get_db)) -> Response:
     role = request.state.admin_role
     if role not in {"admin", "manager"} or action not in {"approve", "reject"}:
         raise HTTPException(403)
-    require_secure_password_transport(request)
-    if not await _confirm_password(request, session, current_password):
-        request.session["flash_message"] = translate(request, "wrong_current_password")
-        request.session["flash_type"] = "error"
-        return RedirectResponse("/panel/registrations", status_code=303)
     await _lock_actor(request, session, role)
     applicant = await session.get(RegistrationRequest, request_id)
     if applicant is None:
@@ -122,7 +117,7 @@ async def review(request_id: int, request: Request, action: str = Form(...), cur
             return RedirectResponse("/panel/registrations", status_code=303)
         session.add(User(username=applicant.username, password_hash=applicant.password_hash, role="editor", is_verified=False))
         key = "registration_approved"
-    add_event(session, "create" if action == "approve" else "delete", "users", "Registration approved" if action == "approve" else "Registration rejected",
+    add_event(session, action, "users", "Registration approved" if action == "approve" else "Registration rejected",
               changes={"username": [None, applicant.username]}, actor=request.state.admin_user)
     await session.delete(applicant)
     try:

@@ -2,6 +2,7 @@
 <html lang="{{ ui_language(request) }}">
 <head>
   <meta charset="UTF-8">
+  {% if favicon_url() %}<link rel="icon" type="image/png" href="{{ favicon_url() }}">{% endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'admin_title') }}{% endblock %} — {{ site_name }}</title>
 
@@ -20,6 +21,7 @@
   <script src="/static/js/theme.js?v={{ css_asset_v }}" defer></script>
   <script src="/static/js/accessibility.js?v={{ css_asset_v }}" defer></script>
   <script src="/static/js/toast.js?v={{ css_asset_v }}" defer></script>
+  <script src="/static/js/panel-notifications.js?v={{ css_asset_v }}" defer></script>
   {% block head %}{% endblock %}
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   <script src="/static/js/csrf.js"></script>
@@ -45,10 +47,17 @@
   <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'admin_title') }}</span>
 
   <div class="flex-1"></div>
+  <div id="panel-messages" class="relative shrink-0" data-empty="{{ t(request, 'notice_empty') }}" data-update="{{ t(request, 'notice_update') }}">
+    <button type="button" id="panel-messages-toggle" class="btn-secondary" data-disclosure-button aria-label="{{ t(request, 'panel_messages') }}" aria-controls="panel-messages-menu" aria-expanded="false"><i data-lucide="mail" class="w-4 h-4"></i><span class="hidden sm:inline">{{ t(request, 'panel_messages') }}</span><span id="panel-unread" class="panel-count hidden" aria-live="polite"></span></button>
+    <div id="panel-messages-menu" class="hidden fixed left-4 right-4 top-14 sm:absolute sm:left-auto sm:right-0 sm:top-full mt-2 sm:w-72 max-h-96 overflow-y-auto rounded-sm border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900" aria-label="{{ t(request, 'notifications') }}">
+      <div id="panel-message-list"><p class="p-3 text-sm text-slate-500">{{ t(request, 'notice_empty') }}</p></div>
+      <noscript><a href="/panel/contact" class="btn-secondary">{{ t(request, 'contact_title') }}</a></noscript>
+    </div>
+  </div>
 
   {# Admin kullanıcı #}
   {% if admin_user is defined %}
-  <div class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+  <div class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
     <i data-lucide="{{ admin_icon }}" class="w-3.5 h-3.5 site-icon-color"
       style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
     <span>{{ admin_user }}</span>

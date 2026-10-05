@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import re
+from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from urllib.parse import quote
@@ -194,6 +196,25 @@ templates.env.globals["site_timezone"] = "UTC"
 templates.env.globals["site_icon"] = "download-cloud"
 templates.env.globals["logo_mode"] = "icon_text"
 templates.env.globals["logo_light_path"] = None
+templates.env.globals["favicon_path"] = None
+
+
+def favicon_url() -> str | None:
+    """Invalidate browser caches after an existing icon is edited in place."""
+    path = templates.env.globals.get("favicon_path")
+    if not isinstance(path, str) or not re.fullmatch(r"/static/uploads/icons/[a-f0-9]{12}\.png", path):
+        return None
+    file = settings.upload_path / "icons" / Path(path).name
+    try:
+        if not file.is_file():
+            return None
+        version = file.stat().st_mtime_ns
+    except OSError:
+        return None
+    return f"{path}?v={version}"
+
+
+templates.env.globals["favicon_url"] = favicon_url
 templates.env.globals["logo_dark_path"] = None
 templates.env.globals["site_icon_color_light"], templates.env.globals["site_icon_color_dark"] = (
     resolve_icon_color("blue")
@@ -217,6 +238,7 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     templates.env.globals["logo_mode"] = site_settings.logo_mode
     templates.env.globals["logo_light_path"] = site_settings.logo_light_path
     templates.env.globals["logo_dark_path"] = site_settings.logo_dark_path
+    templates.env.globals["favicon_path"] = site_settings.favicon_path
     light, dark = resolve_icon_color(site_settings.site_icon_color)
     templates.env.globals["site_icon_color_light"] = light
     templates.env.globals["site_icon_color_dark"] = dark

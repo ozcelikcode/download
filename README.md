@@ -24,6 +24,14 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 
 Sign in at `/login` and apply at `/register`. The staff dashboard links to pending applications at `/panel/registrations`; only administrators/managers can review them. Existing usernames do not create another account or application. Unavailable usernames show a conflict warning without distinguishing an account from a pending request. A success receipt appears only after a new request is committed. `/panel/login` is only a redirect for old bookmarks.
 
+Registration approval and rejection do not request the reviewer's password. CSRF, authenticated staff permissions, and fresh authorization under the database write lock still apply. A completed application is removed from the pending queue; its decision remains in Activity Log. Approval creates only an unverified editor, never a privileged account. Critical account and storage changes still require password confirmation.
+
+The Users screen starts with the account list. New account creation and default storage quotas have separate tabs; **Manage user** reveals one account's grouped actions. Storage limits use selectable cards instead of a quota dropdown.
+
+The panel navbar **Messages** menu and sidebar counters show actionable pending work for staff, or an editor's own correspondence replies and publication decisions. Clicking an update opens the relevant protected page. Counts refresh every 30 seconds while the page is visible; new updates show a toast. Read markers are held in the signed browser session, not a cross-device persistent inbox. Notifications never include private message bodies or another editor's records.
+
+**Settings → Appearance → Site favicon** accepts an uploaded image or a public HTTP/HTTPS image address. Remote images use the existing SSRF-safe importer and are stored locally, not requested from an external host by visitors. Images become 128×128 PNG icons; replacement and removal are supported, with cache invalidation after in-place edits. Removing or replacing the favicon does not erase the old media asset; unused files remain manageable in Media Library. Known pre-favicon backup schemas remain importable.
+
 Choose the display time zone in **Settings → General**, after the language options. IANA zones support daylight saving automatically. Stored timestamps and console logs remain UTC; changing the display zone does not rewrite historical records. The initial display zone is UTC.
 
 All staff roles use `/panel`; changing this address is not a substitute for authorization. Old `/admin` GET bookmarks redirect to the new routes, where the same permissions are enforced. Existing private media URLs and metadata remain compatible. Permission-denied browser pages are localized HTML; API errors explicitly declare UTF-8.

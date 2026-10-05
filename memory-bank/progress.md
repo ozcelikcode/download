@@ -8,7 +8,8 @@
 
 - Configurable IANA display zones in General Settings, with daylight saving support and unchanged UTC storage/logging. Audit, dashboard, requests, correspondence, reports, and shared date filters follow the selected zone. Time-zone settings and known previous backup schemas are covered by regression tests.
 
-- Public sign-in navigation and registration applications, with password-confirmed administrator/manager approval or rejection. Pending applicants cannot sign in; approved accounts start as unverified editors. HTTPS, CSRF, keyed quotas, queue limits, and four translations are covered.
+- Public sign-in navigation and registration applications, with direct authenticated administrator/manager approval or rejection, CSRF, and locked actor revalidation. Completed requests appear only in Activity Log. Pending applicants cannot sign in; approved accounts start as unverified editors. Password submissions use HTTPS; keyed quotas, queue limits, and four translations are covered.
+- Organized Users tabs, grouped per-account actions, and quota cards; role-scoped navbar Messages and sidebar counters with 30-second polling and signed-session read markers. Local editable favicons support upload/SSRF-safe import, square PNG conversion, and cache invalidation without erasing old media.
 - Shared read-only default categories for editors; true category moves that preserve the empty source. Staff editorial approval with revision checks, password-confirmed verified editors, and public publisher names/role-colored badges. Private editor-to-staff correspondence with replies and per-account quotas. Published media and version-history changes cannot bypass editor review.
 
 - Public download catalog, search and filters, content detail pages, related items, version history, and safe local/external download flow.
@@ -30,6 +31,8 @@
 - Keep all Markdown project documentation in English.
 
 ## Verification
+
+The Users/registration/notification/favicon increment passes 432 tests with warnings treated as errors and the optional Web Crypto harness enabled. Coverage includes passwordless staff-only registration decisions and audit retention, CSRF, editor-private publication/reply updates, pending-user counters, quota tabs, favicon upload/replacement/removal, pinned remote import, private-address rejection, square PNG processing, four languages, and strict old-archive adaptation. Tailwind and JavaScript syntax checks pass; Alembic detects no missing operations at `a4f6b8d0e125`. Existing records match the private 2026-10-05 pre-favicon recovery snapshot exactly, with valid SQLite integrity/foreign keys. Read-only real-database ASGI page checks return 200. Live visual inspection remains pending because the local HTTP server was stopped; no real application was reviewed during verification.
 
 The media-quota increment passes all 418 tests with warnings treated as errors and the optional Web Crypto harness enabled. Administrator-only configuration, role defaults/overrides, all four quota-error translations, concurrent publication, replacement rollback, retained bytes after filesystem recovery failure, revoked actors, direct/content/branding/remote/crop paths, hidden staging access/listing, and known pre-quota/time-zone/registration backup compatibility pass. Migration head is `z3e5a7c9d014`; populated-copy and live integrity/foreign-key checks pass. Existing user/content/taxonomy/media/page/application fields match the private pre-migration snapshot exactly. Tailwind build, Alembic schema check, and read-only live home/sign-in/Users/Media HTTP checks pass. No real user account or personal quota was changed during verification.
 

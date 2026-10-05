@@ -29,7 +29,8 @@ ROLES = {"admin", "manager", "editor"}
 def _back(request: Request, key: str, *, error: bool = False) -> RedirectResponse:
     request.session["flash_message"] = translate(request, key)
     request.session["flash_type"] = "error" if error else "success"
-    return RedirectResponse("/panel/users", status_code=303)
+    path = "/panel/users?section=storage" if request.url.path == "/panel/users/media-quota/defaults" else "/panel/users"
+    return RedirectResponse(path, status_code=303)
 
 
 def _forbid(request: Request) -> None:
@@ -67,12 +68,16 @@ async def _lock_actor(request: Request, session: AsyncSession, role: str, *, dur
 
 @router.get("")
 async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
+    section = request.query_params.get("section", "accounts")
+    if section not in {"accounts", "new", "storage"} or request.state.admin_role != "admin":
+        section = "accounts"
     users = (await session.scalars(select(User).order_by(User.is_active.desc(), User.username))).all()
     account = await session.scalar(select(SiteSettings))
     return templates.TemplateResponse(request=request, name="admin/users.html", context={
         "request": request, "users": users, "admin_user": request.state.admin_user,
         "staff_role": request.state.admin_role,
         "quota_choices": QUOTA_CHOICES, "quota_settings": account,
+        "users_section": section,
         "flash_message": request.session.pop("flash_message", None),
         "flash_type": request.session.pop("flash_type", "success"),
     })

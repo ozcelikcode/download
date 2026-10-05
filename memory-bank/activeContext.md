@@ -4,7 +4,7 @@
 
 Maintain isolated editor workspaces, shared protected categories, editorial approval, verified publishers, and private staff correspondence. Preserve existing site data during migrations.
 
-Current increment adds administrator-controlled personal media storage quotas (item 4). Items 1–3 already cover localized permission pages, shared `/panel` routes, and data-preserving account closure.
+Current increment organizes Users, simplifies registration review, adds role-scoped panel updates, and provides editable local favicons. Previously requested category applications and analytics remain separate pending work.
 
 ## Current decisions
 
@@ -17,9 +17,9 @@ Current increment adds administrator-controlled personal media storage quotas (i
 - Settings → General exposes IANA time zones after language selection. Display dates use the selected zone, including daylight saving; database and console timestamps remain UTC. Audit rows no longer repeat UTC/error labels. Known pre-time-zone backups import with UTC; invalid zones are rejected.
 - The time-zone migration recovery snapshot is retained at `Documents/Project Archives/download/migration-snapshots/2026-10-04/download-before-timezone-20261004T092434Z.db`. Populated-copy migration preserved all row counts and raw audit timestamps.
 
-- Anonymous navigation exposes only Sign in; the sign-in page links to registration. Pending applications contain only a username, salted scrypt hash, and creation time, grant no access, and never overwrite existing credentials. Staff approval is password-confirmed and creates only an unverified editor; rejection removes the pending credentials. Four interface languages are covered.
+- Anonymous navigation exposes only Sign in; the sign-in page links to registration. Pending applications contain only a username, salted scrypt hash, and creation time, grant no access, and never overwrite existing credentials. Authenticated staff approve/reject directly without password re-entry, retaining CSRF and locked actor revalidation. Approval creates only an unverified editor. Completed requests are removed from the queue and their decisions retained in Activity Log. Four interface languages are covered.
 - `/login` is the global authentication address, owned by a separate authentication router. Protected routes, setup/reset/restore, logout, login throttling, cache/indexing headers, and form actions use it; the old `/panel/login` GET only redirects for bookmarks. The staff dashboard shows the pending-registration count. Unavailable usernames now produce a 409 warning without distinguishing accounts from pending requests; success receipts require an actual commit, and a receipt cannot be fabricated by a query parameter alone. Native form submission with hidden CSRF tokens is verified for both administrator and manager review lists.
-- Password submissions for sign-in/registration/review require HTTPS except loopback development clients. Registration uses keyed quotas (five submissions per 15 minutes), CSRF, bounded bodies, and a 500-request queue. Password protection is HTTPS plus one-way hashing, not end-to-end encryption.
+- Password submissions for sign-in/registration and critical account operations require HTTPS except loopback development clients. Registration uses keyed quotas (five submissions per 15 minutes), CSRF, bounded bodies, and a 500-request queue. Password protection is HTTPS plus one-way hashing, not end-to-end encryption.
 - The registration migration recovery snapshot is retained at `Documents/Project Archives/download/migration-snapshots/2026-10-04/download-before-registration-20261004T084639Z.db`. Prior-schema encrypted backups remain importable with an empty registration queue; all other schema checks remain strict.
 - Manual recovery snapshots are consolidated by date under `Documents/Project Archives/download/migration-snapshots`, outside the repository. Seven snapshots were verified and relocated; eight unused sidecars with empty WALs were removed. The active site database and its sidecars were not touched. Future snapshots must use this single private archive rather than sibling/root files.
 
@@ -57,7 +57,17 @@ Current increment adds administrator-controlled personal media storage quotas (i
 
 - The previous registration increment passed 396 tests, including the optional shipped-browser Web Crypto harness, with warnings treated as errors. Registration coverage includes native form-to-staff-panel submission, global login/legacy bookmark handling, receipt forgery prevention, pending-login denial, staff approval/rejection, credential conflicts, replay rejection, quotas, HTTPS, CSRF, four languages, pagination, and previous-backup compatibility. Existing maintenance/editorial/security coverage still passes. The live registration form was inspected in the in-app browser. A disposable real HTTP submission persisted in the running database and was removed without creating a user account. Full staff layout review remains pending.
 - A requirements audit found no known dependency vulnerabilities. Live startup/shutdown and home/sign-in HTTP smoke checks passed with the shared logging configuration.
-- Alembic revision `z3e5a7c9d014` is applied. Populated-copy upgrade, unchanged live content/taxonomy/media/user data, SQLite integrity, foreign keys, schema checks, and Tailwind build pass. Temporary migration copies were removed automatically; the pre-migration recovery backup remains outside the repository.
+- The previous quota migration applied revision `z3e5a7c9d014`. Populated-copy upgrade, unchanged live content/taxonomy/media/user data, SQLite integrity, foreign keys, schema checks, and Tailwind build passed. Temporary migration copies were removed automatically; the pre-migration recovery backup remains outside the repository.
+
+## Latest increment
+
+The full suite passes 432 tests with warnings treated as errors and the optional Web Crypto harness enabled. Tailwind build, JavaScript syntax, Alembic schema checks, and targeted translation/audit regression checks pass.
+
+Users now starts with accounts, with separate new-user/default-quota tabs, single-account grouped management panels, and quota radio cards. Critical account/verification/quota password checks are unchanged.
+
+Navbar Messages and sidebar counters poll every 30 seconds while visible. Staff see pending registration/publication/deletion/contact work; editors see only their own replies and publication decisions. Notifications are aggregated navigation updates without private bodies; signed-session read markers are browser-specific, not a persistent cross-device inbox.
+
+Appearance supports uploaded/imported local 128×128 PNG favicons, replacement, removal, and in-place cache invalidation. Removing a favicon clears the reference without deleting media. Migration `a4f6b8d0e125` is applied; known pre-favicon and earlier archive adapters are strict. Recovery copy: `/Users/ozcelik/Documents/Project Archives/download/migration-snapshots/2026-10-05/download-before-favicon-20261005T111213Z.db`. Existing records match this snapshot exactly; integrity and foreign keys pass. Read-only real-database ASGI checks for home/sign-in/Users/storage/registrations/appearance/notifications return 200. Live browser verification was unavailable because the local HTTP server was stopped.
 
 ## Next step
 

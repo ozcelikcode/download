@@ -25,6 +25,20 @@
   </form>
 </section>
 
+<section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-5">
+  <h2 class="text-sm font-semibold flex items-center gap-2"><i data-lucide="globe" class="w-4 h-4 text-slate-400"></i>{{ t(request, 'favicon') }}</h2>
+  <p class="form-hint mt-2 mb-4">{{ t(request, 'favicon_help') }}</p>
+  {% if site_settings.favicon_path %}<img src="{{ favicon_url() }}" alt="{{ t(request, 'favicon') }}" class="w-16 h-16 object-contain border border-slate-200 dark:border-slate-800 rounded-sm p-1 mb-4">{% endif %}
+  <form method="post" action="/panel/settings/favicon" enctype="multipart/form-data" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div><label class="choice-card p-3 flex gap-2 items-center mb-3"><input type="radio" name="favicon_source" value="file" checked class="choice-input"><span class="text-sm">{{ t(request, 'upload_file') }}</span></label><input type="file" name="favicon_file" accept="image/png,image/jpeg,image/webp,image/gif,image/x-icon,image/vnd.microsoft.icon" class="form-input" aria-label="{{ t(request, 'upload_file') }}"></div>
+      <div><label class="choice-card p-3 flex gap-2 items-center mb-3"><input type="radio" name="favicon_source" value="url" class="choice-input"><span class="text-sm">{{ t(request, 'image_url') }}</span></label><input type="url" name="favicon_web_url" maxlength="2048" placeholder="https://…" class="form-input" aria-label="{{ t(request, 'image_url') }}"></div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3"><button class="btn-primary" type="submit"><i data-lucide="save" class="w-4 h-4"></i>{{ t(request, 'save') }}</button>{% if site_settings.favicon_path %}<button name="clear_favicon" value="true" class="btn-secondary" type="submit" formnovalidate><i data-lucide="x" class="w-4 h-4"></i>{{ t(request, 'remove_image') }}</button>{% endif %}</div>
+  </form>
+</section>
+
 <form method="post" action="/panel/settings/appearance" enctype="multipart/form-data" class="space-y-5">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
 

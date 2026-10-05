@@ -170,6 +170,8 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return False
     if path == "/panel/settings/account":
         return True
+    if path == "/panel/notifications" or path == "/panel/notifications/open":
+        return method in {"GET", "POST"}
     if path == "/panel/account/close" and method == "POST":
         return True
     if path == "/panel/registrations" or path.startswith("/panel/registrations/"):

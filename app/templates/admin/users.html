@@ -1,85 +1,87 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}{{ t(request, 'users') }}{% endblock %}
 {% from "_publisher.html" import render as publisher_badge %}
+{% macro quota_picker(name, selected, inherit=false) %}
+<fieldset>
+  <legend class="form-label">{{ t(request, 'quota_override') if inherit else t(request, 'media_quota') }}</legend>
+  <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    {% if inherit %}<label class="choice-card p-3 col-span-2 sm:col-span-5"><input type="radio" name="{{ name }}" value="" {% if selected is none %}checked{% endif %} class="choice-input"><span class="text-sm">{{ t(request, 'quota_inherit') }}</span></label>{% endif %}
+    {% for value in quota_choices %}<label class="choice-card p-3"><input type="radio" name="{{ name }}" value="{{ value }}" {% if selected == value %}checked{% endif %} class="choice-input" required><span class="text-sm">{{ value }} MB</span></label>{% endfor %}
+  </div>
+</fieldset>
+{% endmacro %}
+{% macro password_field() %}<label class="text-sm">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>{% endmacro %}
+{% block head %}<script src="/static/js/users.js" defer></script>{% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
 <div class="mb-6">{{ page_heading(request, t(request, 'users'), t(request, 'users_help')) }}</div>
-
 {% if staff_role == 'admin' %}
-<details class="mb-6 rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-  <summary class="cursor-pointer text-sm font-semibold">{{ t(request, 'quota_defaults') }}</summary>
-  <p class="form-hint mt-3">{{ t(request, 'quota_help') }}</p>
-  <form method="post" action="/panel/users/media-quota/defaults" class="mt-4 grid gap-3 sm:grid-cols-2">
+<nav class="mb-6 flex flex-wrap gap-2" aria-label="{{ t(request, 'users') }}">
+  {% for key, label, icon in [('accounts', t(request, 'users'), 'users'), ('new', t(request, 'new_user'), 'user-plus'), ('storage', t(request, 'quota_defaults'), 'hard-drive')] %}
+  <a href="/panel/users{% if key != 'accounts' %}?section={{ key }}{% endif %}" class="{{ 'btn-primary' if users_section == key else 'btn-secondary' }}" {% if users_section == key %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" class="w-4 h-4"></i>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+{% if users_section == 'storage' and staff_role == 'admin' %}
+<section class="rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+  <h2 class="text-sm font-semibold">{{ t(request, 'quota_defaults') }}</h2>
+  <p class="form-hint mt-2 mb-5">{{ t(request, 'quota_help') }}</p>
+  <form method="post" action="/panel/users/media-quota/defaults" class="space-y-5">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    {% for role in ['editor', 'manager'] %}
-    <label class="text-sm">{{ t(request, 'role_' ~ role) }}<select name="{{ role }}_quota_mb" class="form-input mt-1">{% for value in quota_choices %}<option value="{{ value }}" {% if quota_settings[role ~ '_media_quota_mb'] == value %}selected{% endif %}>{{ value }} MB</option>{% endfor %}</select></label>
-    {% endfor %}
-    <label class="text-sm">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>
-    <button class="btn-secondary self-end justify-self-start" type="submit">{{ t(request, 'save') }}</button>
+    <div class="grid gap-6 lg:grid-cols-2">{% for role in ['editor', 'manager'] %}
+      <section><h3 class="mb-3 text-sm font-semibold">{{ t(request, 'role_' ~ role) }}</h3>{{ quota_picker(role ~ '_quota_mb', quota_settings[role ~ '_media_quota_mb']) }}</section>
+    {% endfor %}</div>
+    <div class="flex flex-wrap items-end gap-3">{{ password_field() }}<button class="btn-secondary" type="submit">{{ t(request, 'save') }}</button></div>
   </form>
-</details>
-<section class="mb-6 rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+</section>
+{% elif users_section == 'new' and staff_role == 'admin' %}
+<section class="rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
   <h2 class="mb-4 text-sm font-semibold">{{ t(request, 'new_user') }}</h2>
-  <form method="post" action="/panel/users" class="grid gap-3 sm:grid-cols-2">
+  <form method="post" action="/panel/users" class="grid gap-4 sm:grid-cols-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label class="text-sm">{{ t(request, 'username') }}<input name="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,49}" class="form-input mt-1" autocomplete="off"></label>
-    <label class="text-sm">{{ t(request, 'role') }}<select name="role" class="form-input mt-1"><option value="editor">{{ t(request, 'role_editor') }}</option><option value="manager">{{ t(request, 'role_manager') }}</option><option value="admin">{{ t(request, 'role_admin') }}</option></select></label>
+    <label class="text-sm">{{ t(request, 'role') }}<select name="role" class="form-input mt-1">{% for role in ['editor', 'manager', 'admin'] %}<option value="{{ role }}">{{ t(request, 'role_' ~ role) }}</option>{% endfor %}</select></label>
     <label class="text-sm">{{ t(request, 'new_password') }}<input name="password" type="password" required minlength="12" class="form-input mt-1" autocomplete="new-password"></label>
-    <label class="text-sm">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>
-    <button class="btn-primary px-4 py-2 text-sm sm:col-span-2 sm:justify-self-start" type="submit">{{ t(request, 'create_user') }}</button>
+    {{ password_field() }}
+    <button class="btn-primary sm:col-span-2 sm:justify-self-start" type="submit">{{ t(request, 'create_user') }}</button>
   </form>
 </section>
-{% endif %}
-
-<section class="rounded-sm border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-  <h2 class="border-b border-slate-200 p-4 text-sm font-semibold dark:border-slate-800">{{ t(request, 'users') }}</h2>
-  <div class="divide-y divide-slate-200 dark:divide-slate-800">
-  {% for user in users %}
-    <article class="p-4">
-      <div class="min-w-0">
-        <p class="font-medium">{{ publisher_badge(request, user) }}</p>
-        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'role_' ~ user.role) }} · {% if not user.is_active %}{{ t(request, 'user_inactive') }}{% elif user.deletion_requested_by %}{{ t(request, 'user_pending_delete') }}{% else %}{{ t(request, 'user_active') }}{% endif %}</p>
-      </div>
-      {% if user.is_active and user.role == 'editor' %}
-      <details class="mt-3"><summary class="cursor-pointer text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'verified_editor') }}</summary><p class="form-hint mt-2">{{ t(request, 'verification_help') }}</p><form method="post" action="/panel/users/{{ user.id }}/verification" class="flex flex-wrap items-end gap-3 mt-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><label class="text-xs flex items-center gap-2"><input type="checkbox" name="verified" value="true" {% if user.is_verified %}checked{% endif %} class="admin-checkbox">{{ t(request, 'verified_editor') }}</label><label class="text-xs">{{ t(request, 'current_password') }}<input type="password" name="current_password" required autocomplete="current-password" class="form-input mt-1"></label><button class="btn-secondary">{{ t(request, 'save') }}</button></form></details>
-      {% endif %}
-      {% if user.is_active %}
-        {% if staff_role == 'admin' %}
-      {% if user.role in ['editor', 'manager'] %}
-      <details class="mt-3"><summary class="cursor-pointer text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'media_quota') }} · {{ user.media_quota_mb or quota_settings[user.role ~ '_media_quota_mb'] }} MB</summary>
-        <form method="post" action="/panel/users/{{ user.id }}/media-quota" class="mt-3 flex flex-wrap items-end gap-3">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-          <label class="text-xs">{{ t(request, 'quota_override') }}<select name="quota_mb" class="form-input mt-1"><option value="">{{ t(request, 'quota_inherit') }}</option>{% for value in quota_choices %}<option value="{{ value }}" {% if user.media_quota_mb == value %}selected{% endif %}>{{ value }} MB</option>{% endfor %}</select></label>
-          <label class="text-xs">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1" autocomplete="current-password"></label>
-          <button class="btn-secondary" type="submit">{{ t(request, 'save') }}</button>
-        </form>
-      </details>
-      {% endif %}
-      <details class="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800">
-        <summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">{{ t(request, 'manage_user') }}</summary>
-        <div class="mt-3 flex flex-wrap items-end gap-4">
-        <form method="post" action="/panel/users/{{ user.id }}/role" class="flex flex-wrap items-end gap-2">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-          <label class="text-xs">{{ t(request, 'role') }}<select name="role" class="form-input mt-1 text-xs">{% for role in ['editor', 'manager', 'admin'] %}<option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ t(request, 'role_' ~ role) }}</option>{% endfor %}</select></label>
-          <label class="text-xs">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1 text-xs" autocomplete="current-password"></label>
-          <button class="btn-secondary px-3 py-2 text-xs" type="submit">{{ t(request, 'save') }}</button>
-        </form>
-        <form method="post" action="/panel/users/{{ user.id }}/delete" class="flex items-end gap-2">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-          <label class="text-xs">{{ t(request, 'current_password') }}<input name="current_password" type="password" required class="form-input mt-1 text-xs" autocomplete="current-password"></label>
-          <button class="btn-danger px-3 py-2 text-xs" type="submit" data-confirm-message="{{ t(request, 'user_delete_confirm') }}">{{ t(request, 'delete') }}</button>
-        </form>
-        {% if user.deletion_requested_by %}
-        <form method="post" action="/panel/users/{{ user.id }}/reject-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary px-3 py-2 text-xs" type="submit">{{ t(request, 'reject') }}</button></form>
-        {% endif %}
-        </div>
-      </details>
-        {% elif staff_role == 'manager' and user.role == 'editor' and not user.deletion_requested_by %}
-        <form method="post" action="/panel/users/{{ user.id }}/request-delete" class="mt-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary px-3 py-2 text-xs" type="submit">{{ t(request, 'request_delete') }}</button></form>
-        {% endif %}
-      {% endif %}
-    </article>
-  {% endfor %}
+{% else %}
+<section id="staff-accounts" class="rounded-sm border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+{% for user in users %}
+<article class="p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="min-w-0"><p class="font-medium">{{ publisher_badge(request, user) }}</p>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ t(request, 'role_' ~ user.role) }} · {{ t(request, 'user_inactive') if not user.is_active else t(request, 'user_pending_delete') if user.deletion_requested_by else t(request, 'user_active') }}
+      {% if staff_role == 'admin' and user.role in ['editor', 'manager'] %} · {{ user.media_quota_mb or quota_settings[user.role ~ '_media_quota_mb'] }} MB{% endif %}</p>
+    </div>
+    {% if user.is_active and (staff_role == 'admin' or user.role == 'editor') %}<button type="button" class="btn-secondary" data-user-toggle aria-controls="user-actions-{{ user.id }}" aria-expanded="false"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i>{{ t(request, 'manage_user') }}</button>{% endif %}
   </div>
+  {% if user.is_active %}
+  <div id="user-actions-{{ user.id }}" class="hidden mt-4 border-t border-slate-200 pt-4 dark:border-slate-800 space-y-5">
+    {% if user.role == 'editor' %}
+    <section><h3 class="text-sm font-semibold">{{ t(request, 'verified_editor') }}</h3><p class="form-hint mt-1">{{ t(request, 'verification_help') }}</p>
+    <form method="post" action="/panel/users/{{ user.id }}/verification" class="mt-3 flex flex-wrap items-end gap-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><label class="text-sm flex items-center gap-2 self-center"><input type="checkbox" name="verified" value="true" {% if user.is_verified %}checked{% endif %} class="admin-checkbox">{{ t(request, 'verified_editor') }}</label>{{ password_field() }}<button class="btn-secondary">{{ t(request, 'save') }}</button></form></section>
+    {% endif %}
+    {% if staff_role == 'admin' %}
+      {% if user.role in ['editor', 'manager'] %}
+      <section class="border-t border-slate-200 pt-4 dark:border-slate-800"><h3 class="mb-3 text-sm font-semibold">{{ t(request, 'media_quota') }}</h3>
+      <form method="post" action="/panel/users/{{ user.id }}/media-quota" class="space-y-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">{{ quota_picker('quota_mb', user.media_quota_mb, true) }}<div class="flex flex-wrap items-end gap-3">{{ password_field() }}<button class="btn-secondary">{{ t(request, 'save') }}</button></div></form></section>
+      {% endif %}
+      <section class="border-t border-slate-200 pt-4 dark:border-slate-800">
+      <form method="post" action="/panel/users/{{ user.id }}/role" class="flex flex-wrap items-end gap-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><label class="text-sm">{{ t(request, 'role') }}<select name="role" class="form-input mt-1">{% for role in ['editor', 'manager', 'admin'] %}<option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ t(request, 'role_' ~ role) }}</option>{% endfor %}</select></label>{{ password_field() }}<button class="btn-secondary">{{ t(request, 'save') }}</button></form>
+      </section>
+      <section class="border-t border-slate-200 pt-4 dark:border-slate-800 flex flex-wrap items-end gap-3">
+      <form method="post" action="/panel/users/{{ user.id }}/delete" class="flex flex-wrap items-end gap-3"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">{{ password_field() }}<button class="btn-danger" data-confirm-message="{{ t(request, 'user_delete_confirm') }}">{{ t(request, 'delete') }}</button></form>
+      {% if user.deletion_requested_by %}<form method="post" action="/panel/users/{{ user.id }}/reject-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary">{{ t(request, 'reject') }}</button></form>{% endif %}
+      </section>
+    {% elif user.role == 'editor' and not user.deletion_requested_by %}
+      <form method="post" action="/panel/users/{{ user.id }}/request-delete"><input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}"><button class="btn-secondary">{{ t(request, 'request_delete') }}</button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+</article>
+{% endfor %}
 </section>
+{% endif %}
 {% endblock %}

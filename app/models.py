@@ -208,6 +208,7 @@ class SiteSettings(Base):
     logo_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="icon_text")
     logo_light_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     logo_dark_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    favicon_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hero_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     hero_background: Mapped[str] = mapped_column(String(20), nullable=False, default="soft")
     hero_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
