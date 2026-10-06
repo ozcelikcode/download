@@ -1,0 +1,20 @@
+{# One navigation order for desktop and mobile, with unchanged role boundaries. #}
+{% set links = [
+  ('/panel/categories', 'categories', 'all'),
+  ('/panel/tags', 'tags', 'all'),
+  ('/panel/media', 'media_archive', 'all'),
+  ('/panel/users', 'users', 'staff'),
+  ('/panel/registrations', 'registration_requests', 'staff'),
+  ('/panel/contact', 'contact_title', 'all'),
+  ('/panel/settings/account', 'account', 'all'),
+  ('/panel/links', 'link_report', 'staff'),
+  ('/panel/audit', 'audit_history', 'admin'),
+  ('/panel/backups', 'backups', 'admin'),
+  ('/panel/settings', 'settings', 'staff')
+] %}
+{% for url, label, visibility in links %}
+  {% if visibility == 'all' or visibility == 'staff' and request.state.admin_role != 'editor' or visibility == 'admin' and request.state.admin_role == 'admin' %}
+    {% set active = admin_path == url if url == '/panel/settings/account' else admin_path.startswith(url) and (url != '/panel/settings' or admin_path != '/panel/settings/account') %}
+    <a href="{{ url }}" class="admin-nav-link {{ 'is-active' if active else '' }}" {% if active %}aria-current="page"{% endif %}>{{ t(request, label) }}</a>
+  {% endif %}
+{% endfor %}

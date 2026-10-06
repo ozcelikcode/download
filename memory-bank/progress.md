@@ -2,6 +2,8 @@
 
 ## Working capabilities
 
+- Dashboard updates placed after statistics; one shared management menu order for desktop/mobile, with Settings last. Private account photos can be uploaded, replaced and removed by all staff roles, with 256 × 256 WebP compression, stripped metadata, bounded input, personal quotas, own-identity access, staged rollback-safe publication, and existing encrypted-backup compatibility. Public static access and media-library listing are blocked; current photos are recognized as used media.
+
 - Unified notification unread badges, initial server-rendered navbar counts, Seen states, and CSRF-protected Mark all as read. Destination visits from navbar/sidebar/dashboard acknowledge the group without completing pending tasks. Identity-bound signed-session markers isolate accounts; compact theme-aware dashboard cards show pending totals independently of read state. Older polling responses cannot resurrect acknowledged counters.
 
 - Responsive download detail skeleton with right-side download/report/file facts, left-side description/version history, accessible overflow-based Read more, and progressive enhancement. Local themes, mobile download actions, draft restrictions, checksum copying, and related items are preserved.
@@ -36,6 +38,8 @@
 - Keep all Markdown project documentation in English.
 
 ## Verification
+
+The dashboard/menu/profile-photo increment passes all 477 tests with warnings treated as errors and optional Node/Web Crypto checks enabled. Twenty-one new regressions cover all three staff roles, compression/metadata stripping, own-identity delivery, hidden static paths, CSRF, malformed images, input/pixel limits, quota accounting, replacement/removal, symlink rejection, backup compatibility, legacy migration safety, shared menu ordering, four-language copy, and download-ID collision avoidance. Focused health/media and notification checks pass. CSS build, dependency compatibility, Alembic schema and whitespace checks pass. Isolated light/dark desktop and 390-pixel mobile previews confirm loaded square photos, no horizontal overflow and updates below statistics. The preview server and browser tab were closed, viewport/theme overrides restored, and its temporary directory removed. No active database, user media, schema or recovery snapshot was changed.
 
 The notification read-state/dashboard increment passes 456 tests with warnings treated as errors and optional Node/Web Crypto checks. New coverage verifies native acknowledgment, initial badges, direct destination reading, new-event horizons, account/role boundaries, pending-work preservation, multilingual copy, safe DOM text, and stale poll protection. Desktop/mobile light/dark AMOLED previews used isolated temporary data; visible navbar counts, parent clearing, immediate Seen states, and compact cards were verified. CSS build, JavaScript syntax, Alembic, and whitespace checks pass. No real user data or schema was changed.
 

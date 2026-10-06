@@ -15,8 +15,6 @@
   </a>
 </div>
 
-{% include 'admin/_dashboard_updates.html' %}
-
 {# İstatistik kartları #}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 transition-colors">
@@ -69,6 +67,8 @@
     </p>
   </div>
 </div>
+
+{% include 'admin/_dashboard_updates.html' %}
 
 {# İçerik ve depolama sağlığı #}
 {% set health_attention = health.attention_count + stats.draft_downloads + seo_warning_count + configuration_attention_count %}
@@ -271,7 +271,7 @@
       </span>
       <div class="min-w-0 flex-1">
         <p class="text-sm text-slate-700 dark:text-slate-300 break-words">
-          <span class="font-medium">{{ system_message(request, row.label) if row.entity == 'login' else row.label }}</span>
+          <span class="font-medium">{{ system_message(request, row.label) }}</span>
           <span class="text-slate-500 dark:text-slate-400">{{ t(request, 'activity_' ~ row.action) }}</span>
         </p>
         <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">

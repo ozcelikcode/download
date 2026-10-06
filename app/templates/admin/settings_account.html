@@ -13,6 +13,30 @@
     <i data-lucide="user-cog" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
     {{ t(request, 'staff_account') }}
   </h2>
+  {% set photo = profile_photo_url(request) %}
+  <section class="pb-5 mb-5 mt-4 border-b border-slate-100 dark:border-slate-800" aria-labelledby="profile-photo-title">
+    <h3 id="profile-photo-title" class="form-label">{{ t(request, 'photo_title') }}</h3>
+    <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+      <div class="w-16 h-16 shrink-0 rounded-sm overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+        {% if photo %}<img src="{{ photo }}" alt="{{ t(request, 'photo_title') }}" width="64" height="64" class="w-full h-full object-cover">
+        {% else %}<i data-lucide="user-circle" class="w-8 h-8 text-slate-400" aria-hidden="true"></i>{% endif %}
+      </div>
+      <div class="min-w-0 flex-1">
+        <form method="post" action="/panel/account/photo" enctype="multipart/form-data" class="space-y-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+          <label class="block"><span class="sr-only">{{ t(request, 'photo_title') }}</span><input type="file" name="photo" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/x-icon" required class="form-input text-xs"></label>
+          <p class="form-hint">{{ t(request, 'photo_help') }}</p>
+          <button type="submit" class="btn-primary"><i data-lucide="upload" class="w-4 h-4"></i>{{ t(request, 'photo_save') }}</button>
+        </form>
+        {% if photo %}
+        <form method="post" action="/panel/account/photo/remove" class="mt-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+          <button type="submit" class="btn-secondary"><i data-lucide="x" class="w-4 h-4"></i>{{ t(request, 'photo_remove') }}</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
   {% if request.state.admin_role != 'editor' %}
   {# Profil ikonu #}
   <form method="post" action="/panel/settings/avatar" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">

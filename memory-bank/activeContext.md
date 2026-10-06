@@ -2,9 +2,11 @@
 
 ## Current focus
 
+The dashboard updates section now follows summary statistics on the same overview page. Desktop/mobile management menus share a single role-filtered order with Settings last. Account photos use immutable user-ID filenames in the hidden uploads/icons/.profiles directory, the existing MediaAsset ownership/quota records, authenticated own-account delivery, and metadata-free 256 × 256 WebP normalization with a 5 MB input limit. No schema migration or live data mutation is required. Photos are included in the existing encrypted backup format and excluded from false unused-media findings. Account references carry no download ID, so profile replacement cannot be mistaken for publication editing.
+
 Maintain isolated editor workspaces, shared protected categories, editorial approval, verified publishers, and private staff correspondence. Preserve existing site data during migrations.
 
-Current increment improves notification visibility and parent-menu counters, compacts registration rows, and uses the Notifications label. Previously requested category applications and analytics remain separate pending work; a release-readiness review records them explicitly.
+The preceding notification increment improved visibility and parent-menu counters, compacted registration rows, and introduced the Notifications label. Previously requested category applications and analytics remain separate pending work; a release-readiness review records them explicitly.
 
 ## Current decisions
 

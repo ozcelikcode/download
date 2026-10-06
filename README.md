@@ -4,6 +4,7 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 
 ## Features
 
+- Private per-account profile photos with automatic 256 × 256 WebP compression and metadata removal; upload, replace or remove them from Account. The 5 MB input limit and personal media quota apply. Photos appear in the account page and panel header, are included in encrypted backups, and are not publicly served or listed as library media.
 - Local file uploads and external download sources
 - Version history, latest-version links, SHA-256 checksums, and operating-system metadata
 - Search, category and tag filtering, featured items, and query-string pagination

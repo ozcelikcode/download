@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models import Download, FileType, Page, SiteSettings
+from app.models import Download, FileType, Page, SiteSettings, User
 
 
 def media_path(value: str | None, origin: str | None = None) -> Path | None:
@@ -58,6 +58,18 @@ class _MediaReferences(HTMLParser):
 
 async def media_usage(session: AsyncSession, origin: str | None = None, *, all_owners: bool = False) -> dict[Path, list[dict]]:
     usage: dict[Path, list[dict]] = {}
+    from app.profile_photos import photo_path
+    users_query = select(User.id)
+    if not all_owners and session.info.get("editor_owner_id") is not None:
+        users_query = users_query.where(User.id == session.info["editor_owner_id"])
+    for user_id in await session.scalars(users_query):
+        try:
+            path = photo_path(user_id)
+        except ValueError:
+            continue
+        # Account references must not be mistaken for download IDs by review checks.
+        usage[path] = [{"id": None, "title": "Profile photo", "owner_id": user_id,
+                        "url": "/panel/settings/account"}]
     downloads = (await session.scalars(select(Download).execution_options(include_all_owners=all_owners))).all()
     for download in downloads:
         parser = _MediaReferences(origin)

@@ -768,6 +768,13 @@ for key in ("staff_session_opened", "staff_login_failed", "staff_login_limited",
     _SYSTEM_MESSAGE_KEYS[TRANSLATIONS["en"][key]] = key
 
 
+from app.locales.profile_photos import STRINGS as PROFILE_PHOTO_STRINGS
+for language, strings in PROFILE_PHOTO_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+_SYSTEM_MESSAGE_KEYS["Profile photo updated"] = "photo_saved"
+_SYSTEM_MESSAGE_KEYS["Profile photo removed"] = "photo_removed"
+
+
 def system_message(request: Request | None, message: str) -> str:
     """Translate only recognized system messages into the current UI language."""
     key = _SYSTEM_MESSAGE_KEYS.get(message)

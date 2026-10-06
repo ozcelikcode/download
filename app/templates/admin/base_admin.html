@@ -71,8 +71,12 @@
   {# Admin kullanıcı #}
   {% if admin_user is defined %}
   <div class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+    {% set photo = profile_photo_url(request) %}
+    {% if photo %}<a href="/panel/settings/account" aria-label="{{ t(request, 'account') }}"><img src="{{ photo }}" alt="" width="24" height="24" class="w-6 h-6 rounded-sm object-cover"></a>
+    {% else %}
     <i data-lucide="{{ admin_icon }}" class="w-3.5 h-3.5 site-icon-color"
       style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
+    {% endif %}
     <span>{{ admin_user }}</span>
   </div>
   {% endif %}
@@ -161,17 +165,7 @@
           <i data-lucide="settings-2" class="w-3.5 h-3.5 shrink-0"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5 shrink-0"></i>
         </summary>
         <div class="admin-nav-children">
-          <a href="/panel/categories" class="admin-nav-link {% if admin_path.startswith('/panel/categories') %}is-active{% endif %}" {% if admin_path.startswith('/panel/categories') %}aria-current="page"{% endif %}>{{ t(request, 'categories') }}</a>
-          <a href="/panel/tags" class="admin-nav-link {% if admin_path.startswith('/panel/tags') %}is-active{% endif %}" {% if admin_path.startswith('/panel/tags') %}aria-current="page"{% endif %}>{{ t(request, 'tags') }}</a>
-          <a href="/panel/media" class="admin-nav-link {% if admin_path.startswith('/panel/media') %}is-active{% endif %}" {% if admin_path.startswith('/panel/media') %}aria-current="page"{% endif %}>{{ t(request, 'media_archive') }}</a>
-          {% if request.state.admin_role == 'admin' %}<a href="/panel/backups" class="admin-nav-link {% if admin_path.startswith('/panel/backups') %}is-active{% endif %}">{{ t(request, 'backups') }}</a>{% endif %}
-          {% if request.state.admin_role != 'editor' %}<a href="/panel/links" class="admin-nav-link {% if admin_path.startswith('/panel/links') %}is-active{% endif %}" {% if admin_path.startswith('/panel/links') %}aria-current="page"{% endif %}>{{ t(request, 'link_report') }}</a>{% endif %}
-          {% if request.state.admin_role == 'admin' %}<a href="/panel/audit" class="admin-nav-link {% if admin_path.startswith('/panel/audit') %}is-active{% endif %}" {% if admin_path.startswith('/panel/audit') %}aria-current="page"{% endif %}>{{ t(request, 'audit_history') }}</a>{% endif %}
-          {% if request.state.admin_role != 'editor' %}<a href="/panel/settings" class="admin-nav-link {% if admin_path.startswith('/panel/settings') and admin_path != '/panel/settings/account' %}is-active{% endif %}" {% if admin_path.startswith('/panel/settings') and admin_path != '/panel/settings/account' %}aria-current="page"{% endif %}>{{ t(request, 'settings') }}</a>{% endif %}
-          <a href="/panel/contact" class="admin-nav-link {% if admin_path.startswith('/panel/contact') %}is-active{% endif %}">{{ t(request, 'contact_title') }}</a>
-          <a href="/panel/settings/account" class="admin-nav-link {% if admin_path == '/panel/settings/account' %}is-active{% endif %}" {% if admin_path == '/panel/settings/account' %}aria-current="page"{% endif %}>{{ t(request, 'account') }}</a>
-          {% if request.state.admin_role != 'editor' %}<a href="/panel/users" class="admin-nav-link {% if admin_path.startswith('/panel/users') %}is-active{% endif %}" {% if admin_path.startswith('/panel/users') %}aria-current="page"{% endif %}>{{ t(request, 'users') }}</a>{% endif %}
-          {% if request.state.admin_role != 'editor' %}<a href="/panel/registrations" class="admin-nav-link {% if admin_path.startswith('/panel/registrations') %}is-active{% endif %}">{{ t(request, 'registration_requests') }}</a>{% endif %}
+          {% include 'admin/_management_links.html' %}
         </div>
       </details>
     </nav>
@@ -197,17 +191,7 @@
         <details class="admin-nav-group" {% if management_section %}open{% endif %}>
           <summary data-panel-group class="admin-nav-summary {% if management_section %}is-active{% endif %}"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5"></i></summary>
           <div class="admin-nav-children">
-            <a href="/panel/categories" class="admin-nav-link {% if admin_path.startswith('/panel/categories') %}is-active{% endif %}">{{ t(request, 'categories') }}</a>
-            <a href="/panel/tags" class="admin-nav-link {% if admin_path.startswith('/panel/tags') %}is-active{% endif %}">{{ t(request, 'tags') }}</a>
-            <a href="/panel/media" class="admin-nav-link {% if admin_path.startswith('/panel/media') %}is-active{% endif %}">{{ t(request, 'media_archive') }}</a>
-            {% if request.state.admin_role == 'admin' %}<a href="/panel/backups" class="admin-nav-link {% if admin_path.startswith('/panel/backups') %}is-active{% endif %}">{{ t(request, 'backups') }}</a>{% endif %}
-            {% if request.state.admin_role != 'editor' %}<a href="/panel/links" class="admin-nav-link {% if admin_path.startswith('/panel/links') %}is-active{% endif %}">{{ t(request, 'link_report') }}</a>{% endif %}
-            {% if request.state.admin_role == 'admin' %}<a href="/panel/audit" class="admin-nav-link {% if admin_path.startswith('/panel/audit') %}is-active{% endif %}">{{ t(request, 'audit_history') }}</a>{% endif %}
-            {% if request.state.admin_role != 'editor' %}<a href="/panel/settings" class="admin-nav-link {% if admin_path.startswith('/panel/settings') and admin_path != '/panel/settings/account' %}is-active{% endif %}">{{ t(request, 'settings') }}</a>{% endif %}
-            <a href="/panel/contact" class="admin-nav-link {% if admin_path.startswith('/panel/contact') %}is-active{% endif %}">{{ t(request, 'contact_title') }}</a>
-          <a href="/panel/settings/account" class="admin-nav-link {% if admin_path == '/panel/settings/account' %}is-active{% endif %}">{{ t(request, 'account') }}</a>
-            {% if request.state.admin_role != 'editor' %}<a href="/panel/users" class="admin-nav-link {% if admin_path.startswith('/panel/users') %}is-active{% endif %}">{{ t(request, 'users') }}</a>{% endif %}
-            {% if request.state.admin_role != 'editor' %}<a href="/panel/registrations" class="admin-nav-link {% if admin_path.startswith('/panel/registrations') %}is-active{% endif %}">{{ t(request, 'registration_requests') }}</a>{% endif %}
+            {% include 'admin/_management_links.html' %}
           </div>
         </details>
       </nav>

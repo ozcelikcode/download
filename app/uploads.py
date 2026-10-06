@@ -31,8 +31,9 @@ async def save_upload(
     *,
     validator: Callable[[Path], None] | None = None,
     publisher: Callable[[Path, Path], Awaitable[None]] | None = None,
+    max_bytes: int | None = None,
 ) -> None:
-    limit = settings.max_upload_size_bytes
+    limit = min(settings.max_upload_size_bytes, max_bytes) if max_bytes is not None else settings.max_upload_size_bytes
     if file.size is not None and file.size > limit:
         raise HTTPException(status_code=413, detail="Dosya yükleme boyutu sınırını aşıyor.")
 

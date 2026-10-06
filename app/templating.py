@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 from app.branding import resolve_accent_theme, resolve_icon_color
 from app.config import settings
 from app.content_security import safe_http_url, safe_navigation_url, sanitize_rich_text
+from app.profile_photos import photo_url
 from app.models import FileType, IconType, SiteSettings
 from app.seo import inspect_public_base_url
 
@@ -23,6 +24,7 @@ from app.i18n import LANGUAGE_CHOICES, date_locale, og_locale, set_ui_language, 
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["profile_photo_url"] = photo_url
 templates.env.globals["panel_notices"] = lambda request: getattr(
     request.state, "panel_notices", {"items": [], "counters": {}, "unread_counters": {}, "unread": 0}
 )
