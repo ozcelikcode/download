@@ -39,6 +39,22 @@
   </form>
 </section>
 
+{% if request.state.admin_role == 'admin' %}
+<section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-5">
+  <h2 class="text-sm font-semibold flex items-center gap-2"><i data-lucide="image-down" class="w-4 h-4"></i>{{ t(request, 'compression_title') }}</h2>
+  <p class="form-hint mb-4">{{ t(request, 'compression_help') }}</p>
+  <form method="post" action="/panel/settings/image-compression" class="space-y-4 max-w-xl">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <label class="flex gap-2 items-center text-sm"><input type="checkbox" name="enabled" value="true" {% if site_settings.image_compression_enabled %}checked{% endif %}>{{ t(request, 'compression_enabled') }}</label>
+    <label for="compression-level" class="form-label">{{ t(request, 'compression_title') }}</label>
+    <input id="compression-level" type="range" name="level" min="0" max="4" step="1" value="{{ site_settings.image_compression_level }}" class="image-compression-range w-full" list="compression-levels">
+    <datalist id="compression-levels">{% for key in ['minimum', 'low', 'medium', 'high', 'ultra'] %}<option value="{{ loop.index0 }}" label="{{ t(request, 'compression_' ~ key) }}"></option>{% endfor %}</datalist>
+    <div class="flex justify-between gap-2 text-xs text-slate-500">{% for key in ['minimum', 'low', 'medium', 'high', 'ultra'] %}<span>{{ t(request, 'compression_' ~ key) }}</span>{% endfor %}</div>
+    <button type="submit" class="btn-primary"><i data-lucide="save" class="w-4 h-4"></i>{{ t(request, 'save') }}</button>
+  </form>
+</section>
+{% endif %}
+
 <form method="post" action="/panel/settings/appearance" enctype="multipart/form-data" class="space-y-5">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
 

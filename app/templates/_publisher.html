@@ -1,6 +1,11 @@
 {% macro render(request, publisher, fallback='') %}
 <span class="inline-flex items-center gap-1.5">
-  <span>{{ publisher.username if publisher else fallback }}</span>
+  {% set visible = publisher and publisher.is_active and not publisher.deleted_at %}
+  {% set photo = publisher_photo_url(request, publisher) %}
+  {% if photo %}<img src="{{ photo }}" alt="" width="24" height="24" class="w-6 h-6 rounded-sm object-cover">
+  {% else %}<i data-lucide="{{ publisher.profile_icon if visible else 'user-circle' }}" class="w-4 h-4 shrink-0" aria-hidden="true"></i>{% endif %}
+  {% if visible and not request.url.path.startswith('/panel') %}<a href="/publisher/{{ publisher.id }}" class="hover:underline">{{ publisher.username }}</a>
+  {% else %}<span>{{ publisher.username if publisher and request.url.path.startswith('/panel') or visible else fallback }}</span>{% endif %}
   {% if publisher and publisher.is_active and (publisher.role != 'editor' or publisher.is_verified) %}
   <i data-lucide="badge-check" class="w-4 h-4 shrink-0 publisher-badge--{{ publisher.role }}" role="img" aria-label="{{ t(request, 'verified_editor') if publisher.role == 'editor' else t(request, 'role_' ~ publisher.role) }}"></i>
   {% endif %}

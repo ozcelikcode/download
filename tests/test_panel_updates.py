@@ -57,7 +57,7 @@ async def test_editor_notices_never_show_foreign_or_staff_data(client, db_sessio
     await db_session.commit()
     client.cookies.set(SESSION_COOKIE, create_admin_session_token(editor.username, editor.password_hash, user_id=editor.id), domain="test.local", path="/")
     data = (await client.get("/panel/notifications")).json()
-    assert data["unread"] == 1 and data["counters"] == {"contact": 1, "content": 0}
+    assert data["unread"] == 1 and data["counters"] == {"contact": 1, "content": 0, "publisher_reports": 0}
     assert "secret" not in str(data) and "foreign" not in str(data)
     assert (await client.post("/panel/notifications/open", data={"kind": "registrations"})).status_code == 404
     assert (await client.post("/panel/notifications/open", data={"kind": "contact"})).status_code == 303

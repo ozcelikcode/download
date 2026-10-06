@@ -87,7 +87,7 @@ async def test_admin_language_controls_site_and_admin_without_translating_conten
     public_page = await client.get(f"/download/{download.slug}")
     assert '<html lang="en">' in public_page.text
     assert "Open Link" in public_page.text
-    assert "File Information" in public_page.text
+    assert "Details" in public_page.text
     assert "Türkçe Uygulama Adı" in public_page.text
     assert "İçerik açıklaması çevrilmemeli." in public_page.text
     assert 'property="og:locale" content="en_US"' in public_page.text

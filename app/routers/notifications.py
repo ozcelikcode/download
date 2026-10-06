@@ -44,6 +44,11 @@ async def snapshot(request: Request, session: AsyncSession) -> dict[str, Any]:
                           "count": count, "unread": int(unread or 0), "latest": latest.isoformat()})
 
     if request.state.admin_role == "editor":
+        await group("publisher_reports", "publisher_reports", "/panel/content-reports", AuditLog, AuditLog.created_at,
+                    AuditLog.entity == "publisher_reports", AuditLog.action == "report",
+                    Download.owner_id == request.state.admin_id,
+                    func.json_extract(AuditLog.changes, '$.recipient_id[1]') == request.state.admin_id,
+                    join=(Download, Download.id == AuditLog.entity_id))
         await group("contact", "contact_answered", "/panel/contact", EditorMessage, EditorMessage.responded_at,
                     EditorMessage.sender_id == request.state.admin_id, EditorMessage.responded_at.is_not(None))
         await group("content", "content_updates", "/panel/downloads", AuditLog, AuditLog.created_at,
@@ -51,6 +56,8 @@ async def snapshot(request: Request, session: AsyncSession) -> dict[str, Any]:
                     Download.owner_id == request.state.admin_id,
                     join=(Download, Download.id == AuditLog.entity_id))
     else:
+        await group("publisher_reports", "publisher_reports", "/panel/content-reports", AuditLog, AuditLog.created_at,
+                    AuditLog.entity == "publisher_reports", AuditLog.action == "report")
         await group("reports", "visitor_reports", "/panel/links/reports", AuditLog, AuditLog.created_at,
                     AuditLog.entity == "visitor_reports", AuditLog.action == "report")
         await group("registrations", "registration_requests", "/panel/registrations", RegistrationRequest, RegistrationRequest.created_at)

@@ -1,6 +1,12 @@
 """Download-page disclosure and privacy-preserving visitor reports."""
 
 _COPY = {
+    "publisher_reports": ("Content feedback", "Comentarios sobre el contenido", "Retours sur le contenu", "İçerik bildirimleri"),
+    "publisher_reports_help": ("Visitor feedback about your content. Reports follow the activity-log retention policy.", "Comentarios de visitantes sobre su contenido. Se conservan según la política del registro de actividad.", "Retours des visiteurs sur votre contenu. La durée de conservation suit celle du journal d’activité.", "İçerikleriniz hakkında ziyaretçi bildirimleri. Kayıtlar işlem geçmişinin saklama politikasına tabidir."),
+    "detail_report_publisher": ("Notify publisher", "Avisar al autor", "Informer l’auteur", "Yayıncıya bildir"),
+    "detail_details": ("Details", "Detalles", "Détails", "Detaylar"),
+    "detail_sections": ("Content sections", "Secciones de contenido", "Sections du contenu", "İçerik bölümleri"),
+    "detail_download_count": ("Downloads", "Descargas", "Téléchargements", "İndirme sayısı"),
     "report_reason": ("Issue", "Problema", "Problème", "Sorun"),
     "detail_show_more": ("Read more", "Leer más", "Lire la suite", "Devamını göster"),
     "detail_show_less": ("Show less", "Mostrar menos", "Réduire", "Daha az göster"),

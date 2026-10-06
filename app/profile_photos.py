@@ -9,6 +9,7 @@ from app.config import settings
 from app.imaging import validate_raster_image_file
 
 PHOTO_UPLOAD_LIMIT = 5 * 1024 * 1024
+PROFILE_ICONS = ("user-circle", "user", "user-round", "circle-user-round", "contact-round", "smile", "code", "pen-tool", "book-open", "camera", "palette")
 
 
 def photo_path(user_id: int) -> Path:
@@ -43,3 +44,17 @@ def prepare_photo(path: Path) -> None:
         clean = Image.new("RGBA", fitted.size)
         clean.paste(fitted)
     clean.save(path, format="WEBP", quality=82, method=6)
+
+
+def publisher_photo_url(request: Request, publisher: object) -> str | None:
+    if publisher is None or not publisher.is_active or publisher.deleted_at is not None:
+        return None
+    if request.url.path.startswith('/panel'):
+        return photo_url(request) if publisher.id == getattr(request.state, 'admin_id', None) else None
+    try:
+        path = photo_path(publisher.id)
+        if path.is_file():
+            return f"/publisher/{publisher.id}/photo?v={path.stat().st_mtime_ns}"
+    except (OSError, ValueError):
+        pass
+    return None

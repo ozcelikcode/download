@@ -234,6 +234,7 @@
         {# Görsel seçim alanı (dosya veya URL — her ikisi de sisteme yüklenir) #}
         <div id="icon-input-wrap"
           class="space-y-3 {% if download and (download.icon_image_path or (download.icon_image_url | safe_http_url)) %}hidden{% endif %}">
+          <label class="flex gap-2 items-center text-sm"><input id="content-image-compression" type="checkbox" {% if image_compression_enabled is not defined or image_compression_enabled %}checked{% endif %}>{{ t(request, 'compression_upload') }}</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {# Görsel Dosyası Yükleme #}
             <div>
@@ -1153,6 +1154,7 @@
         };
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('compression', String(document.getElementById('content-image-compression').checked));
         xhr.send(fd);
       });
     }
@@ -1164,6 +1166,7 @@
         const fd = new FormData();
         fd.append('url', url);
         fd.append('token', token);
+        fd.append('compression', String(document.getElementById('content-image-compression').checked));
 
         csrfFetch('/panel/upload/icon-image-url', { method: 'POST', body: fd })
           .then(function (r) { if (!r.ok) throw new Error(window.formMessages.downloadStartFailed); return r.json(); })

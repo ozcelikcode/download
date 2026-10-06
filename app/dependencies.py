@@ -182,6 +182,14 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return method in {"GET", "POST"}
     if path == "/panel/account/photo/remove":
         return method == "POST"
+    if path == "/panel/account/icon":
+        return method == "POST"
+    if path == "/panel/content-reports":
+        return method == "GET"
+    if path == "/panel/settings/image-compression":
+        return False
+    if path == "/panel/statistics":
+        return role == "manager" and method == "GET"
     if path == "/panel/registrations" or path.startswith("/panel/registrations/"):
         return role == "manager"
     if path == "/panel/contact" or path.startswith("/panel/contact/"):

@@ -88,6 +88,10 @@ async def test_backup_before_timezone_remains_importable(db_session):
             manifest = json.loads(archive.read("manifest.json"))
             data = json.loads(archive.read("data.json"))
         del data["site_settings"][0]["site_timezone"]
+        del data["site_settings"][0]["image_compression_enabled"]
+        del data["site_settings"][0]["image_compression_level"]
+        for user in data["users"]:
+            del user["profile_icon"]
         del data["site_settings"][0]["favicon_path"]
         del data["site_settings"][0]["editor_media_quota_mb"]
         del data["site_settings"][0]["manager_media_quota_mb"]

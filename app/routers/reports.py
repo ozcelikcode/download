@@ -67,12 +67,18 @@ def report_labels(language: str, group: str) -> dict[str, str]:
         labels.update(publication=strings["review_title"], contact=strings["contact_title"])
         from app.i18n import TRANSLATIONS
         labels["visitor_reports"] = TRANSLATIONS.get(language, TRANSLATIONS["en"])["visitor_reports"]
+        labels["publisher_reports"] = TRANSLATIONS.get(language, TRANSLATIONS["en"])["publisher_reports"]
     elif group == "actions":
         from app.i18n import TRANSLATIONS
         translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
         labels.update(approve=translated["registration_approve"], reject=translated["reject"])
         labels["report"] = translated["detail_report"]
     elif group == "fields":
+        from app.locales.image_policy import STRINGS as IMAGE_POLICY_STRINGS
+        image_strings = IMAGE_POLICY_STRINGS.get(language, IMAGE_POLICY_STRINGS['en'])
+        labels.update(image_compression_enabled=image_strings['compression_enabled'],
+                      image_compression_level=image_strings['compression_title'],
+                      enabled=image_strings['compression_enabled'], level=image_strings['compression_title'])
         labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
         labels["site_timezone"] = TIMEZONE_STRINGS.get(language, TIMEZONE_STRINGS["en"])["timezone_title"]
         storage = STORAGE_STRINGS.get(language, STORAGE_STRINGS["en"])

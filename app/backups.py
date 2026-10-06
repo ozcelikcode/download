@@ -72,9 +72,12 @@ def fingerprint(pem: str) -> str:
 
 
 def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False,
-                       before_quotas: bool = False, before_favicon: bool = False) -> str:
+                       before_quotas: bool = False, before_favicon: bool = False, before_image_policy: bool = False) -> str:
     schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
-                         if not ((before_favicon or before_quotas or before_timezone or before_registrations)
+                         if not ((before_image_policy or before_favicon or before_quotas or before_timezone or before_registrations)
+                                 and ((table.name == "site_settings" and column.name in {"image_compression_enabled", "image_compression_level"})
+                                      or (table.name == "users" and column.name == "profile_icon")))
+                         and not ((before_favicon or before_quotas or before_timezone or before_registrations)
                                  and table.name == "site_settings" and column.name == "favicon_path")
                          and not ((before_timezone or before_registrations) and table.name == "site_settings" and column.name == "site_timezone")
                          and not ((before_quotas or before_timezone or before_registrations)
@@ -234,7 +237,8 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             old_timezone = legacy or manifest.get("schema") == schema_fingerprint(before_timezone=True)
             old_quotas = old_timezone or manifest.get("schema") == schema_fingerprint(before_quotas=True)
             old_favicon = old_quotas or manifest.get("schema") == schema_fingerprint(before_favicon=True)
-            if manifest.get("format") != 1 or (not old_favicon and manifest.get("schema") != schema_fingerprint()):
+            old_image_policy = old_favicon or manifest.get("schema") == schema_fingerprint(before_image_policy=True)
+            if manifest.get("format") != 1 or (not old_image_policy and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
             if legacy:
@@ -243,6 +247,17 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             if legacy:
                 data["registration_requests"] = []
+            if old_image_policy:
+                if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or not isinstance(data.get("users"), list):
+                    raise BackupError("backup_invalid")
+                account = data["site_settings"][0]
+                if "image_compression_enabled" in account or "image_compression_level" in account:
+                    raise BackupError("backup_invalid")
+                account.update(image_compression_enabled=True, image_compression_level=2)
+                for user in data["users"]:
+                    if not isinstance(user, dict) or "profile_icon" in user:
+                        raise BackupError("backup_invalid")
+                    user["profile_icon"] = "user-circle"
             if old_favicon:
                 if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or "favicon_path" in data["site_settings"][0]:
                     raise BackupError("backup_invalid")
@@ -277,12 +292,18 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             from app.timezones import validate_timezone
             from app.storage_quota import validate_quota
+            from app.profile_photos import PROFILE_ICONS
             try:
                 validate_timezone(data["site_settings"][0]["site_timezone"])
                 validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
                 validate_quota(data["site_settings"][0]["manager_media_quota_mb"])
+                compression = data["site_settings"][0]
+                if compression["image_compression_enabled"] not in (False, True, 0, 1) or type(compression["image_compression_level"]) is not int or compression["image_compression_level"] not in range(5):
+                    raise ValueError("Invalid image policy")
                 for user in data["users"]:
                     validate_quota(user["media_quota_mb"], optional=True)
+                    if user["profile_icon"] not in PROFILE_ICONS:
+                        raise ValueError("Invalid profile icon")
             except (ValueError, TypeError):
                 raise BackupError("backup_invalid") from None
             extracted = stage / "extracted"

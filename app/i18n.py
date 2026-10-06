@@ -775,6 +775,14 @@ _SYSTEM_MESSAGE_KEYS["Profile photo updated"] = "photo_saved"
 _SYSTEM_MESSAGE_KEYS["Profile photo removed"] = "photo_removed"
 
 
+from app.locales.image_policy import STRINGS as IMAGE_POLICY_STRINGS
+for language, strings in IMAGE_POLICY_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+_SYSTEM_MESSAGE_KEYS['Profile icon updated'] = 'profile_icon_updated'
+_SYSTEM_MESSAGE_KEYS['Image compression'] = 'compression_title'
+_SYSTEM_MESSAGE_KEYS['Image processing failed'] = 'compression_failed'
+
+
 def system_message(request: Request | None, message: str) -> str:
     """Translate only recognized system messages into the current UI language."""
     key = _SYSTEM_MESSAGE_KEYS.get(message)

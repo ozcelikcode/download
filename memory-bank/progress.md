@@ -2,6 +2,10 @@
 
 ## Working capabilities
 
+Latest verification: 498 tests pass with warnings treated as errors and optional Node/Web Crypto checks enabled. Focused regressions confirm owner-isolated publisher reports/catalogs/photos, five compression levels, role enforcement, strict previous-backup adaptation, aggregate statistics access, and complete omission of a disabled hero. Isolated light/dark desktop and 390 px browser checks confirm equal card heights, accessible tab switching, Read more reversal, and no horizontal overflow. Alembic, dependency, and whitespace checks pass; temporary preview artifacts are removed automatically and the private migration recovery snapshot is retained.
+
+- Download detail tabs and balanced cards, top-right actions, source/count details, and role-scoped anonymous publisher feedback. Public publisher catalogs/photos follow publication visibility, including account closure. Admin-only optional content compression supports five levels; profile optimization stays mandatory. Staff-only aggregate statistics and server-side hero omission have regression coverage. Migration `b5a7c9e1f236` preserves data, includes legacy backup adaptation, and has a private recovery snapshot recorded in Active Context.
+
 - Dashboard updates placed after statistics; one shared management menu order for desktop/mobile, with Settings last. Private account photos can be uploaded, replaced and removed by all staff roles, with 256 × 256 WebP compression, stripped metadata, bounded input, personal quotas, own-identity access, staged rollback-safe publication, and existing encrypted-backup compatibility. Public static access and media-library listing are blocked; current photos are recognized as used media.
 
 - Unified notification unread badges, initial server-rendered navbar counts, Seen states, and CSRF-protected Mark all as read. Destination visits from navbar/sidebar/dashboard acknowledge the group without completing pending tasks. Identity-bound signed-session markers isolate accounts; compact theme-aware dashboard cards show pending totals independently of read state. Older polling responses cannot resurrect acknowledged counters.

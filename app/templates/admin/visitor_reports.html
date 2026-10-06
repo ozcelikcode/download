@@ -2,8 +2,8 @@
 {% block title %}{{ t(request, 'visitor_reports') }}{% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
-{{ page_heading(request, t(request, 'visitor_reports'), t(request, 'visitor_reports_help'), t(request, 'link_report'), '/panel/links') }}
-<a href="/panel/links" class="btn-secondary my-4"><i data-lucide="arrow-left" class="w-4 h-4"></i>{{ t(request, 'link_report') }}</a>
+{{ page_heading(request, t(request, 'publisher_reports' if publisher_inbox else 'visitor_reports'), t(request, 'publisher_reports_help' if publisher_inbox else 'visitor_reports_help'), t(request, 'management'), '/panel') }}
+{% if not publisher_inbox %}<a href="/panel/links" class="btn-secondary my-4"><i data-lucide="arrow-left" class="w-4 h-4"></i>{{ t(request, 'link_report') }}</a>{% endif %}
 <section class="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-sm divide-y divide-slate-200 dark:divide-slate-800">
 {% for event, download, reason in items %}
   <article class="p-4 flex flex-wrap justify-between gap-3">

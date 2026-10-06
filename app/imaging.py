@@ -1,10 +1,4 @@
-"""
-Görsel işleme yardımcıları — otomatik sıkıştırma ve kare ikon kırpma.
-
-Pillow ile senkron çalışır (CPU-bound, tek bir görsel için milisaniyeler
-sürer). Sunucuya yüklenen her ikon görseli, site şişmesin diye burada
-sıkıştırılır; "İkon Olarak Ayarla" eylemi de kare kırpmayı burada yapar.
-"""
+"""Bounded raster validation, quality-controlled compression, and square cropping."""
 
 from __future__ import annotations
 
@@ -18,16 +12,14 @@ logger = logging.getLogger(__name__)
 
 MAX_DIMENSION = 1600
 MAX_IMAGE_PIXELS = 25_000_000
-JPEG_QUALITY = 82
-WEBP_QUALITY = 82
 ALLOWED_RASTER_FORMATS = {"BMP", "GIF", "ICO", "JPEG", "PNG", "WEBP"}
 
-# Pillow tarafından açılamayan (ör. HEIC, SVG) formatlara dokunulmaz.
+# Vector files are not processed by the raster compressor.
 _SKIP_SUFFIXES = {".svg"}
 
 
 def validate_raster_image_file(path: Path) -> None:
-    """Dosyanın uzantı/MIME beyanından bağımsız, güvenli bir raster görsel olduğunu doğrular."""
+    """Validate actual raster bytes independently of filename and declared MIME."""
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -45,23 +37,32 @@ def validate_raster_image_file(path: Path) -> None:
         raise ValueError("Dosya geçerli bir raster görsel değil.") from exc
 
 
-def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:
-    """
-    Görseli yerinde sıkıştırır: gerekiyorsa büyük kenarı `max_dimension`'a
-    küçültür, formatına uygun kalite/optimize ayarıyla yeniden kaydeder.
-    Şeffaflık korunur. Desteklenmeyen/bozuk dosyalarda sessizce vazgeçer.
+COMPRESSION_PROFILES = ((4096, 95), (3072, 92), (2400, 86), (1920, 80), (1600, 72))
+
+
+def compress_image_file(path: Path, max_dimension: int | None = None, *, level: int = 2) -> None:
+    """Compress staging bytes with bounded resizing and preserved transparency.
+
+    JPEG/WebP use graded quality; PNG remains lossless. Failures reject the
+    staged upload rather than publishing an incompletely processed image.
     """
     if path.suffix.lower() in _SKIP_SUFFIXES:
         return
 
+    if type(level) is not int or not 0 <= level < len(COMPRESSION_PROFILES):
+        raise ValueError("Invalid image compression level")
+    limit, quality = COMPRESSION_PROFILES[level]
+    max_dimension = max_dimension or limit
+
     try:
         with Image.open(path) as img:
-            img = ImageOps.exif_transpose(img)  # telefon fotoğraflarının rotasyonunu düzelt
+            source_format = img.format
+            img = ImageOps.exif_transpose(img)
 
             if img.width > max_dimension or img.height > max_dimension:
                 img.thumbnail((max_dimension, max_dimension), Image.LANCZOS)
 
-            fmt = (img.format or "").upper()
+            fmt = (source_format or "").upper()
             suffix = path.suffix.lower()
 
             if fmt in ("JPEG", "JPG") or suffix in (".jpg", ".jpeg"):
@@ -70,18 +71,16 @@ def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:
             elif fmt == "WEBP" or suffix == ".webp":
                 pass
             else:
-                # PNG, GIF, BMP, ICO vb. → optimize edilmiş PNG
+                # Other supported rasters become optimized PNG.
                 if img.mode not in ("RGBA", "RGB", "P", "L"):
                     img = img.convert("RGBA")
-            img.load()  # kaynak dosyadan bağımsız, tam belleğe alınmış hale getir
+            img.load()
 
-        # `with` bloğu burada kapanır (kaynak dosya handle'ı serbest); ancak
-        # yerinde (aynı yola) yazılacağı için kaydetme işlemi handle kapandıktan
-        # sonra yapılır.
+        # Close the source handle before replacing staged bytes in place.
         if fmt in ("JPEG", "JPG") or suffix in (".jpg", ".jpeg"):
-            img.save(path, format="JPEG", quality=JPEG_QUALITY, optimize=True, progressive=True)
+            img.save(path, format="JPEG", quality=quality, optimize=True, progressive=True)
         elif fmt == "WEBP" or suffix == ".webp":
-            img.save(path, format="WEBP", quality=WEBP_QUALITY, method=6)
+            img.save(path, format="WEBP", quality=quality, method=6)
         else:
             img.save(path, format="PNG", optimize=True)
 
@@ -89,15 +88,11 @@ def compress_image_file(path: Path, max_dimension: int = MAX_DIMENSION) -> None:
         logger.info("Image compressed: size_kb=%.1f", after / 1024)
     except Exception as exc:
         logger.warning("Image compression failed: error_type=%s", type(exc).__name__)
+        raise ValueError("Image processing failed") from exc
 
 
 def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
-    """
-    Görseli ortadan kare olacak şekilde kırpar, verilen boyuta küçültür ve
-    dest_path'e optimize edilmiş PNG olarak kaydeder (şeffaflık korunur).
-    `dest_path`, `src_path` ile aynı olabilir (yerinde güncelleme / link
-    değişmez) — kaynak dosya handle'ı kaydetmeden önce kapatılır.
-    """
+    """Center-crop a raster to an optimized square PNG, preserving transparency."""
     with Image.open(src_path) as img:
         img = ImageOps.exif_transpose(img)
         if img.mode not in ("RGBA", "RGB", "L"):
@@ -111,6 +106,6 @@ def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
         img = img.resize((size, size), Image.LANCZOS)
         img.load()
 
-    # `with` bloğu kapandı (kaynak handle serbest) — artık aynı yola güvenle yazabiliriz.
+    # The source handle is closed before an optional in-place replacement.
     img.save(dest_path, format="PNG", optimize=True)
     logger.info("Automatic icon created: width=%d height=%d", size, size)

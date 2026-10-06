@@ -104,6 +104,10 @@ async def test_favicon_backup_adapter_is_strict(db_session, value):
             manifest = json.loads(archive.read("manifest.json"))
             data = json.loads(archive.read("data.json"))
         if value == "legacy":
+            del data["site_settings"][0]["image_compression_enabled"]
+            del data["site_settings"][0]["image_compression_level"]
+            for user in data["users"]:
+                del user["profile_icon"]
             manifest["schema"] = backups.schema_fingerprint(before_favicon=True)
             del data["site_settings"][0]["favicon_path"]
         else:

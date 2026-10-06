@@ -300,6 +300,10 @@ async def test_backup_quota_validation_and_previous_schema(db_session, legacy):
             manifest = json.loads(archive.read("manifest.json"))
             data = json.loads(archive.read("data.json"))
         if legacy:
+            del data["site_settings"][0]["image_compression_enabled"]
+            del data["site_settings"][0]["image_compression_level"]
+            for user in data["users"]:
+                del user["profile_icon"]
             manifest["schema"] = backups.schema_fingerprint(before_quotas=True)
             del data["site_settings"][0]["favicon_path"]
             del data["site_settings"][0]["editor_media_quota_mb"]

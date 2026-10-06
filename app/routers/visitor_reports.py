@@ -23,9 +23,10 @@ async def report_download(
     slug: str,
     request: Request,
     reason: str = Form(..., max_length=20),
+    target: str = Form("staff", max_length=12),
     session: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    if reason not in {"broken", "incorrect", "unsafe"}:
+    if reason not in {"broken", "incorrect", "unsafe"} or target not in {"staff", "publisher"}:
         raise HTTPException(400, translate(request, "detail_report_invalid"))
     try:
         await reserve_login_attempt(session, "visitor-report:" + get_request_ip(request))
@@ -35,15 +36,20 @@ async def report_download(
     download = await crud.get_download_by_slug(session, slug)
     if download is None:
         raise HTTPException(404)
+    if target == "publisher" and (download.publisher is None or not download.publisher.is_active or download.publisher.deleted_at is not None):
+        raise HTTPException(404)
     # Coalesce identical retained reports; no free text, IP address, or contact data is stored.
     label = "detail_report_" + reason
     changes = {"reason": [None, label]}
+    entity = "visitor_reports" if target == "staff" else "publisher_reports"
+    if target == "publisher":
+        changes["recipient_id"] = [None, download.owner_id]
     duplicate = await session.scalar(select(AuditLog.id).where(
-        AuditLog.entity == "visitor_reports", AuditLog.entity_id == download.id,
+        AuditLog.entity == entity, AuditLog.entity_id == download.id,
         AuditLog.action == "report", AuditLog.changes == json.dumps(changes, ensure_ascii=False),
     ))
     if duplicate is None:
-        add_event(session, "report", "visitor_reports", "Visitor reported a content issue", download.id,
+        add_event(session, "report", entity, "Visitor reported a content issue", download.id,
                   changes, actor="anonymous")
     await session.commit()
     request.session["download_report_received"] = slug

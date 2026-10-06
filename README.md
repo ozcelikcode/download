@@ -4,7 +4,10 @@ Downloader is a self-hosted download catalog built with FastAPI, Jinja2, SQLite,
 
 ## Features
 
-- Private per-account profile photos with automatic 256 × 256 WebP compression and metadata removal; upload, replace or remove them from Account. The 5 MB input limit and personal media quota apply. Photos appear in the account page and panel header, are included in encrypted backups, and are not publicly served or listed as library media.
+- Per-account profile photos with automatic 256 × 256 WebP compression and metadata removal; upload, replace or remove them from Account. The 5 MB input limit and personal media quota apply. Photos remain outside direct public uploads and media library listings; published identities expose them through a visibility-checked publisher endpoint. Closing an account or removing its public content blocks that endpoint. Choose a personal Lucide icon as the fallback.
+- Administrator-only five-level compression policy for new content images, with per-upload opt-out or opt-in. Profile photos are always normalized independently of this setting. Existing images are not rewritten.
+- Download details use description/history tabs, collapsible long content, balanced desktop cards, and header-aligned download actions. Anonymous reports can reach staff or the owning publisher without collecting visitor identities. Publisher catalogs show only published content.
+- Administrators and managers can view aggregate site statistics and category/download charts; editors cannot access site-wide statistics. Disabled home-page heroes are omitted from HTML rather than merely hidden with CSS.
 - Local file uploads and external download sources
 - Version history, latest-version links, SHA-256 checksums, and operating-system metadata
 - Search, category and tag filtering, featured items, and query-string pagination
@@ -45,7 +48,7 @@ Images and files share the owner's quota, including unused media and media belon
 
 ## Download details and visitor reports
 
-Download pages show the application identity and summary above a two-column layout: description and version history on the left, download actions and file information on the right. Long descriptions have accessible **Read more / Show less** controls; without JavaScript the complete description remains readable. Narrow screens use one column and retain the mobile download bar. Draft previews disable downloading and reporting.
+Download pages show application identity and publisher beside the download action, without repeating a short summary. Description/history tabs occupy the left card, with sources and Details in the equally stretched right card. Long descriptions and version lists have accessible **Read more / Show less** controls; without JavaScript both sections remain readable. Narrow screens stack cards and retain the mobile download bar. Draft previews disable downloading and reporting.
 
 **Report a problem** accepts only a fixed issue type, not free text or personal contact details. Reports appear in **Link Report → Visitor reports**, Activity Log, and administrator/manager notifications. Reports are anonymous visitor claims, not verified link-health results. Identical retained reports are coalesced; CSRF and a keyed five-submission-per-15-minute limit protect submission. No raw client address is stored. Reports share the existing Activity Log retention limit, rather than forming an unlimited or permanent moderation queue. Editors cannot access this staff report list.
 

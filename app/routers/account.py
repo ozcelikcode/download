@@ -16,7 +16,7 @@ from app.database import get_db
 from app.dependencies import SESSION_COOKIE, require_admin
 from app.i18n import translate
 from app.models import MediaAsset, User
-from app.profile_photos import PHOTO_UPLOAD_LIMIT, photo_path, prepare_photo
+from app.profile_photos import PHOTO_UPLOAD_LIMIT, PROFILE_ICONS, photo_path, prepare_photo
 from app.storage_quota import publish_media
 from app.uploads import save_upload
 from app.routers.users import _confirm_password, _lock_actor
@@ -42,6 +42,20 @@ async def account_photo(request: Request) -> FileResponse:
     return FileResponse(path, media_type="image/webp", headers={
         "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
     })
+
+
+@router.post("/icon")
+async def update_profile_icon(request: Request, icon: str = Form(...),
+                              session: AsyncSession = Depends(get_db)) -> RedirectResponse:
+    if icon not in PROFILE_ICONS:
+        raise HTTPException(400, translate(request, "photo_invalid"))
+    await _lock_actor(request, session, request.state.admin_role)
+    user = await session.get(User, request.state.admin_id)
+    user.profile_icon = icon
+    add_event(session, "update", "users", "Profile icon updated", user.id)
+    await session.commit()
+    request.session["flash_message"] = translate(request, "profile_icon_updated")
+    return RedirectResponse("/panel/settings/account", status_code=303)
 
 
 @router.post("/photo")

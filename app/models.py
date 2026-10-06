@@ -210,6 +210,8 @@ class SiteSettings(Base):
     logo_dark_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     favicon_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hero_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    image_compression_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    image_compression_level: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
     hero_background: Mapped[str] = mapped_column(String(20), nullable=False, default="soft")
     hero_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hero_components: Mapped[str] = mapped_column(
@@ -292,6 +294,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    profile_icon: Mapped[str] = mapped_column(String(50), nullable=False, default="user-circle", server_default="user-circle")
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(10), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

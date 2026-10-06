@@ -68,6 +68,7 @@ from app.default_content import HERO_TEXT
 from app.database import AsyncSessionLocal
 from app.health import get_admin_site_health
 from app.imaging import compress_image_file, make_square_icon, validate_raster_image_file
+from starlette.concurrency import run_in_threadpool
 from app.i18n import translate, system_message
 from app.link_checks import resolve_public_url
 from app.dependencies import (
@@ -274,17 +275,20 @@ def _unique_icon_filename(original_name: str, fallback_ext: str = ".png") -> str
     return f"{uuid.uuid4().hex[:12]}{ext}"
 
 
-async def _save_icon_upload(file: UploadFile, session: AsyncSession, compress: bool = True) -> str:
+async def _save_icon_upload(file: UploadFile, session: AsyncSession, compress: bool | None = None) -> str:
     """Validate and optionally compress an icon before quota-checked publication."""
     icons_dir = settings.upload_path / "icons"
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
+    policy = await crud.get_site_settings(session)
+    compress = policy.image_compression_enabled if compress is None else compress
+    level = policy.image_compression_level
     try:
         def prepare(staged: Path) -> None:
             validate_raster_image_file(staged)
             if compress:
-                compress_image_file(staged)
+                compress_image_file(staged, level=level)
         await save_upload(file, dest, validator=prepare,
                           publisher=lambda staged, target: publish_media(session, staged, target))
     except ValueError as exc:
@@ -321,7 +325,7 @@ _icon_fetch_progress: dict[str, dict] = {}
 
 
 async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_info: dict | None = None,
-                               square_size: int | None = None) -> None:
+                               square_size: int | None = None, compression: bool | None = None) -> None:
     """Stream an external image to staging, then validate, process, and publish it."""
     dest: Optional[Path] = None
     staged: Optional[Path] = None
@@ -379,13 +383,16 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
             raise ValueError("Çok fazla yönlendirme.")
 
         _icon_fetch_progress[token].update({"percent": 92, "phase": "compressing"})
-        validate_raster_image_file(staged)
-        if square_size:
-            make_square_icon(staged, staged, size=square_size)
-        else:
-            compress_image_file(staged)
         final_path = f"/static/uploads/icons/{filename}"
         async with AsyncSessionLocal() as session:
+            policy = await crud.get_site_settings(session)
+            def prepare() -> None:
+                validate_raster_image_file(staged)
+                if square_size:
+                    make_square_icon(staged, staged, size=square_size)
+                elif (policy.image_compression_enabled if compression is None else compression):
+                    compress_image_file(staged, level=policy.image_compression_level)
+            await run_in_threadpool(prepare)
             session.info["audit_actor"] = uploaded_by
             session.info["actor_id"] = _icon_fetch_progress[token].get("owner_id")
             session.info.update(actor_info or {})
@@ -405,9 +412,9 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
 
 
 async def _fetch_icon_with_timeout(url: str, token: str, uploaded_by: str, actor_info: dict | None = None,
-                                  square_size: int | None = None) -> None:
+                                  square_size: int | None = None, compression: bool | None = None) -> None:
     try:
-        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by, actor_info, square_size), timeout=60)
+        await asyncio.wait_for(_fetch_icon_from_url(url, token, uploaded_by, actor_info, square_size, compression), timeout=60)
     except TimeoutError:
         _icon_fetch_progress[token].update({"done": True, "error": "Bağlantı kontrolü zaman aşımına uğradı."})
 
@@ -773,6 +780,7 @@ async def upload_icon_image(
     file: UploadFile = File(...),
     replace_path: Optional[str] = Form(None),
     skip_compression: bool = Form(False),
+    compression: Optional[bool] = Form(None),
 ):
     if (file.content_type or "").split(";", 1)[0].strip().lower() not in _REMOTE_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail="Sadece görsel dosyaları yüklenebilir.")
@@ -785,7 +793,7 @@ async def upload_icon_image(
         add_event(session, "replace", "media_assets", path)
         await session.commit()
     else:
-        path = await _save_icon_upload(file, session, compress=not skip_compression)
+        path = await _save_icon_upload(file, session, compress=False if skip_compression else compression)
     return {"path": path}
 
 
@@ -796,6 +804,7 @@ async def upload_icon_image_url(
     session: AsyncSession = Depends(get_db),
     url: str = Form(...),
     token: str = Form(...),
+    compression: Optional[bool] = Form(None),
 ):
     if token in _icon_fetch_progress:
         raise HTTPException(409)
@@ -804,7 +813,7 @@ async def upload_icon_image_url(
         "percent": 0, "done": False, "error": None, "path": None, "phase": "downloading",
     }
     return JSONResponse({"started": True, "token": token},
-                        background=BackgroundTask(_fetch_icon_with_timeout, url, token, _admin, dict(session.info)))
+                        background=BackgroundTask(_fetch_icon_with_timeout, url, token, _admin, dict(session.info), None, compression))
 
 
 @router.get("/upload/progress/{token}", name="admin_upload_progress")
@@ -1171,6 +1180,7 @@ async def download_new_get(
             "edit_mode": False,
             "download": None,
             "draft_token": secrets.token_urlsafe(24),
+            "image_compression_enabled": (await crud.get_site_settings(session)).image_compression_enabled,
             "admin_user": _admin,
             "flash_message": flash_message,
         },
@@ -1456,6 +1466,7 @@ async def download_edit_get(
             "edit_mode": True,
             "download": download,
             "draft_token": download.draft_token or secrets.token_urlsafe(24),
+            "image_compression_enabled": (await crud.get_site_settings(session)).image_compression_enabled,
             "admin_user": _admin,
             "flash_message": flash_message,
             "file_size_val": file_size_val,
@@ -2013,6 +2024,7 @@ async def settings_account_view(
             "request": request,
             "site_settings": site_settings,
             "effective_admin_username": current_user.username,
+            "current_profile_icon": current_user.profile_icon,
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,

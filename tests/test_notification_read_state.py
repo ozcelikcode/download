@@ -87,7 +87,7 @@ async def test_editor_mark_all_is_role_scoped(client, db_session):
     ), domain='test.local', path='/')
     result = await client.post('/panel/notifications/read-all', headers={'Accept': 'application/json'})
     assert result.status_code == 200 and result.json()['unread'] == 0
-    assert set(result.json()['counters']) == {'contact', 'content'}
+    assert set(result.json()['counters']) == {'contact', 'content', 'publisher_reports'}
     assert 'Private' not in result.text and 'staff-only' not in result.text
     assert result.json()['items'][0]['unread'] == 0
 

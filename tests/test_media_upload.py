@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.config import settings
-from app.imaging import MAX_DIMENSION
+from app.imaging import MAX_DIMENSION, COMPRESSION_PROFILES
 
 
 def _make_png_bytes(width: int, height: int, color=(255, 0, 0)) -> bytes:
@@ -138,7 +138,7 @@ async def test_icon_upload_compresses_large_image(admin_client: AsyncClient):
     assert disk_path.exists()
 
     with Image.open(disk_path) as saved:
-        assert max(saved.width, saved.height) <= MAX_DIMENSION
+        assert max(saved.width, saved.height) <= COMPRESSION_PROFILES[2][0]
 
     # Sıkıştırma sonrası dosya, orijinalden gözle görülür şekilde küçük olmalı.
     assert disk_path.stat().st_size < len(big_image)

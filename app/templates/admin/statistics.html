@@ -1,0 +1,23 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}{{ t(request, 'site_statistics') }}{% endblock %}
+{% block content %}
+{% from 'admin/_page_heading.html' import render as page_heading %}
+<div class="mb-6">{{ page_heading(request, t(request, 'site_statistics'), t(request, 'statistics_help'), t(request, 'management'), '/panel') }}</div>
+<div class="grid sm:grid-cols-3 gap-3 mb-5">
+{% for label, value in [('total_content', stats.total_downloads), ('published', stats.active_downloads), ('detail_download_count', stats.total_download_count)] %}
+  <div class="border border-slate-200 dark:border-slate-800 rounded-sm p-4 bg-white dark:bg-slate-900"><p class="text-xs text-slate-500">{{ t(request, label) }}</p><p class="text-2xl font-semibold mt-2">{{ value | thousands }}</p></div>
+{% endfor %}
+</div>
+<div class="grid lg:grid-cols-2 gap-5">
+{% for title, rows, maximum in [('statistics_top', leaders, download_max), ('statistics_categories', categories, category_max)] %}
+  <section class="border border-slate-200 dark:border-slate-800 rounded-sm p-5 bg-white dark:bg-slate-900">
+    <h2 class="text-sm font-semibold mb-5">{{ t(request, title) }}</h2>
+    <ol class="space-y-4">
+      {% for row in rows %}{% set count = row[2] if title == 'statistics_top' else row[1] %}
+      <li><div class="flex items-center justify-between gap-3 text-sm mb-2">{% if title == 'statistics_top' %}<a href="/download/{{ row[1] }}" class="truncate hover:underline">{{ row[0] }}</a>{% else %}<span class="truncate">{{ row[0] }}</span>{% endif %}<span>{{ count | thousands }}</span></div><div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-sm overflow-hidden" aria-hidden="true"><div class="h-full bg-slate-500 dark:bg-slate-400" style="width: {{ ((count / maximum) * 100) | round | int }}%"></div></div></li>
+      {% else %}<li class="text-sm text-slate-500">{{ t(request, 'statistics_empty') }}</li>{% endfor %}
+    </ol>
+  </section>
+{% endfor %}
+</div>
+{% endblock %}

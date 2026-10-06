@@ -136,6 +136,8 @@
   {% set management_section = admin_path.startswith('/panel/categories') or admin_path.startswith('/panel/tags') or admin_path.startswith('/panel/media') or admin_path.startswith('/panel/links') or admin_path.startswith('/panel/audit') or admin_path.startswith('/panel/settings') or admin_path.startswith('/panel/users') or admin_path.startswith('/panel/contact') %}
   {% set management_section = management_section or admin_path.startswith('/panel/backups') %}
   {% set management_section = management_section or admin_path.startswith('/panel/registrations') %}
+  {% set management_section = management_section or admin_path == '/panel/content-reports' %}
+  {% set management_section = management_section or admin_path == '/panel/statistics' %}
   <aside class="w-48 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 py-4 px-2 hidden sm:block transition-colors">
     <nav class="space-y-1" aria-label="{{ t(request, 'menu') }}">
       <p class="admin-nav-label text-xs font-semibold uppercase tracking-wider px-2 mb-2">{{ t(request, 'menu') }}</p>

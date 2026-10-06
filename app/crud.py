@@ -695,6 +695,7 @@ def _download_base_query():
         .where(
             Download.is_active.is_(True), Download.is_hidden.is_(False),
             Download.is_draft.is_(False),
+            Download.publication_pending.is_(False),
             Download.deleted_at.is_(None),
         )
     )
@@ -726,6 +727,7 @@ async def get_downloads_paginated(
     official_filter: Optional[str] = None,
     sort: str = "newest",
     pin_featured: bool = True,
+    owner_id: Optional[int] = None,
 ) -> Tuple[List[Download], int]:
     """
     Sayfalandırılmış indirme listesi döndürür.
@@ -751,6 +753,8 @@ async def get_downloads_paginated(
 
     # Yalnızca üst seviye kayıtları getir (parent_id=NULL)
     stmt = stmt.where(Download.parent_id == None)  # noqa: E711
+    if owner_id is not None:
+        stmt = stmt.where(Download.owner_id == owner_id)
 
     if featured_only:
         stmt = stmt.where(Download.is_featured == True)  # noqa: E712

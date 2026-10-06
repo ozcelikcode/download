@@ -28,6 +28,7 @@ class Element {
   addEventListener(k, fn) { this.events[k] = fn; }
   setAttribute(k, v) { this.attributes[k] = v; }
   getBoundingClientRect() { return { top: -10 }; }
+  closest() { return null; }
   scrollIntoView() { this.scrolled = true; }
 }
 const content = new Element(), button = new Element();
@@ -35,7 +36,8 @@ content.scrollHeight = 1000; content.clientHeight = 512;
 let resized;
 global.document = {
   addEventListener: (k, fn) => fn(),
-  getElementById: id => id === 'application-description' ? content : button,
+  getElementById: id => id === 'application-description' ? content : id === 'description-toggle' ? button : null,
+  querySelectorAll: () => [],
 };
 global.window = { addEventListener: (k, fn) => { resized = fn; } };
 eval(fs.readFileSync('app/static/js/download-detail.js', 'utf8'));
