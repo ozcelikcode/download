@@ -15,12 +15,7 @@
   </a>
 </div>
 
-{% if pending_registrations %}
-<a href="/panel/registrations" class="flex items-center justify-between gap-3 border border-slate-200 dark:border-slate-800 rounded-sm p-3 mb-6 text-sm">
-  <span class="inline-flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i>{{ t(request, 'registration_requests') }}</span>
-  <span class="inline-flex items-center gap-2"><span class="font-semibold">{{ pending_registrations }}</span><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
-</a>
-{% endif %}
+{% include 'admin/_dashboard_updates.html' %}
 
 {# İstatistik kartları #}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">

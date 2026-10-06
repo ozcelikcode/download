@@ -36,12 +36,15 @@ class Element {
   replaceChildren() { this.children = []; }
   querySelector(selector) { return this.children.find(c => selector === '[data-panel-total]' ? 'panelTotal' in c.dataset : 'panelCount' in c.dataset); }
   get lastElementChild() { return this.children.at(-1); }
-  addEventListener() {}
+  addEventListener(kind, fn) { this.events ||= {}; this.events[kind] = fn; }
   setAttribute(k, v) { this.attributes[k] = v; }
   getAttribute(k) { return this.attributes[k]; }
 }
 const root = new Element(); root.dataset.update = 'Updated'; root.dataset.empty = 'Empty';
+root.dataset.read = 'Seen'; root.dataset.new = 'Unread'; root.dataset.unread = 'Unread notifications';
 const elements = { 'panel-messages': root, 'panel-messages-menu': new Element(), 'panel-messages-toggle': new Element(), 'panel-message-list': new Element(), 'panel-unread': new Element() };
+const readAll = new Element(); readAll.children = [new Element()]; readAll.querySelector = () => readAll.children[0];
+readAll.action = '/panel/notifications/read-all'; elements['panel-notice-read-all'] = readAll;
 const registration = new Element(); registration.attributes.href = '/panel/registrations';
 const contact = new Element(); contact.attributes.href = '/panel/contact';
 const unrelated = new Element(); unrelated.attributes.href = '/panel/review';
@@ -55,7 +58,12 @@ global.document = {
   querySelectorAll: selector => selector === 'summary[data-panel-group]' ? [summary, content] : selector.includes('registrations') ? [registration] : selector.includes('contact') ? [contact] : [],
 };
 global.window = {};
-global.fetch = async () => ({ ok: true, json: async () => empty ? { items: [], counters: {}, unread: 0 } : { items: [{ kind: 'registrations', label: '<unsafe label>', count: 2, unread: 2, latest: '2026-10-06' }], counters: { registrations: 2, contact: 1, review: 9 }, unread: 2 } });
+const items = [{ kind: 'registrations', label: '<unsafe label>', count: 20, unread: 2, latest: '2026-10-06' }];
+global.FormData = class {};
+global.fetch = async (url, options) => {
+  if (options?.method === 'POST') { assert.equal(url, '/panel/notifications/read-all'); empty = true; }
+  return { ok: true, json: async () => ({ items: empty ? items.map(item => ({ ...item, unread: 0 })) : items, counters: { registrations: 20, contact: 10, review: 90 }, unread_counters: empty ? {} : { registrations: 2, contact: 1, review: 9 }, unread: empty ? 0 : 12 }) };
+};
 let refresh; global.setInterval = fn => { refresh = fn; };
 eval(fs.readFileSync('app/static/js/panel-notifications.js', 'utf8'));
 setImmediate(async () => {
@@ -64,9 +72,19 @@ setImmediate(async () => {
   const action = elements['panel-message-list'].children[0].children[2];
   assert.equal(action.children[0].textContent, '<unsafe label>');
   assert.equal(action.children[1].textContent, '2');
-  empty = true; await refresh();
+  const liveFetch = global.fetch;
+  let release;
+  global.fetch = (url, options) => options?.method === 'POST' ? liveFetch(url, options) : new Promise(resolve => { release = resolve; });
+  const inflight = refresh();
+  await readAll.events.submit({ preventDefault() {} });
+  release({ ok: true, json: async () => ({ items, counters: { registrations: 20 }, unread_counters: { registrations: 2 }, unread: 2 }) });
+  await inflight;
   assert(summary.querySelector('[data-panel-total]').classList.contains('hidden'));
   assert(registration.querySelector('[data-panel-count]').classList.contains('hidden'));
+  assert.equal(elements['panel-unread'].textContent, '0');
+  assert(elements['panel-unread'].classList.contains('is-read'));
+  assert(readAll.children[0].disabled);
+  assert.equal(elements['panel-message-list'].children[0].children[2].children[0].children[0].textContent, 'Seen');
 });
 """
     result = subprocess.run([node], input=script, text=True, capture_output=True,

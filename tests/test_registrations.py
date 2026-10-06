@@ -76,7 +76,8 @@ async def test_native_registration_form_reaches_staff_panel(client, db_session, 
     await staff(client, db_session, role)
     dashboard = (await client.get("/panel")).text
     assert 'href="/panel/registrations"' in dashboard
-    assert '<span class="font-semibold">1</span>' in dashboard
+    card = re.search(r'<a[^>]*data-notice-kind="registrations"[^>]*>(.*?)</a>', dashboard, re.S)
+    assert card is not None and re.search(r'class="panel-count[^\"]*">1</span>', card.group(1))
     assert "native-form-applicant" in (await client.get("/panel/registrations")).text
 
 

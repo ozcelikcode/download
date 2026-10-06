@@ -1,0 +1,19 @@
+{% if dashboard_updates %}
+<section class="mb-6" aria-labelledby="dashboard-updates-title">
+  <div class="mb-3">
+    <h2 id="dashboard-updates-title" class="text-sm font-semibold">{{ t(request, 'notice_overview_title') }}</h2>
+    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ t(request, 'notice_overview_help') }}</p>
+  </div>
+  <div class="dashboard-update-grid">
+    {% set icons = {'registrations':'user-plus', 'review':'file-check', 'trash':'trash-2', 'users':'user-round-cog', 'contact':'mail', 'reports':'flag', 'content':'file-check'} %}
+    {% for item in dashboard_updates %}
+    <a href="{{ item.url }}" class="dashboard-update-card" data-notice-kind="{{ item.kind }}">
+      <span class="dashboard-update-icon"><i data-lucide="{{ icons.get(item.kind, 'bell') }}" class="w-4 h-4" aria-hidden="true"></i></span>
+      <span class="min-w-0 flex-1"><span class="block text-sm font-medium">{{ item.label }}</span><small class="panel-notice-state">{{ t(request, 'notice_new') if item.unread else t(request, 'notice_read') }}</small></span>
+      <span class="panel-count {{ 'is-read' if not item.unread else '' }}">{{ item.count }}</span>
+      <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true"></i>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

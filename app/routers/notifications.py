@@ -18,6 +18,8 @@ router = APIRouter(prefix="/panel/notifications", dependencies=[Depends(require_
 
 
 def _seen(request: Request, kind: str) -> datetime:
+    if request.session.get("panel_notice_owner") != request.state.admin_id:
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
     markers = request.session.get("panel_notice_reads", {})
     try:
         return datetime.fromisoformat(markers[kind]).replace(tzinfo=timezone.utc)
@@ -43,13 +45,14 @@ async def snapshot(request: Request, session: AsyncSession) -> dict[str, Any]:
 
     if request.state.admin_role == "editor":
         await group("contact", "contact_answered", "/panel/contact", EditorMessage, EditorMessage.responded_at,
-                    EditorMessage.sender_id == request.state.admin_id, EditorMessage.responded_at.is_not(None),
-                    EditorMessage.responded_at > _seen(request, "contact"))
+                    EditorMessage.sender_id == request.state.admin_id, EditorMessage.responded_at.is_not(None))
         await group("content", "content_updates", "/panel/downloads", AuditLog, AuditLog.created_at,
                     AuditLog.entity == "publication", AuditLog.action.in_(["approve", "reject"]),
-                    Download.owner_id == request.state.admin_id, AuditLog.created_at > _seen(request, "content"),
+                    Download.owner_id == request.state.admin_id,
                     join=(Download, Download.id == AuditLog.entity_id))
     else:
+        await group("reports", "visitor_reports", "/panel/links/reports", AuditLog, AuditLog.created_at,
+                    AuditLog.entity == "visitor_reports", AuditLog.action == "report")
         await group("registrations", "registration_requests", "/panel/registrations", RegistrationRequest, RegistrationRequest.created_at)
         await group("review", "review_title", "/panel/review", Download, Download.updated_at,
                     Download.publication_pending.is_(True), Download.deleted_at.is_(None))
@@ -62,7 +65,35 @@ async def snapshot(request: Request, session: AsyncSession) -> dict[str, Any]:
                     User.deletion_requested_by.is_not(None), User.is_active.is_(True))
         await group("contact", "contact_title", "/panel/contact", EditorMessage, EditorMessage.created_at,
                     EditorMessage.response.is_(None))
-    return {"items": items, "counters": counters, "unread": sum(item["unread"] for item in items)}
+    return {
+        "items": items, "counters": counters,
+        "unread_counters": {kind: next((item["unread"] for item in items if item["kind"] == kind), 0) for kind in counters},
+        "unread": sum(item["unread"] for item in items),
+    }
+
+
+def mark_read(request: Request, data: dict[str, Any], kind: str | None = None) -> None:
+    """Acknowledge only the observed horizon, scoped to the authenticated identity."""
+    markers = (dict(request.session.get("panel_notice_reads", {}))
+               if request.session.get("panel_notice_owner") == request.state.admin_id else {})
+    for item in data["items"]:
+        if kind is None or item["kind"] == kind:
+            markers[item["kind"]] = item["latest"]
+            item["unread"] = 0
+            data["unread_counters"][item["kind"]] = 0
+    request.session["panel_notice_owner"] = request.state.admin_id
+    request.session["panel_notice_reads"] = markers
+    data["unread"] = sum(item["unread"] for item in data["items"])
+
+
+async def prepare_page_notifications(request: Request, session: AsyncSession) -> None:
+    """Seed HTML badges and acknowledge a notification destination from any entry point."""
+    data = await snapshot(request, session)
+    destinations = {item["url"].rstrip("/"): item["kind"] for item in data["items"]}
+    kind = destinations.get(request.url.path.rstrip("/"))
+    if kind is not None:
+        mark_read(request, data, kind)
+    request.state.panel_notices = data
 
 
 @router.get("")
@@ -76,7 +107,17 @@ async def open_notification(request: Request, kind: str = Form(...), session: As
     item = next((item for item in data["items"] if item["kind"] == kind), None)
     if item is None:
         raise HTTPException(404)
-    markers = dict(request.session.get("panel_notice_reads", {}))
-    markers[kind] = item["latest"]
-    request.session["panel_notice_reads"] = markers
+    mark_read(request, data, kind)
     return RedirectResponse(item["url"], status_code=303)
+
+
+@router.post("/read-all", response_model=None)
+async def read_all_notifications(
+    request: Request, session: AsyncSession = Depends(get_db),
+) -> dict[str, Any] | RedirectResponse:
+    data = await snapshot(request, session)
+    mark_read(request, data)
+    if "application/json" in request.headers.get("accept", ""):
+        return data
+    request.session["flash_message"] = translate(request, "notice_read_all_done")
+    return RedirectResponse("/panel", status_code=303)

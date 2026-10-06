@@ -13,6 +13,7 @@
     {% endif %}
   </div>
   <p class="text-xs text-slate-500">{{ t(request, 'link_check_help') }}</p>
+  <a href="/panel/links/reports" class="btn-secondary"><i data-lucide="flag" class="w-4 h-4"></i>{{ t(request, 'visitor_reports') }}</a>
   <form method="get" action="/panel/links" class="flex items-center gap-2">
     <label for="link-state" class="text-sm">{{ t(request, 'status') }}</label>
     <select class="form-input w-auto" name="state" id="link-state"><option value="all">{{ t(request, 'all') }}</option>{% for key, label in statuses.items() %}<option value="{{ key }}" {% if key == state %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>

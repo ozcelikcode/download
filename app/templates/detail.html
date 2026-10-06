@@ -102,10 +102,8 @@
 </div>
 {% endif %}
 
-{# ================================================================
-   BAŞLIK BÖLÜMÜ
-   ================================================================ #}
-<div class="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
+{% if report_received %}<div role="status" class="border border-slate-200 dark:border-slate-800 rounded-sm p-3 mb-4 text-sm">{{ t(request, 'detail_report_received') }}</div><div hidden data-toast-message="{{ t(request, 'detail_report_received') }}" data-toast-type="success"></div>{% endif %}
+<div class="detail-identity relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
 
 
   <div class="flex items-start gap-4">
@@ -146,17 +144,26 @@
 
   {# Açıklama #}
   <p class="text-xs text-slate-500 dark:text-slate-400 mt-3 flex items-center gap-2">{{ t(request, 'publisher') }}: {{ publisher_badge(request, download.publisher, site_name) }}</p>
+  {% if download.short_description %}<p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{{ download.short_description }}</p>{% endif %}
+</div>
+{% set overview_panel %}
   {% if download.description %}
-  <div class="prose-description mt-4 text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-4">
+  <section class="detail-description-wrap bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4">
+  <h2 class="text-sm font-semibold mb-4">{{ t(request, 'description') }}</h2>
+  <div id="application-description" class="prose-description detail-description text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
     {{ download.description | sanitize_html | safe }}
   </div>
+  <button type="button" id="description-toggle" class="btn-secondary mt-3 hidden" aria-expanded="false" aria-controls="application-description" data-more="{{ t(request, 'detail_show_more') }}" data-less="{{ t(request, 'detail_show_less') }}">{{ t(request, 'detail_show_more') }}</button>
+  </section>
   {% endif %}
-</div>
+{% endset %}
+
+{% set download_panel %}
 
 {# ================================================================
-   İNDİRME CTA KARTI
+   Download actions
    ================================================================ #}
-<div class="detail-cta bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-sm p-4 mb-4">
+<div class="detail-cta bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 mb-4">
   <div class="detail-cta-layout">
     <div>
       <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
@@ -215,10 +222,22 @@
       </div>
     </div>
   </div>
+  {% if not is_preview | default(false) %}
+  <details class="detail-report mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
+    <summary class="btn-secondary cursor-pointer"><i data-lucide="flag" class="w-4 h-4"></i>{{ t(request, 'detail_report') }}</summary>
+    <form method="post" action="/download/{{ download.slug }}/report" class="mt-3 space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <fieldset><legend class="text-xs text-slate-500 mb-2">{{ t(request, 'detail_report_help') }}</legend>
+      {% for reason in ['broken', 'incorrect', 'unsafe'] %}<label class="flex items-center gap-2 text-sm py-1"><input type="radio" name="reason" value="{{ reason }}" required>{{ t(request, 'detail_report_' ~ reason) }}</label>{% endfor %}
+      </fieldset>
+      <button type="submit" class="btn-secondary"><i data-lucide="send" class="w-4 h-4"></i>{{ t(request, 'detail_report_send') }}</button>
+    </form>
+  </details>
+  {% endif %}
 </div>
 
 {# ================================================================
-   DOSYA BİLGİLERİ GRID
+   File information
    ================================================================ #}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 mb-4 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
@@ -226,7 +245,7 @@
     {{ t(request, 'file_info') }}
   </h2>
 
-  <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 text-sm">
+  <dl class="grid grid-cols-1 gap-y-2.5 text-sm">
 
     {% if download.is_latest_version or download.version %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
@@ -263,7 +282,7 @@
     {% endif %}
 
     {% if sha256 %}
-    <div class="py-3 border-b border-slate-50 dark:border-slate-800 sm:col-span-2">
+    <div class="py-3 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 mb-1">SHA-256</dt>
       <dd class="flex items-start gap-2">
         <code id="sha256-value" class="font-mono text-xs break-all select-all text-slate-700 dark:text-slate-300 flex-1">{{ sha256 }}</code>
@@ -295,11 +314,15 @@
 
   </dl>
 </div>
+{% endset %}
+
+<div class="download-detail-layout">
+<div class="detail-main">
+{{ overview_panel }}
 
 {# ================================================================
-   SÜRÜM GEÇMİŞİ — her zaman görünür (Dosya Bilgileri'nin altında).
-   Manuel bağlantılı sürümler (ayrı sayfa) + admin panelinden "Sürüm"
-   değiştirildiğinde otomatik kaydedilen eski değerler tek listede.
+   Version history below the application description.
+   Linked versions and recorded changes share one list.
    ================================================================ #}
 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 mb-4 transition-colors">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
@@ -355,6 +378,10 @@
     {{ t(request, 'no_versions') }}
   </p>
   {% endif %}
+</div>
+
+</div>
+<aside class="detail-side" aria-label="{{ t(request, 'file_info') }}">{{ download_panel }}</aside>
 </div>
 
 {% if related_downloads %}
@@ -414,6 +441,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/download-detail.js?v={{ css_asset_v }}" defer></script>
 {% if sha256 %}
 <script>
   (function () {

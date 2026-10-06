@@ -137,6 +137,10 @@ async def require_admin(
         session.info["editor_owner_id"] = user.id
     else:
         session.info.pop("editor_owner_id", None)
+    if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
+        if not request.url.path.startswith("/panel/notifications"):
+            from app.routers.notifications import prepare_page_notifications
+            await prepare_page_notifications(request, session)
     return user.username
 
 
@@ -170,7 +174,7 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return False
     if path == "/panel/settings/account":
         return True
-    if path == "/panel/notifications" or path == "/panel/notifications/open":
+    if path in {"/panel/notifications", "/panel/notifications/open", "/panel/notifications/read-all"}:
         return method in {"GET", "POST"}
     if path == "/panel/account/close" and method == "POST":
         return True

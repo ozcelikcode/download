@@ -23,6 +23,9 @@ from app.i18n import LANGUAGE_CHOICES, date_locale, og_locale, set_ui_language, 
 templates = Jinja2Templates(directory="app/templates")
 
 templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["panel_notices"] = lambda request: getattr(
+    request.state, "panel_notices", {"items": [], "counters": {}, "unread_counters": {}, "unread": 0}
+)
 templates.env.globals["t"] = translate
 templates.env.globals["tf"] = translate_format
 templates.env.globals["system_message"] = system_message

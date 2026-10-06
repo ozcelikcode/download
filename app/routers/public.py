@@ -466,11 +466,15 @@ async def build_download_detail_context(
     }
     ctx.update(await _sidebar_context(request, session))
     if is_preview:
+        ctx["report_received"] = False
         ctx.update(
             noindex=True,
             robots_directive="noindex,nofollow",
             suppress_canonical=True,
         )
+    else:
+        ctx["report_received"] = request.session.pop("download_report_received", None) == download.slug
+    ctx["hide_sidebar"] = True
     return ctx
 
 

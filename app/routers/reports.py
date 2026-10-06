@@ -65,10 +65,13 @@ def report_labels(language: str, group: str) -> dict[str, str]:
     strings = WORKFLOW_STRINGS.get(language, WORKFLOW_STRINGS["en"])
     if group == "entities":
         labels.update(publication=strings["review_title"], contact=strings["contact_title"])
+        from app.i18n import TRANSLATIONS
+        labels["visitor_reports"] = TRANSLATIONS.get(language, TRANSLATIONS["en"])["visitor_reports"]
     elif group == "actions":
         from app.i18n import TRANSLATIONS
         translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
         labels.update(approve=translated["registration_approve"], reject=translated["reject"])
+        labels["report"] = translated["detail_report"]
     elif group == "fields":
         labels.update(publication_pending=strings["publication_pending"], is_verified=strings["verified_editor"], owner_id=strings["publisher"])
         labels["site_timezone"] = TIMEZONE_STRINGS.get(language, TIMEZONE_STRINGS["en"])["timezone_title"]
@@ -76,6 +79,7 @@ def report_labels(language: str, group: str) -> dict[str, str]:
         from app.i18n import TRANSLATIONS
         translated = TRANSLATIONS.get(language, TRANSLATIONS["en"])
         labels["favicon_path"] = translated["favicon"]
+        labels["reason"] = translated["report_reason"]
         labels["media_quota_mb"] = storage["quota_override"] + " (MB)"
         for role in ("editor", "manager"):
             labels[f"{role}_media_quota_mb"] = translated[f"role_{role}"] + " · " + storage["media_quota"] + " (MB)"
@@ -120,6 +124,33 @@ async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends
     await session.rollback()  # Ağ kontrolü sırasında SQLite okuma işlemi açık tutulmaz.
     await _check_downloads(session, [(r.id, r.external_url or "") for r in rows])
     return RedirectResponse(f"/panel/links?page={page}", status_code=303)
+
+
+@router.get("/links/reports", response_model=None)
+async def visitor_reports(
+    request: Request,
+    page: int = Query(1, ge=1),
+    session: AsyncSession = Depends(get_db),
+) -> HTMLResponse | RedirectResponse:
+    filters = (AuditLog.entity == "visitor_reports", AuditLog.action == "report")
+    total = await session.scalar(select(func.count()).select_from(AuditLog).where(*filters)) or 0
+    pages = max(1, math.ceil(total / PAGE_SIZE))
+    if page > pages:
+        return RedirectResponse(f"/panel/links/reports?page={pages}", status_code=303)
+    rows = (await session.execute(select(AuditLog, Download).outerjoin(Download, Download.id == AuditLog.entity_id)
+            .where(*filters).order_by(AuditLog.id.desc()).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE))).all()
+    items = []
+    for event, download in rows:
+        try:
+            reason = json.loads(event.changes).get("reason", [None, None])[1]
+        except (ValueError, TypeError, IndexError, KeyError, AttributeError):
+            reason = None
+        if reason not in {"detail_report_broken", "detail_report_incorrect", "detail_report_unsafe"}:
+            reason = "detail_report_invalid"
+        items.append((event, download, reason))
+    return templates.TemplateResponse(request=request, name="admin/visitor_reports.html", context={
+        "items": items, "page": page, "pages": pages, "admin_user": request.state.admin_user,
+    })
 
 
 @router.post("/links/{download_id}/check", name="admin_link_check")

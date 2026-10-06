@@ -15,6 +15,7 @@ from app.locales.timezones import STRINGS as TIMEZONE_STRINGS
 from app.locales.account import STRINGS as ACCOUNT_STRINGS
 from app.locales.storage import STRINGS as STORAGE_STRINGS
 from app.locales.panel_updates import STRINGS as PANEL_UPDATE_STRINGS
+from app.locales.download_detail import STRINGS as DOWNLOAD_DETAIL_STRINGS
 
 LANGUAGE_CHOICES = (("en", "English"), ("es", "Español"), ("fr", "Français"), ("tr", "Türkçe"))
 SUPPORTED_LANGUAGES = frozenset(code for code, _ in LANGUAGE_CHOICES)
@@ -748,6 +749,11 @@ for language, strings in STORAGE_STRINGS.items():
     TRANSLATIONS[language].update(strings)
 for language, strings in PANEL_UPDATE_STRINGS.items():
     TRANSLATIONS[language].update(strings)
+for language, strings in DOWNLOAD_DETAIL_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+_SYSTEM_MESSAGE_KEYS["Visitor reported a content issue"] = "visitor_report_event"
+for key in ("detail_report_broken", "detail_report_incorrect", "detail_report_unsafe"):
+    _SYSTEM_MESSAGE_KEYS[key] = key
 _SYSTEM_MESSAGE_KEYS[STORAGE_STRINGS["en"]["quota_exceeded"]] = "quota_exceeded"
 _SYSTEM_MESSAGE_KEYS["Default media quotas updated"] = "quota_saved"
 _SYSTEM_MESSAGE_KEYS["Personal media quota updated"] = "quota_saved"

@@ -1,0 +1,16 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ t(request, 'visitor_reports') }}{% endblock %}
+{% block content %}
+{% from "admin/_page_heading.html" import render as page_heading %}
+{{ page_heading(request, t(request, 'visitor_reports'), t(request, 'visitor_reports_help'), t(request, 'link_report'), '/panel/links') }}
+<a href="/panel/links" class="btn-secondary my-4"><i data-lucide="arrow-left" class="w-4 h-4"></i>{{ t(request, 'link_report') }}</a>
+<section class="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-sm divide-y divide-slate-200 dark:divide-slate-800">
+{% for event, download, reason in items %}
+  <article class="p-4 flex flex-wrap justify-between gap-3">
+    <div class="min-w-0"><p class="text-sm font-medium break-words">{% if download %}<a href="/panel/downloads/{{ download.id }}/edit">{{ download.title }}</a>{% else %}#{{ event.entity_id }}{% endif %}</p><p class="text-sm text-slate-500 mt-1">{{ t(request, reason) }}</p></div>
+    <time class="text-xs text-slate-500">{{ event.created_at | format_date('%d.%m.%Y %H:%M') }}</time>
+  </article>
+{% else %}<p class="p-4 text-sm text-slate-500">{{ t(request, 'visitor_reports_empty') }}</p>{% endfor %}
+</section>
+{% include "admin/_workflow_pagination.html" %}
+{% endblock %}

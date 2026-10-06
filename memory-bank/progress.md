@@ -2,6 +2,11 @@
 
 ## Working capabilities
 
+- Unified notification unread badges, initial server-rendered navbar counts, Seen states, and CSRF-protected Mark all as read. Destination visits from navbar/sidebar/dashboard acknowledge the group without completing pending tasks. Identity-bound signed-session markers isolate accounts; compact theme-aware dashboard cards show pending totals independently of read state. Older polling responses cannot resurrect acknowledged counters.
+
+- Responsive download detail skeleton with right-side download/report/file facts, left-side description/version history, accessible overflow-based Read more, and progressive enhancement. Local themes, mobile download actions, draft restrictions, checksum copying, and related items are preserved.
+- Anonymous fixed-reason visitor reports reach staff Link Report, Activity Log, and notifications without becoming verified health results. CSRF, keyed throttling, serialized duplicate coalescing, staff-only access, and existing bounded audit retention apply; no new table or personal reporting fields are introduced.
+
 - Administrator-only default/individual manager/editor media quotas, personal library usage, combined stored file/image accounting, alias deduplication, fresh authorization, and SQLite-serialized staged publication. Quota failure preserves replaced files; lowered quotas retain existing data. Direct/content/branding/remote/crop paths and known previous backup schemas are covered.
 
 - Shared `/panel` routes, UTF-8/localized permission responses, and password-confirmed self-service account closure retaining all owned site data and immutable ownership anchors. Last-administrator protection and stale-session invalidation are covered by regression tests.
@@ -9,7 +14,7 @@
 - Configurable IANA display zones in General Settings, with daylight saving support and unchanged UTC storage/logging. Audit, dashboard, requests, correspondence, reports, and shared date filters follow the selected zone. Time-zone settings and known previous backup schemas are covered by regression tests.
 
 - Public sign-in navigation and registration applications, with direct authenticated administrator/manager approval or rejection, CSRF, and locked actor revalidation. Completed requests appear only in Activity Log. Pending applicants cannot sign in; approved accounts start as unverified editors. Password submissions use HTTPS; keyed quotas, queue limits, and four translations are covered.
-- Organized Users tabs, grouped per-account actions, and quota cards; role-scoped navbar Messages and sidebar counters with 30-second polling and signed-session read markers. Local editable favicons support upload/SSRF-safe import, square PNG conversion, and cache invalidation without erasing old media.
+- Organized Users tabs, grouped per-account actions, and quota cards; role-scoped navbar Notifications and sidebar counters with 30-second polling and signed-session read markers. Local editable favicons support upload/SSRF-safe import, square PNG conversion, and cache invalidation without erasing old media.
 - Shared read-only default categories for editors; true category moves that preserve the empty source. Staff editorial approval with revision checks, password-confirmed verified editors, and public publisher names/role-colored badges. Private editor-to-staff correspondence with replies and per-account quotas. Published media and version-history changes cannot bypass editor review.
 
 - Public download catalog, search and filters, content detail pages, related items, version history, and safe local/external download flow.
@@ -31,6 +36,10 @@
 - Keep all Markdown project documentation in English.
 
 ## Verification
+
+The notification read-state/dashboard increment passes 456 tests with warnings treated as errors and optional Node/Web Crypto checks. New coverage verifies native acknowledgment, initial badges, direct destination reading, new-event horizons, account/role boundaries, pending-work preservation, multilingual copy, safe DOM text, and stale poll protection. Desktop/mobile light/dark AMOLED previews used isolated temporary data; visible navbar counts, parent clearing, immediate Seen states, and compact cards were verified. CSS build, JavaScript syntax, Alembic, and whitespace checks pass. No real user data or schema was changed.
+
+The download-detail increment passes 446 tests with warnings treated as errors and optional Node/Web Crypto checks enabled. New regression tests cover disclosure sizing/keyboard access, native report forms, CSRF, fixed reasons, duplicate coalescing, throttling/Retry-After, unpublished records, draft previews, staff/editor isolation, notifications, and four-language coverage. CSS build, JavaScript syntax, dependency compatibility, Alembic, fresh application import, and whitespace checks pass. Isolated browser previews verified right-side actions at 1280 pixels, light/dark AMOLED styling, and overflow-free layouts at 390/320 pixels. Disposable preview storage was automatically removed; no real site data or migration was changed.
 
 The 2026-10-06 notification/navigation increment passes 435 tests with warnings treated as errors and the optional Node/Web Crypto checks enabled. New DOM regression coverage verifies parent totals, duplicate-link handling, safe text rendering, and zero-counter cleanup. Compact registration rows, localized Notifications navigation, five responsive parent-menu hooks, and render-time asset version changes are covered. CSS build, JavaScript syntax, `pip check`, Alembic schema checks, and diff whitespace checks pass. The running sign-in page initially returned 200 with the updated asset version, but the local HTTP server stopped before protected-page smoke checks completed; those checks are not claimed successful. No real application was approved/rejected and no site database migration was needed. Release-readiness recommendations are recorded in Active Context; fresh advisory and Git-history secret scans are outstanding.
 

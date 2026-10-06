@@ -24,6 +24,7 @@ from app.routers import registrations
 from app.routers import auth
 from app.routers import account
 from app.routers import notifications
+from app.routers import visitor_reports
 from app import backups, maintenance_jobs
 from app.models import SiteSettings
 from sqlalchemy import select
@@ -143,6 +144,7 @@ app.include_router(workflows.router)
 app.include_router(backup_routes.router)
 app.include_router(registrations.router)
 app.include_router(notifications.router)
+app.include_router(visitor_reports.router)
 
 
 # ---------------------------------------------------------------------------
@@ -234,4 +236,5 @@ async def rate_limit_handler(request: Request, exc):
             "current_search": None,
         },
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        headers=getattr(exc, "headers", None),
     )

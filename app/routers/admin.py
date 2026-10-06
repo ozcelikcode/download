@@ -78,7 +78,7 @@ from app.dependencies import (
     verify_password_async,
     SESSION_COOKIE,
 )
-from app.models import Download, FileType, IconType, Page, RegistrationRequest, Tag, User
+from app.models import Download, FileType, IconType, Page, Tag, User
 from app.ownership import require_owned_media
 from app.media import ensure_unused, media_path, media_usage
 from app.routers.public import build_download_detail_context
@@ -911,9 +911,16 @@ async def dashboard(
     )
 
     stats = await crud.get_dashboard_stats(session)
+    from app.routers.notifications import snapshot
+    notices = getattr(request.state, "panel_notices", None)
+    if notices is None:
+        notices = await snapshot(request, session)
+    dashboard_updates = [item for item in notices["items"] if item["unread"] or (
+        request.state.admin_role != "editor" and item["kind"] != "reports"
+    )]
     if request.state.admin_role == "editor":
         return templates.TemplateResponse(request=request, name="admin/editor_dashboard.html", context={
-            "request": request, "stats": stats, "recent_items": recent_items,
+            "request": request, "stats": stats, "recent_items": recent_items, "dashboard_updates": dashboard_updates,
             "pending_deletions": await session.scalar(select(func.count()).select_from(Download).where(Download.deletion_pending.is_(True), Download.deleted_at.is_not(None))) or 0,
             "admin_user": _admin, "flash_message": request.session.pop("flash_message", None),
         })
@@ -931,7 +938,7 @@ async def dashboard(
             "seo_warning_count": site_health.seo_warning_count,
             "configuration_attention_count": site_health.configuration_attention_count,
             "recent_activity": recent_activity,
-            "pending_registrations": await session.scalar(select(func.count()).select_from(RegistrationRequest)) or 0,
+            "dashboard_updates": dashboard_updates,
             "admin_user": _admin,
             "flash_message": flash_message,
         },
