@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 from datetime import datetime
@@ -180,14 +179,20 @@ def _canonical_url(request) -> str:
 
 templates.env.globals["canonical_url"] = _canonical_url
 
-# The asset version follows CSS modification times to prevent stale browser caches.
+# Resolve current asset versions during rendering, not only at process startup.
 def _css_asset_version() -> int:
-    paths = ["app/static/css/tailwind.css", "app/static/css/app.css"]
-    mtimes = [os.path.getmtime(p) for p in paths if os.path.exists(p)]
-    return int(max(mtimes)) if mtimes else 0
+    paths = [Path("app/static/css/tailwind.css"), Path("app/static/css/app.css")]
+    paths.extend(Path("app/static/js").glob("*.js"))
+    mtimes = []
+    for path in paths:
+        try:
+            mtimes.append(path.stat().st_mtime_ns)
+        except FileNotFoundError:
+            continue
+    return max(mtimes, default=0)
 
 
-templates.env.globals["css_asset_v"] = _css_asset_version()
+templates.env.globals["css_asset_v"] = _css_asset_version
 
 # Defaults used until SiteSettings has been loaded.
 templates.env.globals["site_name"] = settings.app_name

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ ui_language(request) }}">
 <head>
+  {% set css_asset_v = css_asset_v() %}
   <meta charset="UTF-8">
   {% if favicon_url() %}<link rel="icon" type="image/png" href="{{ favicon_url() }}">{% endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">

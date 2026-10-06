@@ -4,7 +4,7 @@
 
 Maintain isolated editor workspaces, shared protected categories, editorial approval, verified publishers, and private staff correspondence. Preserve existing site data during migrations.
 
-Current increment organizes Users, simplifies registration review, adds role-scoped panel updates, and provides editable local favicons. Previously requested category applications and analytics remain separate pending work.
+Current increment improves notification visibility and parent-menu counters, compacts registration rows, and uses the Notifications label. Previously requested category applications and analytics remain separate pending work; a release-readiness review records them explicitly.
 
 ## Current decisions
 
@@ -53,6 +53,8 @@ Current increment organizes Users, simplifies registration review, adds role-sco
 
 ## Recent verification
 
+- The 2026-10-06 notification/compact-registration increment passes 435 tests with warnings treated as errors, including Node notification DOM and Web Crypto regressions. Parent aggregation, duplicate/zero counters, safe DOM labels, localized navigation, and live asset-version changes are covered. CSS build, JavaScript syntax, dependency compatibility, Alembic, and whitespace checks pass. Protected live HTTP/visual checks remain pending because the local server stopped during verification. No actual registration decision or data migration was performed.
+
 - The media-quota increment passes the full 418-test suite with warnings treated as errors, including the optional Web Crypto harness. Coverage includes role defaults/overrides, administrator-only password-confirmed settings, all four quota-error languages, ownership/URL alias accounting, concurrent uploads, revoked actors, direct/content/branding/remote/crop paths, failed-commit replacement recovery, retained recovery bytes after filesystem failure, and inaccessible/unlisted staging files. Tailwind build, Alembic schema check, populated-copy upgrade, and live integrity/foreign keys pass. All pre-existing account/content/taxonomy/media/page/application fields match the private recovery snapshot. Read-only live checks for home, sign-in, Users, and Media return HTTP 200; no actual user account or personal quota was changed during verification.
 
 - The previous registration increment passed 396 tests, including the optional shipped-browser Web Crypto harness, with warnings treated as errors. Registration coverage includes native form-to-staff-panel submission, global login/legacy bookmark handling, receipt forgery prevention, pending-login denial, staff approval/rejection, credential conflicts, replay rejection, quotas, HTTPS, CSRF, four languages, pagination, and previous-backup compatibility. Existing maintenance/editorial/security coverage still passes. The live registration form was inspected in the in-app browser. A disposable real HTTP submission persisted in the running database and was removed without creating a user account. Full staff layout review remains pending.
@@ -65,10 +67,20 @@ The full suite passes 432 tests with warnings treated as errors and the optional
 
 Users now starts with accounts, with separate new-user/default-quota tabs, single-account grouped management panels, and quota radio cards. Critical account/verification/quota password checks are unchanged.
 
-Navbar Messages and sidebar counters poll every 30 seconds while visible. Staff see pending registration/publication/deletion/contact work; editors see only their own replies and publication decisions. Notifications are aggregated navigation updates without private bodies; signed-session read markers are browser-specific, not a persistent cross-device inbox.
+Navbar Notifications and sidebar counters poll every 30 seconds while visible. Staff see pending registration/publication/deletion/contact work; editors see only their own replies and publication decisions. Amber badges indicate pending work; parent menus aggregate their visible child links even when collapsed, with duplicate links counted once. Registration names/timestamps/actions share a compact wrapping row. Notifications are aggregated navigation updates without private bodies; signed-session read markers are browser-specific, not a persistent cross-device inbox. Asset versions resolve current CSS/JavaScript modification times on every render, avoiding stale startup-only cache versions.
 
 Appearance supports uploaded/imported local 128×128 PNG favicons, replacement, removal, and in-place cache invalidation. Removing a favicon clears the reference without deleting media. Migration `a4f6b8d0e125` is applied; known pre-favicon and earlier archive adapters are strict. Recovery copy: `/Users/ozcelik/Documents/Project Archives/download/migration-snapshots/2026-10-05/download-before-favicon-20261005T111213Z.db`. Existing records match this snapshot exactly; integrity and foreign keys pass. Read-only real-database ASGI checks for home/sign-in/Users/storage/registrations/appearance/notifications return 200. Live browser verification was unavailable because the local HTTP server was stopped.
 
 ## Next step
+
+Release-readiness review (2026-10-06):
+
+- Close the outstanding editor-category requirement first: editors still create/delete their own categories; the requested staff-reviewed category application workflow has not been implemented. Do not describe this as a foreign-record access bypass.
+- Add GitHub CI before release: tests with warnings as errors, migration/clean-install checks, frontend builds, and dependency-advisory/secret scanning. No `.github` workflow exists in the tracked repository. `pip check` passes, but it is not a vulnerability audit; fresh advisory and Git-history secret scans remain to be run.
+- Consider administrator MFA and revocable per-device sessions before public production. Current authentication has password hashing, CSRF, signed cookies, credential/session-generation invalidation, and login limits, but no MFA or per-device session registry.
+- Strengthen CSP on the main public/panel pages with tested nonce/hash handling for existing inline scripts. Existing framing, MIME, referrer, HTTPS HSTS, and uploaded-active-file sandbox headers already provide protections; missing comprehensive CSP is defense-in-depth work, not proof of an exploitable XSS.
+- Verify the downloaded Tailwind executable's hash and fail cleanly on unsuccessful downloads. The installer currently pins a release URL but uses `curl -sL` without checksum verification.
+- Add a project-root license chosen by the owner and a private vulnerability-reporting channel. Public visibility alone should not be treated as a declared open-source license; third-party asset licenses already exist.
+- Editor view/download graphs and a dedicated staff statistics screen remain outstanding requests; existing download totals are not these features. Run production-domain HTTPS/proxy checks and an off-server restore rehearsal before freezing development.
 
 Review remaining legacy Turkish comments and docstrings for the repository-wide English-language convention without changing user-facing behavior. Continue copy review for nuanced Spanish/French phrasing and browser-level layout verification.

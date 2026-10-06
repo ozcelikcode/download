@@ -32,6 +32,17 @@ async def test_staff_notifications_link_to_pending_requests(admin_client, db_ses
     assert data["unread"] == 0 and data["counters"]["registrations"] == 1
 
 
+async def test_registration_rows_and_parent_navigation_are_compact(admin_client, db_session):
+    db_session.add(RegistrationRequest(username="compact-applicant", password_hash="test-only"))
+    await db_session.commit()
+    page = await admin_client.get("/panel/registrations")
+    assert page.status_code == 200
+    assert 'aria-label="Bildirimler"' in page.text and 'data-lucide="bell"' in page.text
+    assert 'registration-row flex flex-wrap items-center justify-between' in page.text
+    assert 'name="current_password"' not in page.text
+    assert page.text.count('summary data-panel-group') == 5
+
+
 async def test_editor_notices_never_show_foreign_or_staff_data(client, db_session):
     admin = await db_session.scalar(select(User).where(User.username == "admin"))
     editor = User(username="notice-editor", role="editor", password_hash=admin.password_hash)

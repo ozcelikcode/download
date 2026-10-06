@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ ui_language(request) }}">
 <head>
+  {% set css_asset_v = css_asset_v() %}
   <meta charset="UTF-8">
   {% if favicon_url() %}<link rel="icon" type="image/png" href="{{ favicon_url() }}">{% endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,7 +49,7 @@
 
   <div class="flex-1"></div>
   <div id="panel-messages" class="relative shrink-0" data-empty="{{ t(request, 'notice_empty') }}" data-update="{{ t(request, 'notice_update') }}">
-    <button type="button" id="panel-messages-toggle" class="btn-secondary" data-disclosure-button aria-label="{{ t(request, 'panel_messages') }}" aria-controls="panel-messages-menu" aria-expanded="false"><i data-lucide="mail" class="w-4 h-4"></i><span class="hidden sm:inline">{{ t(request, 'panel_messages') }}</span><span id="panel-unread" class="panel-count hidden" aria-live="polite"></span></button>
+    <button type="button" id="panel-messages-toggle" class="btn-secondary" data-disclosure-button aria-label="{{ t(request, 'notifications') }}" aria-controls="panel-messages-menu" aria-expanded="false"><i data-lucide="bell" class="w-4 h-4"></i><span class="hidden sm:inline">{{ t(request, 'notifications') }}</span><span id="panel-unread" class="panel-count hidden" aria-live="polite"></span></button>
     <div id="panel-messages-menu" class="hidden fixed left-4 right-4 top-14 sm:absolute sm:left-auto sm:right-0 sm:top-full mt-2 sm:w-72 max-h-96 overflow-y-auto rounded-sm border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900" aria-label="{{ t(request, 'notifications') }}">
       <div id="panel-message-list"><p class="p-3 text-sm text-slate-500">{{ t(request, 'notice_empty') }}</p></div>
       <noscript><a href="/panel/contact" class="btn-secondary">{{ t(request, 'contact_title') }}</a></noscript>
@@ -131,7 +132,7 @@
       </a>{% endif %}
 
       <details class="admin-nav-group" {% if content_section %}open{% endif %}>
-        <summary class="admin-nav-summary {% if content_section %}is-active{% endif %}">
+        <summary data-panel-group class="admin-nav-summary {% if content_section %}is-active{% endif %}">
           <i data-lucide="list" class="w-3.5 h-3.5 shrink-0"></i><span class="flex-1">{{ t(request, 'contents') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5 shrink-0"></i>
         </summary>
         <div class="admin-nav-children">
@@ -144,7 +145,7 @@
       </details>
 
       <details class="admin-nav-group" {% if management_section %}open{% endif %}>
-        <summary class="admin-nav-summary {% if management_section %}is-active{% endif %}">
+        <summary data-panel-group class="admin-nav-summary {% if management_section %}is-active{% endif %}">
           <i data-lucide="settings-2" class="w-3.5 h-3.5 shrink-0"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5 shrink-0"></i>
         </summary>
         <div class="admin-nav-children">
@@ -167,12 +168,12 @@
   {# ── Ana İçerik ──────────────────────────────────── #}
   <main id="main-content" tabindex="-1" class="flex-1 min-w-0 p-6">
     <details class="admin-mobile-menu sm:hidden mb-5 border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
-      <summary class="admin-nav-summary"><i data-lucide="menu" class="w-4 h-4"></i><span class="flex-1">{{ t(request, 'menu') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-4 h-4"></i></summary>
+      <summary data-panel-group class="admin-nav-summary"><i data-lucide="menu" class="w-4 h-4"></i><span class="flex-1">{{ t(request, 'menu') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-4 h-4"></i></summary>
       <nav class="px-2 py-2 border-t border-slate-100 dark:border-slate-800" aria-label="{{ t(request, 'menu') }}">
         <a href="/panel" class="admin-nav-link {% if admin_path in ['/panel', '/panel/'] %}is-active{% endif %}">{{ t(request, 'dashboard') }}</a>
         {% if request.state.admin_role != 'editor' %}<a href="/panel/site-health" class="admin-nav-link {% if admin_path == '/panel/site-health' %}is-active{% endif %}">{{ t(request, 'site_health') }}</a>{% endif %}
         <details class="admin-nav-group" {% if content_section %}open{% endif %}>
-          <summary class="admin-nav-summary {% if content_section %}is-active{% endif %}"><i data-lucide="list" class="w-3.5 h-3.5"></i><span class="flex-1">{{ t(request, 'contents') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5"></i></summary>
+          <summary data-panel-group class="admin-nav-summary {% if content_section %}is-active{% endif %}"><i data-lucide="list" class="w-3.5 h-3.5"></i><span class="flex-1">{{ t(request, 'contents') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5"></i></summary>
           <div class="admin-nav-children">
             <a href="/panel/downloads" class="admin-nav-link {% if admin_path == '/panel/downloads' %}is-active{% endif %}">{{ t(request, 'all_contents') }}</a>
             {% if request.state.admin_role != 'editor' %}<a href="/panel/review" class="admin-nav-link {% if admin_path.startswith('/panel/review') %}is-active{% endif %}">{{ t(request, 'review_title') }}</a>{% endif %}
@@ -182,7 +183,7 @@
           </div>
         </details>
         <details class="admin-nav-group" {% if management_section %}open{% endif %}>
-          <summary class="admin-nav-summary {% if management_section %}is-active{% endif %}"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5"></i></summary>
+          <summary data-panel-group class="admin-nav-summary {% if management_section %}is-active{% endif %}"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i><span class="flex-1">{{ t(request, 'management') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-3.5 h-3.5"></i></summary>
           <div class="admin-nav-children">
             <a href="/panel/categories" class="admin-nav-link {% if admin_path.startswith('/panel/categories') %}is-active{% endif %}">{{ t(request, 'categories') }}</a>
             <a href="/panel/tags" class="admin-nav-link {% if admin_path.startswith('/panel/tags') %}is-active{% endif %}">{{ t(request, 'tags') }}</a>

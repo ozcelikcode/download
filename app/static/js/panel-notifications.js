@@ -37,15 +37,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const kind = document.createElement('input'); kind.type = 'hidden'; kind.name = 'kind'; kind.value = item.kind;
         const token = document.createElement('input'); token.type = 'hidden'; token.name = 'csrf_token'; token.value = document.querySelector('meta[name="csrf-token"]').content;
         const link = document.createElement('button'); link.type = 'submit'; link.className = 'panel-message-link';
-        link.textContent = item.label + ' · ' + item.count;
+        const label = document.createElement('span'); label.textContent = item.label;
+        const count = document.createElement('span'); count.className = 'panel-count'; count.textContent = String(item.count);
+        link.append(label, count);
         form.append(kind, token, link); list.appendChild(form);
       });
       Object.entries(paths).forEach(([kind, path]) => {
-        document.querySelectorAll('a[href="' + path + '"]').forEach((link) => {
+        document.querySelectorAll('.admin-nav-link[href="' + path + '"]').forEach((link) => {
           let badge = link.querySelector('[data-panel-count]');
           if (!badge) { badge = document.createElement('span'); badge.dataset.panelCount = kind; badge.className = 'panel-count'; link.appendChild(badge); }
           const count = Number(data.counters[kind] || 0); badge.textContent = String(count); badge.classList.toggle('hidden', !count);
         });
+      });
+      document.querySelectorAll('summary[data-panel-group]').forEach((summary) => {
+        const links = new Set(Array.from(summary.parentElement.querySelectorAll('.admin-nav-link')).map((link) => link.getAttribute('href')));
+        const total = Object.entries(paths).reduce((sum, [kind, path]) => sum + (links.has(path) ? Number(data.counters[kind] || 0) : 0), 0);
+        let badge = summary.querySelector('[data-panel-total]');
+        if (!badge) { badge = document.createElement('span'); badge.dataset.panelTotal = ''; badge.className = 'panel-count'; summary.insertBefore(badge, summary.lastElementChild); }
+        badge.textContent = String(total); badge.classList.toggle('hidden', !total);
       });
     } catch (_) { /* A transient failure does not disrupt the current page. */ }
     finally { loading = false; }
