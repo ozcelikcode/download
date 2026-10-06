@@ -32,17 +32,24 @@ class Element {
   scrollIntoView() { this.scrolled = true; }
 }
 const content = new Element(), button = new Element();
+content.style = {setProperty: (key, value) => { content.attributes[key] = value; }};
+const facts = new Element(), tabBar = new Element();
+facts.getBoundingClientRect = () => ({height: 360});
+tabBar.getBoundingClientRect = () => ({height: 56});
 content.scrollHeight = 1000; content.clientHeight = 512;
 let resized;
 global.document = {
   addEventListener: (k, fn) => fn(),
-  getElementById: id => id === 'application-description' ? content : id === 'description-toggle' ? button : null,
-  querySelectorAll: () => [],
+  getElementById: id => id === 'application-description' ? content : id === 'description-toggle' ? button : id === 'detail-facts-content' ? facts : null,
+  querySelectorAll: selector => selector === '.detail-tabs' ? [tabBar] : [],
 };
-global.window = { addEventListener: (k, fn) => { resized = fn; } };
+global.window = { innerWidth: 1200, addEventListener: (k, fn) => { resized = fn; } };
 eval(fs.readFileSync('app/static/js/download-detail.js', 'utf8'));
 assert(content.classes.has('is-collapsed'));
 assert(!button.classes.has('hidden'));
+assert.equal(content.attributes['--detail-collapse-height'], '248px');
+content.scrollHeight = 350; content.clientHeight = 248; resized();
+assert(content.classes.has('is-collapsed')); // Below the old 512px threshold.
 button.events.click();
 assert(!content.classes.has('is-collapsed'));
 assert.equal(button.attributes['aria-expanded'], 'true');

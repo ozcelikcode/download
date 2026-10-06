@@ -1,5 +1,17 @@
 /* Progressive disclosure: descriptions stay fully readable without JavaScript. */
 document.addEventListener('DOMContentLoaded', () => {
+  const moreMenu = document.querySelectorAll('.detail-more')[0];
+  if (moreMenu) {
+    document.addEventListener('click', event => {
+      if (!moreMenu.contains(event.target)) moreMenu.open = false;
+    });
+    moreMenu.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        moreMenu.open = false;
+        moreMenu.querySelector('summary').focus();
+      }
+    });
+  }
   const tabs = [...document.querySelectorAll('[data-detail-tab]')];
   function activate(tab) {
     tabs.forEach(item => {
@@ -38,6 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function refresh() {
     if (content.closest('[hidden]')) return;
     if (expanded) return;
+    const facts = document.getElementById('detail-facts-content');
+    const tabBar = document.querySelectorAll('.detail-tabs')[0];
+    if (contentId === 'application-description' && facts && tabBar) {
+      // Measure intrinsic facts, not the stretched card, to avoid a size loop.
+      const available = facts.getBoundingClientRect().height - tabBar.getBoundingClientRect().height - 56;
+      const limit = window.innerWidth >= 768 ? Math.max(160, Math.min(384, available)) : 320;
+      content.style.setProperty('--detail-collapse-height', `${limit}px`);
+    }
     content.classList.add('is-collapsed');
     const overflows = content.scrollHeight > content.clientHeight + 1;
     content.classList.toggle('is-collapsed', overflows);
@@ -60,7 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
   content.addEventListener('focusin', () => { if (content.classList.contains('is-collapsed')) open(); });
   content.addEventListener('load', refresh, true);
   window.addEventListener('resize', refresh);
-  if (window.ResizeObserver) new ResizeObserver(refresh).observe(content);
+  if (window.ResizeObserver) {
+    const observer = new ResizeObserver(refresh);
+    observer.observe(content);
+    const facts = document.getElementById('detail-facts-content');
+    if (facts) observer.observe(facts);
+  }
   if (document.fonts) document.fonts.ready.then(refresh);
   refresh();
   }

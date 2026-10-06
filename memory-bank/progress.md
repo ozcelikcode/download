@@ -2,6 +2,8 @@
 
 ## Working capabilities
 
+- Detail refinement verified with 498 passing tests and targeted disclosure regression checks: semantic metadata/platform colors and icons, one download count in Details, report forms behind the adjacent ellipsis menu, intrinsic-height description collapse with fade/blur, reversible expansion, and equal desktop card heights. Isolated browser checks cover menu Escape closure, desktop/mobile overflow, light/AMOLED contrast, and expansion. Existing content and database records remain unchanged.
+
 Latest verification: 498 tests pass with warnings treated as errors and optional Node/Web Crypto checks enabled. Focused regressions confirm owner-isolated publisher reports/catalogs/photos, five compression levels, role enforcement, strict previous-backup adaptation, aggregate statistics access, and complete omission of a disabled hero. Isolated light/dark desktop and 390 px browser checks confirm equal card heights, accessible tab switching, Read more reversal, and no horizontal overflow. Alembic, dependency, and whitespace checks pass; temporary preview artifacts are removed automatically and the private migration recovery snapshot is retained.
 
 - Download detail tabs and balanced cards, top-right actions, source/count details, and role-scoped anonymous publisher feedback. Public publisher catalogs/photos follow publication visibility, including account closure. Admin-only optional content compression supports five levels; profile optimization stays mandatory. Staff-only aggregate statistics and server-side hero omission have regression coverage. Migration `b5a7c9e1f236` preserves data, includes legacy backup adaptation, and has a private recovery snapshot recorded in Active Context.

@@ -28,7 +28,9 @@ async def test_detail_layout_keeps_header_then_description_and_right_actions(cli
     assert page.text.index('detail-main') < page.text.index('detail-side')
     side = page.text.split('<aside class="detail-side"', 1)[1].split('</aside>', 1)[0]
     header = page.text.split('detail-identity', 1)[1].split('download-detail-layout', 1)[0]
-    assert 'id="download-btn-main"' in header and f'action="/download/{download.slug}/report"' in side
+    assert 'id="download-btn-main"' in header and f'action="/download/{download.slug}/report"' in header
+    assert 'detail-more-button' in header and '/report' not in side
+    assert 'İndirme sayısı' not in header
     assert 'id="application-description"' in page.text and 'aria-controls="application-description"' in page.text
     assert 'Short summary' not in header and 'Readable description' in page.text
     assert 'data-detail-tab="detail-description-panel"' in page.text and 'data-detail-tab="detail-history-panel"' in page.text

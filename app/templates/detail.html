@@ -108,6 +108,7 @@
       <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
         {{ t(request, 'external_destination') if download.file_type.value == 'external' else t(request, 'direct_download') }}
       </p>
+      <div class="detail-action-row">
       {% if is_preview | default(false) %}
       <button type="button" disabled aria-disabled="true" class="btn-download py-2.5 px-6 text-base font-semibold opacity-70 cursor-not-allowed">
         {% if download.file_type.value == 'external' %}<i data-lucide="external-link" class="w-4.5 h-4.5"></i>{{ t(request, 'open_link') }}{% else %}<i data-lucide="download" class="w-4.5 h-4.5"></i>{{ t(request, 'download_now') }}{% endif %}
@@ -127,7 +128,30 @@
         {% endif %}
       </a>
       {% endif %}
-<p class="text-xs text-slate-500 mt-2">{{ download.download_count | thousands }} {{ t(request, 'detail_download_count') }}</p>
+{% if not is_preview | default(false) %}
+<details class="detail-more">
+  <summary class="btn-secondary detail-more-button" aria-label="{{ t(request, 'detail_more_actions') }}" title="{{ t(request, 'detail_more_actions') }}"><i data-lucide="ellipsis" class="w-4 h-4" aria-hidden="true"></i></summary>
+  <div class="detail-more-menu">  {% if not is_preview | default(false) %}
+  {% for target, label in [('staff', 'detail_report'), ('publisher', 'detail_report_publisher')] %}
+  {% if target == 'staff' or download.publisher and download.publisher.is_active and not download.publisher.deleted_at %}
+  <details class="detail-report py-2">
+    <summary class="detail-report-option" aria-label="{{ t(request, label) }}"><i data-lucide="flag" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, label) }}</summary>
+    <form method="post" action="/download/{{ download.slug }}/report" class="mt-3 space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+      <input type="hidden" name="target" value="{{ target }}">
+      <fieldset><legend class="text-xs text-slate-500 mb-2">{{ t(request, 'detail_report_help') }}</legend>
+      {% for reason in ['broken', 'incorrect', 'unsafe'] %}<label class="flex items-center gap-2 text-sm py-1"><input type="radio" name="reason" value="{{ reason }}" required>{{ t(request, 'detail_report_' ~ reason) }}</label>{% endfor %}
+      </fieldset>
+      <button type="submit" class="btn-secondary"><i data-lucide="send" class="w-4 h-4"></i>{{ t(request, 'detail_report_send') }}</button>
+    </form>
+  </details>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+</div>
+</details>
+{% endif %}
+</div>
 <p class="text-xs text-slate-500 mt-1">{{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}</p>
 </div>
 {% endset %}
@@ -245,6 +269,7 @@
 </div>
 </div>
 <aside class="detail-side" aria-label="{{ t(request, 'detail_details') }}"><div class="detail-facts bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-4 mb-4 transition-colors">
+  <div id="detail-facts-content">
   <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
     <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
     {{ t(request, 'detail_details') }}
@@ -255,18 +280,18 @@
     {% if download.is_latest_version or download.version %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'version') }}</dt>
-      <dd class="font-medium text-slate-700 dark:text-slate-300">{{ t(request, 'latest_release') if download.is_latest_version else download.version }}</dd>
+      <dd class="detail-fact-value fact-version"><i data-lucide="git-branch" class="w-3.5 h-3.5" aria-hidden="true"></i>{{ t(request, 'latest_release') if download.is_latest_version else download.version }}</dd>
     </div>
     {% endif %}
 
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'type') }}</dt>
-      <dd class="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+      <dd class="detail-fact-value {{ 'fact-external' if download.file_type.value == 'external' else 'fact-local' }}">
         {% if download.file_type.value == 'external' %}
-        <i data-lucide="external-link" class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400"></i>
+        <i data-lucide="external-link" class="w-3.5 h-3.5" aria-hidden="true"></i>
         {{ t(request, 'external_link') }}
         {% else %}
-        <i data-lucide="server" class="w-3.5 h-3.5 text-green-500 dark:text-green-400"></i>
+        <i data-lucide="server" class="w-3.5 h-3.5" aria-hidden="true"></i>
         {{ t(request, 'local_file') }}
         {% endif %}
       </dd>
@@ -275,7 +300,8 @@
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'compatibility') }}</dt>
       <dd class="font-medium text-slate-700 dark:text-slate-300 text-right">
-        {% if download.os_compatibility %}{% set os_labels = {'windows':'Windows','macos':'macOS','linux':'Linux','android':'Android','ios':'iOS','web':'Web'} %}{% for os_name in download.os_compatibility.split(',') %}{{ os_labels.get(os_name|trim, os_name|trim) }}{% if not loop.last %} · {% endif %}{% endfor %}{% else %}{{ t(request, 'not_specified') }}{% endif %}
+        {% set platforms = {'windows': ('Windows', 'panels-top-left'), 'macos': ('macOS', 'apple'), 'linux': ('Linux', 'terminal'), 'android': ('Android', 'smartphone'), 'ios': ('iOS', 'apple'), 'web': ('Web', 'globe')} %}
+        <span class="detail-platforms">{% if download.os_compatibility %}{% for os_name in download.os_compatibility.split(',') %}{% set key = os_name|trim %}{% if key in platforms %}<span class="detail-fact-value platform-{{ key }}"><i data-lucide="{{ platforms[key][1] }}" class="w-3.5 h-3.5" aria-hidden="true"></i>{{ platforms[key][0] }}</span>{% else %}<span>{{ key }}</span>{% endif %}{% endfor %}{% else %}{{ t(request, 'not_specified') }}{% endif %}</span>
       </dd>
     </div>
 
@@ -324,29 +350,13 @@
     </div>
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500">{{ t(request, 'source_type') }}</dt>
-      <dd>{{ t(request, 'official_site') if download.is_official_source else t(request, 'third_party') }}</dd>
+      <dd class="detail-fact-value {{ 'fact-official' if download.is_official_source else 'fact-third-party' }}"><i data-lucide="{{ 'badge-check' if download.is_official_source else 'globe' }}" class="w-3.5 h-3.5" aria-hidden="true"></i>{{ t(request, 'official_site') if download.is_official_source else t(request, 'third_party') }}</dd>
     </div>
     {% elif download_filename %}
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800"><dt class="text-slate-400">{{ t(request, 'filename') }}</dt><dd>{{ download_filename }}</dd></div>
     {% endif %}
   </dl>
-  {% if not is_preview | default(false) %}
-  {% for target, label in [('staff', 'detail_report'), ('publisher', 'detail_report_publisher')] %}
-  {% if target == 'staff' or download.publisher and download.publisher.is_active and not download.publisher.deleted_at %}
-  <details class="detail-report mt-4 border-t border-slate-200 dark:border-slate-800 pt-3">
-    <summary class="btn-secondary cursor-pointer"><i data-lucide="flag" class="w-4 h-4"></i>{{ t(request, label) }}</summary>
-    <form method="post" action="/download/{{ download.slug }}/report" class="mt-3 space-y-3">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-      <input type="hidden" name="target" value="{{ target }}">
-      <fieldset><legend class="text-xs text-slate-500 mb-2">{{ t(request, 'detail_report_help') }}</legend>
-      {% for reason in ['broken', 'incorrect', 'unsafe'] %}<label class="flex items-center gap-2 text-sm py-1"><input type="radio" name="reason" value="{{ reason }}" required>{{ t(request, 'detail_report_' ~ reason) }}</label>{% endfor %}
-      </fieldset>
-      <button type="submit" class="btn-secondary"><i data-lucide="send" class="w-4 h-4"></i>{{ t(request, 'detail_report_send') }}</button>
-    </form>
-  </details>
-  {% endif %}
-  {% endfor %}
-  {% endif %}
+  </div>
 </div></aside>
 </div>
 
