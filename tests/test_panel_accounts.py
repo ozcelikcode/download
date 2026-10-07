@@ -111,3 +111,50 @@ async def test_closure_requires_csrf(client, db_session):
     user = await sign_in(client, db_session)
     del client.headers["X-CSRF-Token"]
     assert (await client.post("/panel/account/close", data={"current_password": PASSWORD, "confirmation": user.username, "acknowledged": "true"})).status_code == 403
+
+
+async def test_last_admin_close_form_is_not_offered(admin_client):
+    page = await admin_client.get('/panel/settings/account')
+    assert page.status_code == 200
+    assert 'action="/panel/account/close"' not in page.text
+    assert TRANSLATIONS['tr']['last_admin_required'] in page.text
+
+
+@pytest.mark.parametrize('role', ['editor', 'manager'])
+async def test_non_admin_close_form_and_single_personal_icon(client, db_session, role):
+    await sign_in(client, db_session, role)
+    page = await client.get('/panel/settings/account')
+    assert page.status_code == 200
+    assert 'action="/panel/account/close"' in page.text
+    assert page.text.count('action="/panel/account/icon"') == 1
+    assert 'action="/panel/settings/avatar"' not in page.text
+    assert 'avatar-color-radio' not in page.text
+    assert 'href="https://lucide.dev/icons/"' in page.text
+    assert 'name="icon" type="text"' in page.text
+
+
+async def test_manual_profile_icon_is_personal_and_legacy_color_is_ignored(client, db_session):
+    from app.models import SiteSettings
+    user = await sign_in(client, db_session, 'manager')
+    settings = await db_session.scalar(select(SiteSettings))
+    old_branding = (settings.admin_icon, settings.admin_icon_color)
+    response = await client.post('/panel/account/icon', data={'icon': '  rocket  ', 'color': 'red'})
+    assert response.status_code == 303
+    await db_session.refresh(user)
+    assert user.profile_icon == 'rocket'
+    assert (await db_session.get(User, 1)).profile_icon == 'user-circle'
+    assert 'data-lucide="rocket"' in (await client.get('/panel')).text
+    response = await client.post('/panel/settings/avatar', data={'admin_icon': 'leaf', 'admin_icon_color': 'red'})
+    assert response.status_code == 303
+    await db_session.refresh(settings)
+    await db_session.refresh(user)
+    assert user.profile_icon == 'leaf'
+    assert (settings.admin_icon, settings.admin_icon_color) == old_branding
+
+
+@pytest.mark.parametrize('icon', ['unknown-icon-name', '<svg onload=alert(1)>', 'user" onclick="alert(1)', 'a' * 51])
+async def test_manual_profile_icon_rejects_unknown_and_markup(client, db_session, icon):
+    user = await sign_in(client, db_session)
+    assert (await client.post('/panel/account/icon', data={'icon': icon})).status_code == 303
+    await db_session.refresh(user)
+    assert user.profile_icon == 'user-circle'

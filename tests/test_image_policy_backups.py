@@ -4,8 +4,19 @@ import json
 import zipfile
 
 import pytest
+from sqlalchemy import select
 
 from app import backups
+from app.models import User
+
+
+async def test_manual_lucide_profile_icon_survives_backup_validation(db_session, tmp_path):
+    user = await db_session.scalar(select(User).where(User.username == 'admin'))
+    user.profile_icon = 'rocket'
+    await db_session.commit()
+    backups.write_archive(tmp_path / 'incoming.zip')
+    _, data = backups.validate_archive(tmp_path)
+    assert next(row for row in data['users'] if row['id'] == user.id)['profile_icon'] == 'rocket'
 
 
 @pytest.mark.parametrize('mixed', [False, True])

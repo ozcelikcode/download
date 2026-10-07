@@ -292,7 +292,7 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             from app.timezones import validate_timezone
             from app.storage_quota import validate_quota
-            from app.profile_photos import PROFILE_ICONS
+            from app.profile_photos import valid_profile_icon
             try:
                 validate_timezone(data["site_settings"][0]["site_timezone"])
                 validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
@@ -302,7 +302,7 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                     raise ValueError("Invalid image policy")
                 for user in data["users"]:
                     validate_quota(user["media_quota_mb"], optional=True)
-                    if user["profile_icon"] not in PROFILE_ICONS:
+                    if not valid_profile_icon(user["profile_icon"]):
                         raise ValueError("Invalid profile icon")
             except (ValueError, TypeError):
                 raise BackupError("backup_invalid") from None

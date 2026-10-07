@@ -62,6 +62,8 @@
 {% set source_labels = {'local':t(request, 'local_file'),'external':t(request, 'external_link')} %}
 {% set trust_labels = {'official':t(request, 'official_source'),'third_party':t(request, 'third_party_source')} %}
 {% set sort_labels = {'newest':t(request, 'newest'),'popular':t(request, 'most_downloaded'),'title':t(request, 'alphabetical')} %}
+<details class="public-filter-disclosure mb-4">
+  <summary class="btn-secondary public-filter-toggle"><i data-lucide="sliders-horizontal" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, 'filter') }}{% if has_filters %}<span class="text-xs text-slate-500">{{ t(request, 'active_filters') }}</span>{% endif %}</summary>
 <form method="get" action="{{ request.url.path }}"
   class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-4">
   {% if current_search %}<input type="hidden" name="q" value="{{ current_search }}">{% endif %}
@@ -106,6 +108,7 @@
   </div>
   {% endif %}
 </form>
+</details>
 
 {# ================================================================
    Öne çıkan indirmeler — yalnızca anasayfada göster

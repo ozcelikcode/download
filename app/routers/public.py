@@ -215,6 +215,7 @@ async def _sidebar_context(
         "admin_username": admin_username,
         "is_staff": bool(staff_username),
         "staff_username": staff_username,
+        "staff_profile_icon": staff.profile_icon if staff is not None else "user-circle",
         "site_settings": site_settings,
         "hero_components": hero_components,
     }

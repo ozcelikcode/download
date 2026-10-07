@@ -16,7 +16,7 @@ from app.database import get_db
 from app.dependencies import SESSION_COOKIE, require_admin
 from app.i18n import translate
 from app.models import MediaAsset, User
-from app.profile_photos import PHOTO_UPLOAD_LIMIT, PROFILE_ICONS, photo_path, prepare_photo
+from app.profile_photos import PHOTO_UPLOAD_LIMIT, valid_profile_icon, photo_path, prepare_photo
 from app.storage_quota import publish_media
 from app.uploads import save_upload
 from app.routers.users import _confirm_password, _lock_actor
@@ -47,8 +47,9 @@ async def account_photo(request: Request) -> FileResponse:
 @router.post("/icon")
 async def update_profile_icon(request: Request, icon: str = Form(...),
                               session: AsyncSession = Depends(get_db)) -> RedirectResponse:
-    if icon not in PROFILE_ICONS:
-        raise HTTPException(400, translate(request, "photo_invalid"))
+    icon = icon.strip()
+    if not valid_profile_icon(icon):
+        return denied(request, "profile_icon_invalid")
     await _lock_actor(request, session, request.state.admin_role)
     user = await session.get(User, request.state.admin_id)
     user.profile_icon = icon

@@ -8,6 +8,16 @@ from app.config import settings
 from app.schemas import CategoryCreate, DownloadCreate, TagCreate
 
 
+async def test_public_filters_are_collapsed_native_disclosure(client):
+    for path in ('/', '/?os=windows'):
+        page = await client.get(path)
+        assert page.status_code == 200
+        assert '<details class="public-filter-disclosure mb-4">' in page.text
+        assert 'public-filter-toggle' in page.text
+        assert 'id="public-os"' in page.text
+    assert 'name="os"' in page.text and 'value="windows" selected' in page.text
+
+
 async def _seed_filter_downloads(session: AsyncSession):
     alpha = await crud.create_download(
         session,

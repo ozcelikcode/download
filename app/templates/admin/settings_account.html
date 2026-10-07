@@ -19,7 +19,7 @@
     <div class="flex flex-col sm:flex-row sm:items-start gap-4">
       <div class="w-16 h-16 shrink-0 rounded-sm overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center">
         {% if photo %}<img src="{{ photo }}" alt="{{ t(request, 'photo_title') }}" width="64" height="64" class="w-full h-full object-cover">
-        {% else %}<i data-lucide="user-circle" class="w-8 h-8 text-slate-400" aria-hidden="true"></i>{% endif %}
+        {% else %}<i data-lucide="{{ current_profile_icon }}" class="w-8 h-8 text-slate-400" aria-hidden="true"></i>{% endif %}
       </div>
       <div class="min-w-0 flex-1">
         <form method="post" action="/panel/account/photo" enctype="multipart/form-data" class="space-y-3">
@@ -40,52 +40,19 @@
   </section>
   <form method="post" action="/panel/account/icon" class="space-y-3 pb-5 mb-5 border-b border-slate-200 dark:border-slate-800">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <fieldset><legend class="form-label">{{ t(request, 'profile_icon') }}</legend><div class="flex gap-2 flex-wrap">
-    {% for icon in profile_icons %}<label class="choice-card p-2"><input type="radio" name="icon" value="{{ icon }}" {% if current_profile_icon == icon %}checked{% endif %} class="choice-input"><i data-lucide="{{ icon }}" class="w-5 h-5" aria-label="{{ icon }}"></i></label>{% endfor %}
-    </div></fieldset>
-    <button type="submit" class="btn-secondary">{{ t(request, 'save_profile_icon') }}</button>
-  </form>
-  {% if request.state.admin_role != 'editor' %}
-  {# Profil ikonu #}
-  <form method="post" action="/panel/settings/avatar" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
-    <label class="form-label">{{ t(request, 'profile_icon') }}</label>
+    <label for="avatar-icon-input" class="form-label">{{ t(request, 'profile_icon') }}</label>
     <div class="flex items-center gap-2">
-      <div id="avatar-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-        <i data-lucide="{{ site_settings.admin_icon }}" class="w-5 h-5 site-icon-color" id="avatar-icon-preview-glyph"
-          style="--site-icon-light: {{ icon_colors[site_settings.admin_icon_color][0] }}; --site-icon-dark: {{ icon_colors[site_settings.admin_icon_color][1] }};"></i>
+      <div id="avatar-icon-preview-wrap" class="w-10 h-10 shrink-0 rounded-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+        <i id="avatar-icon-preview-glyph" data-lucide="{{ current_profile_icon }}" class="w-5 h-5" aria-hidden="true"></i>
       </div>
-      <input id="avatar-icon-input" name="admin_icon" type="text" required value="{{ site_settings.admin_icon }}" class="form-input max-w-xs" autocomplete="off">
+      <input id="avatar-icon-input" name="icon" type="text" required maxlength="50" value="{{ current_profile_icon }}" class="form-input max-w-xs" autocomplete="off" aria-describedby="profile-icon-help">
     </div>
-    <div id="avatar-icon-picker" class="flex flex-wrap gap-1">
-      {% for icon_name in ['user-circle','user','user-cog','shield','shield-check','key-round','crown','badge-check','settings'] %}
-      <button type="button" data-icon-pick="{{ icon_name }}"
-        class="p-1.5 rounded-sm border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400
-               hover:border-blue-300 dark:hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        title="{{ icon_name }}">
-        <i data-lucide="{{ icon_name }}" class="w-3.5 h-3.5"></i>
-      </button>
-      {% endfor %}
+    <p id="profile-icon-help" class="form-hint">{{ t(request, 'profile_icon_help') }} <a href="https://lucide.dev/icons/" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2">Lucide Icons <i data-lucide="external-link" class="inline-block w-3 h-3" aria-hidden="true"></i></a></p>
+    <div id="avatar-icon-picker" class="flex gap-2 flex-wrap">
+      {% for icon in profile_icons %}<button type="button" data-icon-pick="{{ icon }}" class="btn-secondary p-2" aria-label="{{ icon }}"><i data-lucide="{{ icon }}" class="w-4 h-4" aria-hidden="true"></i></button>{% endfor %}
     </div>
-
-    <div class="flex items-center gap-2 flex-wrap">
-      {% for color, hexes in icon_colors.items() %}
-      <label class="cursor-pointer" title="{{ color }}">
-        <input type="radio" name="admin_icon_color" value="{{ color }}" class="peer sr-only avatar-color-radio"
-          {% if site_settings.admin_icon_color == color %}checked{% endif %}
-          data-color-light="{{ hexes[0] }}" data-color-dark="{{ hexes[1] }}">
-        <span class="block w-6 h-6 rounded-sm ring-2 ring-transparent peer-checked:ring-slate-400 dark:peer-checked:ring-slate-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all"
-          style="background: {{ hexes[0] }};"></span>
-      </label>
-      {% endfor %}
-    </div>
-
-    <button type="submit" class="btn-primary py-2 px-4 text-sm">
-      <i data-lucide="save" class="w-3.5 h-3.5"></i>
-      {{ t(request, 'save_profile_icon') }}
-    </button>
+    <button type="submit" class="btn-primary"><i data-lucide="save" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, 'save_profile_icon') }}</button>
   </form>
-  {% endif %}
 
   {# Kullanıcı adı / şifre #}
   <form method="post" action="/panel/settings/account" class="space-y-3 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
@@ -146,6 +113,7 @@
 <section class="border border-slate-200 dark:border-slate-800 rounded-sm p-5 mt-6">
   <h2 class="text-sm font-semibold">{{ t(request, 'account_close') }}</h2>
   <p class="text-xs text-slate-500 mt-2 mb-4">{{ t(request, 'account_close_help') }}</p>
+  {% if not can_close_account %}<p role="status" class="text-sm text-slate-500">{{ t(request, 'last_admin_required') }}</p>{% else %}
   <form method="post" action="/panel/account/close" class="space-y-3 max-w-md">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <label class="block"><span class="form-label">{{ t(request, 'current_password') }}</span><input name="current_password" type="password" required maxlength="1024" autocomplete="current-password" class="form-input"></label>
@@ -153,6 +121,7 @@
     <label class="flex items-start gap-2 text-xs"><input type="checkbox" name="acknowledged" value="true" required><span>{{ t(request, 'account_close_ack') }}</span></label>
     <button type="submit" class="btn-danger"><i data-lucide="user-minus" class="w-4 h-4"></i>{{ t(request, 'account_close') }}</button>
   </form>
+  {% endif %}
 </section>
 
 {% endblock %}
@@ -162,16 +131,13 @@
   (function () {
     const iconInput  = document.getElementById('avatar-icon-input');
     if (!iconInput) return;
-    const colorRadios = document.querySelectorAll('.avatar-color-radio');
 
     function setGlyph(name) {
       const wrap = document.getElementById('avatar-icon-preview-wrap');
-      const previous = document.getElementById('avatar-icon-preview-glyph');
       const glyph = document.createElement('i');
       glyph.id = 'avatar-icon-preview-glyph';
-      glyph.className = 'w-5 h-5 site-icon-color';
+      glyph.className = 'w-5 h-5';
       glyph.setAttribute('data-lucide', (name || 'user').trim());
-      if (previous) glyph.style.cssText = previous.style.cssText;
       wrap.replaceChildren(glyph);
       if (window.lucide) lucide.createIcons();
     }
@@ -184,16 +150,6 @@
     });
     iconInput.addEventListener('input', function () { setGlyph(iconInput.value); });
 
-    colorRadios.forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        const wrap = document.getElementById('avatar-icon-preview-wrap');
-        const glyph = wrap.querySelector('i');
-        if (glyph) {
-          glyph.style.setProperty('--site-icon-light', radio.dataset.colorLight);
-          glyph.style.setProperty('--site-icon-dark', radio.dataset.colorDark);
-        }
-      });
-    });
   })();
 </script>
 {% endblock %}

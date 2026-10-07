@@ -35,7 +35,7 @@
 {# ================================================================
      ADMIN HEADER
      ================================================================ #}
-<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-12 flex items-center px-4 gap-4 sticky top-0 z-40 transition-colors">
+<header class="panel-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-12 flex items-center px-4 gap-4 sticky top-0 z-40 transition-colors">
 
   {# Logo #}
   <a href="/" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0">
@@ -45,7 +45,7 @@
 
   <div class="w-px h-5 bg-slate-200 dark:bg-slate-800 shrink-0"></div>
 
-  <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'admin_title') }}</span>
+  <span class="panel-header-title text-sm font-semibold text-slate-700 dark:text-slate-300">{{ t(request, 'editor_workspace') if request.state.admin_role == 'editor' else t(request, 'admin_title') }}</span>
 
   <div class="flex-1"></div>
   {% set initial_notices = panel_notices(request) %}
@@ -74,8 +74,7 @@
     {% set photo = profile_photo_url(request) %}
     {% if photo %}<a href="/panel/settings/account" aria-label="{{ t(request, 'account') }}"><img src="{{ photo }}" alt="" width="24" height="24" class="w-6 h-6 rounded-sm object-cover"></a>
     {% else %}
-    <i data-lucide="{{ admin_icon }}" class="w-3.5 h-3.5 site-icon-color"
-      style="--site-icon-light: {{ admin_icon_color_light }}; --site-icon-dark: {{ admin_icon_color_dark }};"></i>
+    <i data-lucide="{{ request.state.profile_icon | default('user-circle') }}" class="w-3.5 h-3.5" aria-hidden="true"></i>
     {% endif %}
     <span>{{ admin_user }}</span>
   </div>

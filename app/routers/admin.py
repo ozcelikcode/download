@@ -2018,6 +2018,8 @@ async def settings_account_view(
     site_settings = await crud.get_site_settings(session)
     flash_message = request.session.pop("flash_message", None)
     current_user = await session.get(User, request.state.admin_id)
+    active_admins = await session.scalar(select(func.count()).select_from(User).where(
+        User.role == "admin", User.is_active.is_(True), User.deleted_at.is_(None)))
     return templates.TemplateResponse(
         request=request, name="admin/settings_account.html",
         context={
@@ -2025,6 +2027,7 @@ async def settings_account_view(
             "site_settings": site_settings,
             "effective_admin_username": current_user.username,
             "current_profile_icon": current_user.profile_icon,
+            "can_close_account": current_user.role != "admin" or (active_admins or 0) > 1,
             "icon_colors": SITE_ICON_COLORS,
             "admin_user": _admin,
             "flash_message": flash_message,
@@ -2427,12 +2430,11 @@ async def settings_avatar_update(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     admin_icon: str = Form(...),
-    admin_icon_color: str = Form(...),
+    admin_icon_color: str | None = Form(None),
 ):
-    updated = await crud.update_admin_avatar(session, admin_icon, admin_icon_color)
-    refresh_site_branding_globals(updated)
-    request.session["flash_message"] = translate(request, "profile_icon_updated")
-    return _redirect("/panel/settings/account")
+    # Old form submissions must no longer mutate shared branding or icon colors.
+    from app.routers.account import update_profile_icon
+    return await update_profile_icon(request, admin_icon, session)
 
 
 @router.post("/settings/categories/reorder", name="admin_categories_reorder")

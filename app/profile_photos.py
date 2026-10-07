@@ -1,6 +1,8 @@
 """Private account photos stored against immutable user IDs, not usernames."""
 
 from pathlib import Path
+from functools import lru_cache
+import re
 
 from fastapi import Request
 from PIL import Image, ImageOps
@@ -10,6 +12,18 @@ from app.imaging import validate_raster_image_file
 
 PHOTO_UPLOAD_LIMIT = 5 * 1024 * 1024
 PROFILE_ICONS = ("user-circle", "user", "user-round", "circle-user-round", "contact-round", "smile", "code", "pen-tool", "book-open", "camera", "palette")
+
+
+@lru_cache(maxsize=1)
+def available_profile_icons() -> frozenset[str]:
+    """Accept only names exported by the pinned, locally shipped Lucide bundle."""
+    bundle = Path(__file__).parent / 'static/vendor/lucide/1.24.0/lucide.min.js'
+    names = re.findall(r'\ba\.([A-Z][A-Za-z0-9]*)=', bundle.read_text(encoding='utf-8'))
+    return frozenset(re.sub(r'(?<!^)(?=[A-Z])', '-', name).lower() for name in names)
+
+
+def valid_profile_icon(value: object) -> bool:
+    return isinstance(value, str) and len(value) <= 50 and value in available_profile_icons()
 
 
 def photo_path(user_id: int) -> Path:

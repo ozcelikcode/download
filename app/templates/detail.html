@@ -106,9 +106,9 @@
 {% if report_received %}<div role="status" class="border border-slate-200 dark:border-slate-800 rounded-sm p-3 mb-4 text-sm">{{ t(request, 'detail_report_received') }}</div><div hidden data-toast-message="{{ t(request, 'detail_report_received') }}" data-toast-type="success"></div>{% endif %}
 {% set download_actions %}
 <div class="detail-header-actions">
-      <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500 mb-1">
+      <div class="detail-action-meta text-xs text-slate-500"><span>
         {{ t(request, 'external_destination') if download.file_type.value == 'external' else t(request, 'direct_download') }}
-      </p>
+      </span><span>{{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}</span></div>
       <div class="detail-action-row">
       {% if is_preview | default(false) %}
       <button type="button" disabled aria-disabled="true" class="btn-download py-2.5 px-6 text-base font-semibold opacity-70 cursor-not-allowed">
@@ -135,7 +135,7 @@
   <div class="detail-more-menu">  {% if not is_preview | default(false) %}
   {% for target, label in [('staff', 'detail_report'), ('publisher', 'detail_report_publisher')] %}
   {% if target == 'staff' or download.publisher and download.publisher.is_active and not download.publisher.deleted_at %}
-  <details class="detail-report py-2">
+  <details class="detail-report">
     <summary class="detail-report-option" aria-label="{{ t(request, label) }}"><i data-lucide="flag" class="w-4 h-4" aria-hidden="true"></i>{{ t(request, label) }}</summary>
     <form method="post" action="/download/{{ download.slug }}/report" class="mt-3 space-y-3">
       <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
@@ -153,7 +153,6 @@
 </details>
 {% endif %}
 </div>
-<p class="text-xs text-slate-500 mt-1">{{ t(request, 'opens_new_tab') if download.file_type.value == 'external' else t(request, 'stored_locally') }}</p>
 </div>
 {% endset %}
 <div class="detail-identity relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 mb-4 transition-colors">
