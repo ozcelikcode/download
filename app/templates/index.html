@@ -23,7 +23,8 @@
 {# ================================================================
    Sayfa başlığı ve filtre bilgisi
    ================================================================ #}
-<div class="flex items-center justify-between mb-4">
+<div class="public-list-controls">
+<div class="public-list-heading flex items-center justify-between mb-4">
   <div>
     {% if current_category or current_search or (current_tag is defined and current_tag) %}
     <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ page_title }}</h1>
@@ -109,6 +110,7 @@
   {% endif %}
 </form>
 </details>
+</div>
 
 {# ================================================================
    Öne çıkan indirmeler — yalnızca anasayfada göster

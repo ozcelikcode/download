@@ -87,7 +87,6 @@ async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
 async def update_default_quotas(
     request: Request, session: AsyncSession = Depends(get_db),
     editor_quota_mb: int = Form(...), manager_quota_mb: int = Form(...),
-    current_password: str = Form(...),
 ):
     _forbid(request)
     require_secure_password_transport(request)
@@ -96,8 +95,6 @@ async def update_default_quotas(
         validate_quota(manager_quota_mb)
     except ValueError:
         return _back(request, "quota_invalid", error=True)
-    if not await _confirm_password(request, session, current_password):
-        return _back(request, "wrong_current_password", error=True)
     await _lock_actor(request, session, "admin")
     account = await session.scalar(select(SiteSettings).execution_options(populate_existing=True))
     changes = {

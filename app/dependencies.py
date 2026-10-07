@@ -128,6 +128,7 @@ async def require_admin(
     request.state.admin_role = user.role
     request.state.admin_id = user.id
     request.state.profile_icon = user.profile_icon
+    request.state.editor_verified = user.role == "editor" and user.is_verified
     from app import ownership  # Register the ORM ownership boundary before route queries.
     session.info["actor_id"] = user.id
     session.info["staff_role"] = user.role

@@ -158,3 +158,14 @@ async def test_manual_profile_icon_rejects_unknown_and_markup(client, db_session
     assert (await client.post('/panel/account/icon', data={'icon': icon})).status_code == 303
     await db_session.refresh(user)
     assert user.profile_icon == 'user-circle'
+
+
+@pytest.mark.parametrize('role,verified,visible', [('editor', True, True), ('editor', False, False), ('manager', True, False)])
+async def test_verified_account_mark_is_only_for_verified_editors(client, db_session, role, verified, visible):
+    user = await sign_in(client, db_session, role)
+    user.is_verified = verified
+    await db_session.commit()
+    page = await client.get('/panel')
+    assert page.status_code == 200
+    assert ('class="verified-account-mark"' in page.text) is visible
+    assert (TRANSLATIONS['tr']['verified_account'] in page.text) is visible

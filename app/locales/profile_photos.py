@@ -1,6 +1,7 @@
 """Account-photo copy for every supported interface language."""
 
 COPY = {
+    "verified_account": ("Verified account", "Cuenta verificada", "Compte vérifié", "Doğrulanmış hesap"),
     "profile_icon_help": ("Enter a Lucide icon name. The icon follows the site theme; profile photos take priority.", "Introduzca el nombre de un icono de Lucide. Usa el tema del sitio; la foto de perfil tiene prioridad.", "Saisissez le nom d’une icône Lucide. Elle suit le thème du site ; la photo de profil est prioritaire.", "Lucide ikon adını girin. İkon site temasını kullanır; profil fotoğrafı varsa öncelikle fotoğraf gösterilir."),
     "profile_icon_invalid": ("Enter an icon name available in this site's Lucide library.", "Introduzca un nombre disponible en la biblioteca Lucide de este sitio.", "Saisissez un nom disponible dans la bibliothèque Lucide de ce site.", "Sitenin Lucide kütüphanesinde bulunan geçerli bir ikon adı girin."),
     "photo_public_help": ("Your photo and chosen icon appear beside your published content. Accounts without public content have no public photo endpoint.", "Su foto e icono aparecen junto a su contenido publicado. Las cuentas sin contenido público no tienen acceso público a su foto.", "Votre photo et votre icône accompagnent vos publications. Les comptes sans contenu public n’ont pas de photo accessible au public.", "Fotoğrafınız ve seçtiğiniz ikon yayınlanmış içeriklerinizin yanında görünür. Herkese açık içeriği olmayan hesapların fotoğrafına dışarıdan erişilemez."),

@@ -28,6 +28,19 @@ async def _editor(db_session, client=None, role="editor"):
     return user
 
 
+async def test_default_quota_update_does_not_require_password_but_keeps_csrf(admin_client, db_session):
+    response = await admin_client.post('/panel/users/media-quota/defaults', data={'editor_quota_mb': 128, 'manager_quota_mb': 512})
+    assert response.status_code == 303
+    account = await db_session.scalar(select(SiteSettings).execution_options(populate_existing=True))
+    assert (account.editor_media_quota_mb, account.manager_media_quota_mb) == (128, 512)
+    page = await admin_client.get('/panel/users?section=storage')
+    assert 'name="current_password"' not in page.text
+    admin_client.headers.pop('X-CSRF-Token')
+    assert (await admin_client.post('/panel/users/media-quota/defaults', data={'editor_quota_mb': 256, 'manager_quota_mb': 1024})).status_code == 403
+    await db_session.refresh(account)
+    assert account.editor_media_quota_mb == 128
+
+
 def _sparse(path: Path, size: int):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("wb") as output:
