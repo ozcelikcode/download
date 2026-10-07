@@ -9,7 +9,7 @@ _COPY = {
     "detail_sections": ("Content sections", "Secciones de contenido", "Sections du contenu", "İçerik bölümleri"),
     "detail_download_count": ("Downloads", "Descargas", "Téléchargements", "İndirme sayısı"),
     "report_reason": ("Issue", "Problema", "Problème", "Sorun"),
-    "detail_show_more": ("Read more", "Leer más", "Lire la suite", "Devamını göster"),
+    "detail_show_more": ("Read more", "Leer más", "Lire la suite", "Devamını oku"),
     "detail_show_less": ("Show less", "Mostrar menos", "Réduire", "Daha az göster"),
     "detail_report": ("Report a problem", "Informar de un problema", "Signaler un problème", "Sorun bildir"),
     "detail_report_help": ("Choose the issue. No personal information is requested.", "Seleccione el problema. No se solicitan datos personales.", "Choisissez le problème. Aucune donnée personnelle n’est demandée.", "Sorun türünü seçin. Kişisel bilgi istenmez."),

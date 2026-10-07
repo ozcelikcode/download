@@ -86,7 +86,7 @@ async def test_official_source_badge_on_detail_page(
     page = await client.get(f"/download/{d.slug}")
     assert page.status_code == 200
     assert "Resmî Site" in page.text
-    assert "Üçüncü Parti Site" not in page.text
+    assert "Üçüncü taraf sitesi" not in page.text
     # Kaynak linki derin URL'ye değil, sitenin ana adresine gitmeli.
     assert 'href="https://code.visualstudio.com"' in page.text
 
@@ -100,7 +100,7 @@ async def test_third_party_source_badge_on_detail_page(
         is_official_source=False,
     )
     page = await client.get(f"/download/{d.slug}")
-    assert "Üçüncü Parti Site" in page.text
+    assert "Üçüncü taraf sitesi" in page.text
 
 
 async def test_detail_cta_says_baglantiya_git_for_external(

@@ -37,6 +37,38 @@ async def test_detail_layout_keeps_header_then_description_and_right_actions(cli
     assert 'id="sidebar-search"' not in page.text
 
 
+@pytest.mark.parametrize('language', ['en', 'es', 'fr', 'tr'])
+async def test_detail_metadata_order_and_local_platform_logos(client, admin_client, db_session, language):
+    response = await admin_client.post('/panel/settings/language', data={'language': language})
+    assert response.status_code == 302
+    download = await item(
+        db_session, version='2.1', file_type='external', external_url='https://example.com/app',
+        os_compatibility='windows,macos,linux,android,ios,web,<script>unsafe</script>',
+    )
+    page = await client.get(f'/download/{download.slug}')
+    side = page.text.split('<aside class="detail-side"', 1)[1].split('</aside>', 1)[0]
+    labels = re.findall(r'<dt[^>]*>(.*?)</dt>', side, re.S)
+    assert [label.strip() for label in labels] == [
+        TRANSLATIONS[language][key] for key in (
+            'version', 'updated', 'compatibility', 'type', 'source', 'source_type',
+            'detail_download_count', 'added',
+        )
+    ]
+    assert side.count('class="platform-logo"') == 5
+    assert side.count('<path d=') == 5
+    assert 'data-lucide="globe"' in side
+    assert 'data-lucide="smartphone"' not in side
+    assert '<script>unsafe</script>' not in side
+    assert '&lt;script&gt;unsafe&lt;/script&gt;' in side
+    assert '<use ' not in side and '<image ' not in side
+
+
+def test_detail_turkish_terminology():
+    assert TRANSLATIONS['tr']['local_file'] == 'Yerel dosya'
+    assert TRANSLATIONS['tr']['third_party'] == 'Üçüncü taraf sitesi'
+    assert TRANSLATIONS['tr']['detail_show_more'] == 'Devamını oku'
+
+
 async def test_report_reaches_staff_without_link_check_claim_or_personal_data(client, admin_client, db_session):
     download = await item(db_session)
     page = await client.get(f"/download/{download.slug}")

@@ -759,6 +759,15 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
 .detail-report-option:hover { background: var(--theme-panel-muted, #f1f5f9); }
 .detail-fact-value { display: inline-flex; align-items: center; justify-content: flex-end; gap: .35rem; font-weight: 500; }
 .detail-fact-value svg { flex-shrink: 0; }
+.platform-logo { display: block; width: 1rem; height: 1rem; flex-shrink: 0; }
+.dark #application-description, .dark #application-description :where(p, li, strong, em, h1, h2, h3, h4, h5, h6, blockquote, pre, code, th, td) { color: #fff; }
+.detail-description :where(img, video) { max-width: 100%; height: auto; }
+.detail-facts dl > div { flex-wrap: wrap; }
+.detail-facts dd { max-width: 100%; }
+.detail-tabs { flex-wrap: wrap; }
+.detail-breadcrumb-row { flex-wrap: wrap; }
+.detail-breadcrumb { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+.detail-breadcrumb > :where(a, span) { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .fact-version { color: #7c3aed; }
 .dark .fact-version { color: #c4b5fd; }
 .fact-external { color: #0e7490; }
