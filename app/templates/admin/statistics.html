@@ -2,7 +2,15 @@
 {% block title %}{{ t(request, 'site_statistics') }}{% endblock %}
 {% block content %}
 {% from 'admin/_page_heading.html' import render as page_heading %}
-<div class="mb-6">{{ page_heading(request, t(request, 'site_statistics'), t(request, 'statistics_help'), t(request, 'management'), '/panel') }}</div>
+<div class="mb-6">{{ page_heading(request, t(request, 'site_statistics'), t(request, 'site_info_help')) }}</div>
+<div class="grid lg:grid-cols-2 gap-4 mb-5">
+{% for title, items in [('site_runtime', runtime), ('site_configuration', configuration), ('site_inventory', inventory)] %}
+<section class="border border-slate-200 dark:border-slate-800 rounded-sm p-4 bg-white dark:bg-slate-900 min-w-0">
+  <h2 class="text-sm font-semibold mb-3">{{ t(request, title) }}</h2>
+  <dl class="space-y-2">{% for label, value in items %}<div class="flex flex-wrap items-start justify-between gap-2 text-sm"><dt class="text-slate-500">{{ t(request, label) }}</dt><dd class="break-all text-right">{{ value }}</dd></div>{% endfor %}</dl>
+</section>
+{% endfor %}
+</div>
 <div class="grid sm:grid-cols-3 gap-3 mb-5">
 {% for label, value in [('total_content', stats.total_downloads), ('published', stats.active_downloads), ('detail_download_count', stats.total_download_count)] %}
   <div class="border border-slate-200 dark:border-slate-800 rounded-sm p-4 bg-white dark:bg-slate-900"><p class="text-xs text-slate-500">{{ t(request, label) }}</p><p class="text-2xl font-semibold mt-2">{{ value | thousands }}</p></div>

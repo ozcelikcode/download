@@ -61,6 +61,18 @@ async def test_invalid_zone_does_not_change_settings(admin_client, db_session):
     assert (await db_session.scalar(select(SiteSettings))).site_timezone == "UTC"
 
 
+async def test_timezone_form_is_only_in_general_content(admin_client):
+    page = await admin_client.get("/panel/settings/general")
+    assert page.status_code == 200
+    head, body = page.text.split("</head>", 1)
+    assert '/panel/settings/timezone' not in head
+    assert body.count('action="/panel/settings/timezone"') == 1
+    assert body.index('action="/panel/settings/language"') < body.index('action="/panel/settings/timezone"')
+    for path in ['/panel/settings', '/panel/settings/security', '/panel/settings/appearance', '/panel/settings/account']:
+        other = await admin_client.get(path)
+        assert 'action="/panel/settings/timezone"' not in other.text
+
+
 async def test_audit_uses_selected_zone_without_changing_records(admin_client, db_session):
     row = AuditLog(actor="anonymous", action="error", entity="request", label="GET <unmatched> → 404", level="error", changes="{}", created_at=datetime(2026, 10, 4, 8, 57, 31))
     db_session.add(row)

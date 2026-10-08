@@ -190,8 +190,8 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return method == "GET"
     if path == "/panel/settings/image-compression":
         return False
-    if path == "/panel/statistics":
-        return role == "manager" and method == "GET"
+    if path in {"/panel/statistics", "/panel/site-information"}:
+        return False
     if path == "/panel/registrations" or path.startswith("/panel/registrations/"):
         return role == "manager"
     if path == "/panel/contact" or path.startswith("/panel/contact/"):

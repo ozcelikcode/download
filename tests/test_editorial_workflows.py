@@ -129,22 +129,19 @@ async def test_unverified_edits_cannot_keep_an_approved_publication_live(client,
 
 
 @pytest.mark.parametrize("role", ["admin", "manager"])
-async def test_verification_needs_password_and_editor_target(client, db_session, role):
+async def test_verification_without_password_requires_staff_and_editor_target(client, db_session, role):
     editor, other, manager = await accounts(db_session)
     actor = manager if role == "manager" else await db_session.scalar(select(User).where(User.role == "admin"))
     if role == "admin":
         actor.password_hash = hash_admin_password(PASSWORD)
         await db_session.commit()
     login(client, actor)
-    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": "wrong"})).status_code == 303
-    await db_session.refresh(editor)
-    assert not editor.is_verified
-    await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})
+    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true"})).status_code == 303
     await db_session.refresh(editor)
     assert editor.is_verified
-    assert (await client.post(f"/panel/users/{actor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 404
+    assert (await client.post(f"/panel/users/{actor.id}/verification", data={"verified": "true"})).status_code == 404
     login(client, other)
-    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true", "current_password": PASSWORD})).status_code == 403
+    assert (await client.post(f"/panel/users/{editor.id}/verification", data={"verified": "true"})).status_code == 403
 
 
 async def test_private_contact_scopes_messages_escapes_text_and_accepts_staff_reply(client, db_session):

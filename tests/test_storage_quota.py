@@ -182,18 +182,14 @@ async def test_quota_controls_are_admin_only(client, db_session):
     assert page.status_code == 200 and 'name="quota_mb"' not in page.text
 
 
-async def test_admin_quota_change_requires_password_and_preserves_files(admin_client, db_session, monkeypatch):
-    from app.routers import users
+async def test_admin_quota_change_without_password_preserves_files(admin_client, db_session):
     user = await _editor(db_session)
     path = await _fill(db_session, user)
-    response = await admin_client.post(f"/panel/users/{user.id}/media-quota", data={"quota_mb": 128, "current_password": "wrong"})
+    response = await admin_client.post(f"/panel/users/{user.id}/media-quota", data={"quota_mb": 128})
     assert response.status_code == 303
     await db_session.refresh(user)
-    assert user.media_quota_mb == 64
-    async def correct_password(*_args):
-        return True
-    monkeypatch.setattr(users, "verify_password_async", correct_password)
-    response = await admin_client.post("/panel/users/media-quota/defaults", data={"editor_quota_mb": 128, "manager_quota_mb": 512, "current_password": "verified"})
+    assert user.media_quota_mb == 128
+    response = await admin_client.post("/panel/users/media-quota/defaults", data={"editor_quota_mb": 128, "manager_quota_mb": 512})
     assert response.status_code == 303
     response = await admin_client.post(f"/panel/users/{user.id}/media-quota", data={"quota_mb": "", "current_password": "verified"})
     assert response.status_code == 303

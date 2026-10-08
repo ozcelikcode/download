@@ -76,7 +76,7 @@ async def test_visitor_error_log_is_anonymous_and_path_free(client, db_session):
     assert "127.0.0.1" not in row.changes
 
 
-async def test_account_mutation_rechecks_actor_role_after_password_verification(admin_client, db_session, monkeypatch):
+async def test_account_mutation_rechecks_actor_role_under_write_lock(admin_client, db_session, monkeypatch):
     from app.routers import users
 
     actor = await db_session.scalar(select(User).where(User.username == "admin"))
@@ -84,13 +84,73 @@ async def test_account_mutation_rechecks_actor_role_after_password_verification(
     db_session.add(target)
     await db_session.commit()
 
-    async def demote_actor_during_verification(password, stored_hash):
+    original_lock = users._lock_actor
+
+    async def demote_actor_before_lock(request, session, role, **kwargs):
         actor.role = "editor"
         await db_session.commit()
-        return True
+        return await original_lock(request, session, role, **kwargs)
 
-    monkeypatch.setattr(users, "verify_password_async", demote_actor_during_verification)
-    response = await admin_client.post(f"/panel/users/{target.id}/delete", data={"current_password": PASSWORD})
+    monkeypatch.setattr(users, "_lock_actor", demote_actor_before_lock)
+    response = await admin_client.post(f"/panel/users/{target.id}/delete")
     assert response.status_code == 403
     await db_session.refresh(target)
     assert target.is_active
+
+
+async def test_admin_user_actions_without_password(admin_client, db_session):
+    actor = await db_session.scalar(select(User).where(User.username == "admin"))
+    target = User(username="passwordless-editor", password_hash=actor.password_hash, role="editor")
+    db_session.add(target)
+    await db_session.commit()
+    for operation, data in [("verification", {"verified": "true"}), ("role", {"role": "manager"}), ("delete", {})]:
+        response = await admin_client.post(f"/panel/users/{target.id}/{operation}", data=data)
+        assert response.status_code == 303
+        await db_session.refresh(target)
+        if operation == "verification":
+            assert target.is_verified
+        elif operation == "role":
+            assert target.role == "manager"
+        else:
+            assert not target.is_active
+
+
+async def test_manager_cannot_set_roles_without_password(client, db_session):
+    actor = await db_session.scalar(select(User).where(User.username == "admin"))
+    manager = User(username="role-manager", password_hash=actor.password_hash, role="manager")
+    target = User(username="role-editor", password_hash=actor.password_hash, role="editor")
+    db_session.add_all([manager, target])
+    await db_session.commit()
+    client.cookies.set(SESSION_COOKIE, create_admin_session_token(manager.username, manager.password_hash, user_id=manager.id), domain="test.local", path="/")
+    response = await client.post(f"/panel/users/{target.id}/role", data={"role": "admin"})
+    assert response.status_code == 403
+    await db_session.refresh(target)
+    assert target.role == "editor"
+    page = await client.get("/panel/users")
+    assert f'action="/panel/users/{target.id}/role"' not in page.text
+
+
+async def test_passwordless_user_actions_still_require_csrf(admin_client, db_session):
+    actor = await db_session.scalar(select(User).where(User.username == "admin"))
+    target = User(username="csrf-editor", password_hash=actor.password_hash, role="editor")
+    db_session.add(target)
+    await db_session.commit()
+    admin_client.headers.pop("X-CSRF-Token")
+    for operation, data in [("verification", {"verified": "true"}), ("role", {"role": "manager"}), ("media-quota", {"quota_mb": "128"}), ("delete", {})]:
+        assert (await admin_client.post(f"/panel/users/{target.id}/{operation}", data=data)).status_code == 403
+    await db_session.refresh(target)
+    assert target.role == "editor" and not target.is_verified and target.is_active
+
+
+async def test_user_actions_have_no_password_fields(admin_client, db_session):
+    page = await admin_client.get("/panel/users")
+    assert page.status_code == 200
+    assert 'name="current_password"' not in page.text
+
+
+async def test_panel_toolbar_has_consistent_order(admin_client):
+    page = await admin_client.get('/panel/users')
+    toolbar = page.text.split('class="panel-toolbar"', 1)[1].split('</header>', 1)[0]
+    controls = ['aria-label="Siteye Git"', 'id="theme-toggle-btn"', 'id="panel-messages-toggle"', 'class="btn-secondary panel-account-link"', 'action="/panel/logout"']
+    positions = [toolbar.index(control) for control in controls]
+    assert positions == sorted(positions)

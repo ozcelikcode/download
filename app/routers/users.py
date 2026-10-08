@@ -112,7 +112,7 @@ async def update_default_quotas(
 @router.post("/{user_id}/media-quota")
 async def update_user_quota(
     user_id: int, request: Request, session: AsyncSession = Depends(get_db),
-    quota_mb: str = Form(""), current_password: str = Form(...),
+    quota_mb: str = Form(""),
 ):
     _forbid(request)
     require_secure_password_transport(request)
@@ -121,8 +121,6 @@ async def update_user_quota(
         validate_quota(value, optional=True)
     except ValueError:
         return _back(request, "quota_invalid", error=True)
-    if not await _confirm_password(request, session, current_password):
-        return _back(request, "wrong_current_password", error=True)
     await _lock_actor(request, session, "admin")
     user = await session.get(User, user_id, populate_existing=True)
     if user is None or not user.is_active or user.role not in {"editor", "manager"}:
@@ -166,13 +164,11 @@ async def create_user(
 @router.post("/{user_id}/role")
 async def change_role(
     user_id: int, request: Request, session: AsyncSession = Depends(get_db),
-    role: str = Form(...), current_password: str = Form(...),
+    role: str = Form(...),
 ):
     _forbid(request)
     if role not in ROLES:
         return _back(request, "user_invalid", error=True)
-    if not await _confirm_password(request, session, current_password):
-        return _back(request, "wrong_current_password", error=True)
     await _lock_actor(request, session, "admin")
     user = await session.get(User, user_id)
     if user is None or not user.is_active:
@@ -196,13 +192,11 @@ async def change_role(
 @router.post("/{user_id}/verification")
 async def verify_editor(
     user_id: int, request: Request, session: AsyncSession = Depends(get_db),
-    current_password: str = Form(...), verified: bool = Form(False),
+    verified: bool = Form(False),
 ):
     role = request.state.admin_role
     if role not in {"admin", "manager"}:
         raise HTTPException(403)
-    if not await _confirm_password(request, session, current_password):
-        return _back(request, "wrong_current_password", error=True)
     await _lock_actor(request, session, role)
     user = await session.get(User, user_id)
     if user is None or not user.is_active or user.role != "editor":
@@ -236,11 +230,8 @@ async def request_delete(user_id: int, request: Request, session: AsyncSession =
 @router.post("/{user_id}/delete")
 async def delete_user(
     user_id: int, request: Request, session: AsyncSession = Depends(get_db),
-    current_password: str = Form(...),
 ):
     _forbid(request)
-    if not await _confirm_password(request, session, current_password):
-        return _back(request, "wrong_current_password", error=True)
     await _lock_actor(request, session, "admin")
     user = await session.get(User, user_id)
     if user is None or not user.is_active:
