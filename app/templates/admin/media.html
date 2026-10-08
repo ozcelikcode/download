@@ -182,19 +182,19 @@
 
   {# Araç çubuğu: arama + sayfa boyutu + yükle + görünüm #}
   <form method="get" action="/panel/media" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-2.5 mb-3">
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="media-image-toolbar">
       <input type="hidden" name="tab" value="images">
       <input type="hidden" name="files_q" value="{{ files.q }}">
       <input type="hidden" name="files_page_size" value="{{ files.page_size }}">
       <input type="hidden" name="files_type" value="{{ files_type }}">
       <input type="hidden" name="files_os" value="{{ files_os }}">
 
-      <div class="relative flex-1 min-w-[160px]">
+      <div class="relative media-image-search">
         <i data-lucide="search" class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 dark:text-slate-500 pointer-events-none"></i>
         <input type="text" name="images_q" value="{{ images.q }}" placeholder="{{ t(request, 'search_image_name') }}" class="form-input form-input-icon py-1.5 text-sm">
       </div>
 
-      <select name="images_page_size" onchange="this.form.submit()" class="form-input py-1.5 text-sm w-auto">
+      <select name="images_page_size" aria-label="{{ t(request, 'per_page') }}" onchange="this.form.submit()" class="form-input py-1.5 text-sm">
         {% for size in page_sizes %}
         <option value="{{ size }}" {% if images.page_size == size %}selected{% endif %}>{{ size }} / {{ t(request, 'per_page') }}</option>
         {% endfor %}
@@ -210,7 +210,7 @@
       </a>
       {% endif %}
 
-      <div class="flex-1"></div>
+      <div class="media-toolbar-spacer"></div>
 
       <button type="button" id="images-upload-btn" class="btn-primary py-1.5 px-3 text-xs shrink-0">
         <i data-lucide="upload" class="w-3.5 h-3.5"></i> {{ t(request, 'upload') }}

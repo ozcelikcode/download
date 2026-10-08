@@ -384,7 +384,7 @@
   </div>
   <div class="related-grid {{ 'is-compact' if related_downloads|length > 2 else '' }}">
     {% for related in related_downloads %}
-    <a href="/download/{{ related.slug }}" class="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-sm hover:border-blue-200 dark:hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-colors group">
+    <a href="/download/{{ related.slug }}" class="related-card flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-sm transition-colors">
       <div class="icon-box {{ related.icon_type.value }} w-9 h-9 shrink-0 overflow-hidden bg-slate-50 dark:bg-slate-800">
         {% if related.icon_type.value == 'image' and (related.icon_image_path or related.icon_image_url) %}
         <img src="{{ related.icon_image_path or (related.icon_image_url | safe_http_url) }}" alt="" class="w-full h-full object-contain p-0.5">
@@ -393,13 +393,13 @@
         {% endif %}
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-sm font-medium text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">{{ related.title }}</p>
+        <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{{ related.title }}</p>
         <p class="text-xs text-slate-400 dark:text-slate-500 truncate">
           {% if related.is_latest_version %}{{ t(request, 'latest_release') }}{% elif related.version %}{{ related.version }}{% elif related.category %}{{ related.category.name }}{% endif %}
           {% if related.download_count %} · {{ related.download_count | thousands }} {{ t(request, 'downloads') }}{% endif %}
         </p>
       </div>
-      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-blue-500 shrink-0"></i>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0"></i>
     </a>
     {% endfor %}
   </div>

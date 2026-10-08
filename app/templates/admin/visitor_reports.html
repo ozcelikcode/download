@@ -2,15 +2,15 @@
 {% block title %}{{ t(request, 'visitor_reports') }}{% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}
-{{ page_heading(request, t(request, 'publisher_reports' if publisher_inbox else 'visitor_reports'), t(request, 'publisher_reports_help' if publisher_inbox else 'visitor_reports_help'), t(request, 'management'), '/panel') }}
+<div class="mb-6">{{ page_heading(request, t(request, 'publisher_reports' if publisher_inbox else 'visitor_reports'), t(request, 'publisher_reports_help' if publisher_inbox else 'visitor_reports_help'), t(request, 'management'), '/panel') }}</div>
 {% if not publisher_inbox %}<a href="/panel/links" class="btn-secondary my-4"><i data-lucide="arrow-left" class="w-4 h-4"></i>{{ t(request, 'link_report') }}</a>{% endif %}
 <section class="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-sm divide-y divide-slate-200 dark:divide-slate-800">
 {% for event, download, reason in items %}
-  <article class="p-4 flex flex-wrap justify-between gap-3">
+  <article class="p-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
     <div class="min-w-0"><p class="text-sm font-medium break-words">{% if download %}<a href="/panel/downloads/{{ download.id }}/edit">{{ download.title }}</a>{% else %}#{{ event.entity_id }}{% endif %}</p><p class="text-sm text-slate-500 mt-1">{{ t(request, reason) }}</p></div>
     <time class="text-xs text-slate-500">{{ event.created_at | format_date('%d.%m.%Y %H:%M') }}</time>
   </article>
-{% else %}<p class="p-4 text-sm text-slate-500">{{ t(request, 'visitor_reports_empty') }}</p>{% endfor %}
+{% else %}<div class="report-empty"><i data-lucide="inbox" class="w-5 h-5 shrink-0" aria-hidden="true"></i><p>{{ t(request, 'visitor_reports_empty') }}</p></div>{% endfor %}
 </section>
 {% include "admin/_workflow_pagination.html" %}
 {% endblock %}

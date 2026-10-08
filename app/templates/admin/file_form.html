@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
 <script src="/static/js/rich_text.js" defer></script>
-<script src="/static/js/gallery-editor.js" defer></script>
+<script src="/static/js/gallery-editor.js" type="module"></script>
 {% endblock %}
 
 {% block content %}
@@ -289,13 +289,17 @@
         {% if request.state.admin_role == 'editor' %}<p class="form-hint mt-2">{{ t(request, 'editor_description_help') }}</p>{% endif %}
       </div>
 
-      <section id="gallery-editor" data-limit="{{ gallery_image_limit }}" data-remove="{{ t(request, 'gallery_remove') }}" data-error="{{ t(request, 'gallery_upload_failed') }}" data-limit-message="{{ t(request, 'gallery_limit_exceeded') }}">
-        <label for="gallery-files" class="form-label">{{ t(request, 'gallery') }}</label>
+      <section id="gallery-editor" class="sm:col-span-2" data-limit="{{ gallery_image_limit }}" data-remove="{{ t(request, 'gallery_remove') }}" data-error="{{ t(request, 'gallery_upload_failed') }}" data-limit-message="{{ t(request, 'gallery_limit_exceeded') }}" data-add="{{ t(request, 'gallery_add') }}" data-image="{{ t(request, 'gallery') }}" data-uploading="{{ t(request, 'uploading') }}" aria-labelledby="gallery-editor-title">
+        <h2 id="gallery-editor-title" class="form-label">{{ t(request, 'gallery') }}</h2>
         <p class="form-hint mb-2">{{ t(request, 'gallery_upload_help') }} · {{ t(request, 'gallery_limit') }}: {{ gallery_image_limit }}</p>
-        <input id="gallery-files" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" class="form-input">
+        <input id="gallery-files" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" hidden aria-label="{{ t(request, 'gallery_add') }}">
         <input id="gallery-images-input" type="hidden" name="gallery_images" value="{{ download.gallery_images if download else '[]' }}">
+        <div id="gallery-dropzone" class="gallery-dropzone">
+          <div id="gallery-previews" class="gallery-slot-grid"></div>
+          <p class="gallery-drop-hint">{{ t(request, 'gallery_drop') }}</p>
+        </div>
+        <button id="gallery-more" type="button" class="btn-secondary mt-2" hidden>{{ t(request, 'gallery_more') }}</button>
         <p id="gallery-status" role="status" aria-live="polite" class="form-hint mt-2"></p>
-        <div id="gallery-previews" class="gallery-grid mt-3"></div>
       </section>
 
     </div>

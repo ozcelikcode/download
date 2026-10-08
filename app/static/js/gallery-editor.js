@@ -1,53 +1,113 @@
-/* Upload compressed gallery assets; their ordered paths follow normal draft saving. */
-document.addEventListener('DOMContentLoaded', () => {
-  const root = document.getElementById('gallery-editor');
-  if (!root) return;
+/* Ordered, bounded drop uploads; existing assets retain their saved order. */
+import {initialGallerySlots, nextGallerySlots, sortGalleryFiles} from './gallery-policy.mjs';
+
+const root = document.getElementById('gallery-editor');
+if (root) {
   const input = document.getElementById('gallery-images-input');
   const files = document.getElementById('gallery-files');
   const previews = document.getElementById('gallery-previews');
+  const dropzone = document.getElementById('gallery-dropzone');
+  const more = document.getElementById('gallery-more');
   const status = document.getElementById('gallery-status');
-  let paths = JSON.parse(input.value || '[]');
-  function render() {
-    input.value = JSON.stringify(paths);
-    previews.replaceChildren();
-    paths.forEach((path, index) => {
-      const card = document.createElement('div');
-      const image = document.createElement('img');
-      const remove = document.createElement('button');
-      card.className = 'gallery-editor-card';
-      image.src = path; image.alt = `${index + 1}`; image.loading = 'lazy';
-      remove.type = 'button'; remove.className = 'btn-secondary';
-      remove.textContent = root.dataset.remove;
-      remove.addEventListener('click', () => {
-        paths.splice(index, 1); render(); input.dispatchEvent(new Event('change', {bubbles:true}));
-      });
-      card.append(image, remove); previews.append(card);
-    });
+  const form = root.closest('form');
+  const limit = Number(root.dataset.limit);
+  const paths = JSON.parse(input.value || '[]');
+  let visible = initialGallerySlots(limit, paths.length);
+  let busy = false;
+  let dragDepth = 0;
+
+  function icon(name) {
+    const element = document.createElement('i');
+    element.dataset.lucide = name; element.setAttribute('aria-hidden', 'true');
+    return element;
   }
-  files.addEventListener('change', async () => {
-    const selected = [...files.files];
-    if (paths.length + selected.length > Number(root.dataset.limit)) {
-      status.textContent = root.dataset.limitMessage; files.value = ''; return;
+  function changed() {
+    input.value = JSON.stringify(paths);
+    input.dispatchEvent(new Event('change', {bubbles: true}));
+  }
+  function render() {
+    input.value = JSON.stringify(paths); previews.replaceChildren();
+    visible = Math.max(visible, paths.length);
+    for (let index = 0; index < visible; index += 1) {
+      const card = document.createElement('div'); card.className = 'gallery-slot';
+      const number = document.createElement('span');
+      number.className = 'gallery-slot-number'; number.textContent = `${index + 1}`;
+      if (paths[index]) {
+        const image = document.createElement('img');
+        image.src = paths[index]; image.alt = `${root.dataset.image} ${index + 1}`; image.loading = 'lazy';
+        const remove = document.createElement('button');
+        remove.type = 'button'; remove.className = 'gallery-slot-remove'; remove.disabled = busy;
+        remove.setAttribute('aria-label', `${root.dataset.remove} ${index + 1}`);
+        remove.title = root.dataset.remove; remove.append(icon('x'));
+        remove.addEventListener('click', () => {
+          if (busy) return;
+          paths.splice(index, 1); changed(); render();
+        });
+        card.append(image, remove);
+      } else {
+        const add = document.createElement('button');
+        add.type = 'button'; add.className = 'gallery-slot-add'; add.disabled = busy || paths.length >= limit;
+        add.setAttribute('aria-label', `${root.dataset.add} ${index + 1}`);
+        const label = document.createElement('span'); label.textContent = root.dataset.add;
+        add.append(icon('image-plus'), label); add.addEventListener('click', () => files.click());
+        card.append(add);
+      }
+      card.append(number); previews.append(card);
     }
-    files.disabled = true;
-    // Prevent form submission while assets are still being prepared.
-    const buttons = [...root.closest('form').querySelectorAll('button[type="submit"], #application-publish-button, #application-preview-button')];
+    more.hidden = visible >= limit; more.disabled = busy;
+    if (window.lucide) window.lucide.createIcons();
+  }
+  async function upload(incoming) {
+    if (busy) return;
+    const selected = sortGalleryFiles(incoming);
+    if (!selected.length) return;
+    if (paths.length + selected.length > limit) { status.textContent = root.dataset.limitMessage; return; }
+    if (selected.some(file => !/\.(png|jpe?g|webp|gif)$/i.test(file.name))) { status.textContent = root.dataset.error; return; }
+    busy = true; files.disabled = true; root.setAttribute('aria-busy', 'true'); render();
+    const buttons = [...form.querySelectorAll('button[type="submit"], #application-publish-button, #application-preview-button')];
     const prior = buttons.map(button => button.disabled);
     buttons.forEach(button => { button.disabled = true; });
     try {
       for (const [index, file] of selected.entries()) {
-        status.textContent = `${index + 1} / ${selected.length}`;
+        status.textContent = `${root.dataset.uploading} ${index + 1} / ${selected.length}`;
         const body = new FormData(); body.append('file', file);
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const response = await fetch('/panel/upload/gallery-image', {method:'POST', body, headers:{'X-CSRF-Token':csrf}, credentials:'same-origin'});
+        const response = await fetch('/panel/upload/gallery-image', {method: 'POST', body, headers: {'X-CSRF-Token': csrf}, credentials: 'same-origin'});
         if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Upload rejected');
         const data = await response.json();
         if (!/^\/static\/uploads\/gallery\/[a-f0-9]{32}\.webp$/.test(data.path)) throw new Error('Invalid image path');
-        paths.push(data.path); render(); input.dispatchEvent(new Event('change', {bubbles:true}));
+        paths.push(data.path); changed(); render();
       }
       status.textContent = '';
     } catch (_error) { status.textContent = root.dataset.error; }
-    finally { files.disabled = false; files.value = ''; buttons.forEach((button, index) => { button.disabled = prior[index]; }); }
+    finally {
+      busy = false; files.disabled = false; root.removeAttribute('aria-busy');
+      buttons.forEach((button, index) => { button.disabled = prior[index]; }); render();
+    }
+  }
+  files.addEventListener('change', () => { const selected = [...files.files]; files.value = ''; upload(selected); });
+  more.addEventListener('click', () => {
+    visible = nextGallerySlots(limit, visible, paths.length); render();
+    previews.querySelector('.gallery-slot:last-child button')?.focus();
+  });
+  form.addEventListener('submit', event => { if (busy) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  function draggingFiles(event) { return [...(event.dataTransfer?.types || [])].includes('Files'); }
+  dropzone.addEventListener('dragenter', event => {
+    if (!draggingFiles(event)) return;
+    event.preventDefault(); dragDepth += 1;
+    if (!busy) dropzone.classList.add('is-dragging');
+  });
+  dropzone.addEventListener('dragover', event => {
+    if (!draggingFiles(event)) return;
+    event.preventDefault(); event.dataTransfer.dropEffect = busy ? 'none' : 'copy';
+  });
+  dropzone.addEventListener('dragleave', () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) dropzone.classList.remove('is-dragging');
+  });
+  dropzone.addEventListener('drop', event => {
+    if (!draggingFiles(event)) return;
+    event.preventDefault(); dragDepth = 0; dropzone.classList.remove('is-dragging'); upload(event.dataTransfer.files);
   });
   render();
-});
+}
