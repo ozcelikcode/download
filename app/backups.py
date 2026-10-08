@@ -72,8 +72,13 @@ def fingerprint(pem: str) -> str:
 
 
 def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False,
-                       before_quotas: bool = False, before_favicon: bool = False, before_image_policy: bool = False) -> str:
+                       before_quotas: bool = False, before_favicon: bool = False, before_image_policy: bool = False,
+                       before_gallery: bool = False) -> str:
     schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
+                         if not ((before_gallery or before_image_policy or before_favicon or before_quotas or before_timezone or before_registrations)
+                                 and ((table.name == 'site_settings' and column.name == 'gallery_image_limit')
+                                      or (table.name == 'downloads' and column.name == 'gallery_images')
+                                      or (table.name == 'users' and column.name == 'publisher_report_count')))
                          if not ((before_image_policy or before_favicon or before_quotas or before_timezone or before_registrations)
                                  and ((table.name == "site_settings" and column.name in {"image_compression_enabled", "image_compression_level"})
                                       or (table.name == "users" and column.name == "profile_icon")))
@@ -238,7 +243,8 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             old_quotas = old_timezone or manifest.get("schema") == schema_fingerprint(before_quotas=True)
             old_favicon = old_quotas or manifest.get("schema") == schema_fingerprint(before_favicon=True)
             old_image_policy = old_favicon or manifest.get("schema") == schema_fingerprint(before_image_policy=True)
-            if manifest.get("format") != 1 or (not old_image_policy and manifest.get("schema") != schema_fingerprint()):
+            old_gallery = old_image_policy or manifest.get('schema') == schema_fingerprint(before_gallery=True)
+            if manifest.get("format") != 1 or (not old_gallery and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
             if legacy:
@@ -247,6 +253,14 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             if legacy:
                 data["registration_requests"] = []
+            if old_gallery:
+                for table_name, field, default in [('site_settings', 'gallery_image_limit', 5), ('downloads', 'gallery_images', '[]'), ('users', 'publisher_report_count', 0)]:
+                    if not isinstance(data.get(table_name), list):
+                        raise BackupError('backup_invalid')
+                    for row in data[table_name]:
+                        if not isinstance(row, dict) or field in row:
+                            raise BackupError('backup_invalid')
+                        row[field] = default
             if old_image_policy:
                 if not isinstance(data.get("site_settings"), list) or len(data["site_settings"]) != 1 or not isinstance(data["site_settings"][0], dict) or not isinstance(data.get("users"), list):
                     raise BackupError("backup_invalid")
@@ -293,14 +307,21 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             from app.timezones import validate_timezone
             from app.storage_quota import validate_quota
             from app.profile_photos import valid_profile_icon
+            from app.gallery import GALLERY_LIMITS, gallery_paths
             try:
                 validate_timezone(data["site_settings"][0]["site_timezone"])
                 validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
                 validate_quota(data["site_settings"][0]["manager_media_quota_mb"])
                 compression = data["site_settings"][0]
+                if type(compression['gallery_image_limit']) is not int or compression['gallery_image_limit'] not in GALLERY_LIMITS:
+                    raise ValueError('Invalid gallery limit')
+                for download in data['downloads']:
+                    gallery_paths(download['gallery_images'])
                 if compression["image_compression_enabled"] not in (False, True, 0, 1) or type(compression["image_compression_level"]) is not int or compression["image_compression_level"] not in range(5):
                     raise ValueError("Invalid image policy")
                 for user in data["users"]:
+                    if type(user['publisher_report_count']) is not int or user['publisher_report_count'] < 0:
+                        raise ValueError('Invalid publisher counter')
                     validate_quota(user["media_quota_mb"], optional=True)
                     if not valid_profile_icon(user["profile_icon"]):
                         raise ValueError("Invalid profile icon")

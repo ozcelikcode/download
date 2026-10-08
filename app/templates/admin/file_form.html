@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
 <script src="/static/js/rich_text.js" defer></script>
+<script src="/static/js/gallery-editor.js" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -285,7 +286,17 @@
           <div id="f-description-editor"></div>
         </div>
         <textarea id="f-description" name="description" class="hidden">{{ download.description if download and download.description else '' }}</textarea>
+        {% if request.state.admin_role == 'editor' %}<p class="form-hint mt-2">{{ t(request, 'editor_description_help') }}</p>{% endif %}
       </div>
+
+      <section id="gallery-editor" data-limit="{{ gallery_image_limit }}" data-remove="{{ t(request, 'gallery_remove') }}" data-error="{{ t(request, 'gallery_upload_failed') }}" data-limit-message="{{ t(request, 'gallery_limit_exceeded') }}">
+        <label for="gallery-files" class="form-label">{{ t(request, 'gallery') }}</label>
+        <p class="form-hint mb-2">{{ t(request, 'gallery_upload_help') }} · {{ t(request, 'gallery_limit') }}: {{ gallery_image_limit }}</p>
+        <input id="gallery-files" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" class="form-input">
+        <input id="gallery-images-input" type="hidden" name="gallery_images" value="{{ download.gallery_images if download else '[]' }}">
+        <p id="gallery-status" role="status" aria-live="polite" class="form-hint mt-2"></p>
+        <div id="gallery-previews" class="gallery-grid mt-3"></div>
+      </section>
 
     </div>
   </div>
@@ -558,6 +569,7 @@
     </h2>
 
     <div class="space-y-3">
+      {% if request.state.admin_role in ['admin', 'manager'] %}
       <label class="choice-card flex items-center gap-3 p-3">
         <input type="checkbox" name="is_featured" value="true"
           {% if download and download.is_featured %}checked{% endif %}
@@ -567,6 +579,7 @@
           <p class="text-xs text-slate-400 dark:text-slate-500">{{ t(request, 'feature_help') }}</p>
         </div>
       </label>
+      {% endif %}
       <label class="choice-card flex items-center gap-3 p-3">
         <input type="checkbox" name="is_active" value="true"
           {% if not download or download.is_active %}checked{% endif %}

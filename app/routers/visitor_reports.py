@@ -51,6 +51,12 @@ async def report_download(
     if duplicate is None:
         add_event(session, "report", entity, "Visitor reported a content issue", download.id,
                   changes, actor="anonymous")
+        if target == 'publisher' and download.publisher.role == 'editor':
+            publisher = download.publisher
+            publisher.publisher_report_count += 1
+            if publisher.publisher_report_count % 10 == 0:
+                add_event(session, 'report', 'publisher_alerts', 'Publisher report threshold reached', download.id,
+                          {'recipient_id': [None, publisher.id], 'report_count': [None, publisher.publisher_report_count]}, actor='anonymous')
     await session.commit()
     request.session["download_report_received"] = slug
     return RedirectResponse(f"/download/{download.slug}", status_code=303)

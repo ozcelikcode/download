@@ -76,6 +76,8 @@ async def media_usage(session: AsyncSession, origin: str | None = None, *, all_o
         parser.feed(download.description or "")
         paths = parser.paths
         values = [download.icon_image_path, download.icon_image_url, download.thumbnail_path]
+        from app.gallery import gallery_paths
+        values.extend(gallery_paths(download.gallery_images))
         if download.file_type == FileType.local:
             values.append(download.file_path)
         for value in values:

@@ -781,6 +781,11 @@ for language, strings in IMAGE_POLICY_STRINGS.items():
 _SYSTEM_MESSAGE_KEYS['Profile icon updated'] = 'profile_icon_updated'
 _SYSTEM_MESSAGE_KEYS['Image compression'] = 'compression_title'
 _SYSTEM_MESSAGE_KEYS['Image processing failed'] = 'compression_failed'
+_SYSTEM_MESSAGE_KEYS['Editor descriptions require at least 200 visible characters'] = 'editor_description_minimum'
+_SYSTEM_MESSAGE_KEYS['Gallery image limit exceeded'] = 'gallery_limit_exceeded'
+_SYSTEM_MESSAGE_KEYS['Invalid gallery images'] = 'gallery_invalid'
+_SYSTEM_MESSAGE_KEYS['Gallery image limit'] = 'gallery_limit'
+_SYSTEM_MESSAGE_KEYS['Publisher report threshold reached'] = 'publisher_report_alert'
 
 
 def system_message(request: Request | None, message: str) -> str:

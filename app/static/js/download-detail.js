@@ -1,5 +1,30 @@
 /* Progressive disclosure: descriptions stay fully readable without JavaScript. */
 document.addEventListener('DOMContentLoaded', () => {
+  const gallery = [...document.querySelectorAll('[data-gallery-item]')];
+  const lightbox = document.getElementById('gallery-lightbox');
+  if (lightbox && typeof lightbox.showModal === 'function') {
+    let selected = 0;
+    let previousOverflow = '';
+    const image = document.getElementById('gallery-full-image');
+    function show(index) {
+      selected = (index + gallery.length) % gallery.length;
+      image.src = gallery[selected].getAttribute('href');
+      image.alt = gallery[selected].querySelector('img').alt;
+      document.getElementById('gallery-position').textContent = `${selected + 1} / ${gallery.length}`;
+    }
+    gallery.forEach((item, index) => item.addEventListener('click', event => {
+      event.preventDefault(); show(index); previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden'; lightbox.showModal();
+    }));
+    lightbox.querySelector('[data-gallery-close]').addEventListener('click', () => lightbox.close());
+    lightbox.addEventListener('click', event => { if (event.target === lightbox) lightbox.close(); });
+    lightbox.addEventListener('close', () => { document.body.style.overflow = previousOverflow; });
+    lightbox.querySelector('[data-gallery-previous]').addEventListener('click', () => show(selected - 1));
+    lightbox.querySelector('[data-gallery-next]').addEventListener('click', () => show(selected + 1));
+    lightbox.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); show(selected + (event.key === 'ArrowLeft' ? -1 : 1)); }
+    });
+  }
   const moreMenu = document.querySelectorAll('.detail-more')[0];
   if (moreMenu) {
     document.addEventListener('click', event => {

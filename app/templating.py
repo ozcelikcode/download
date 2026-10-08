@@ -22,6 +22,9 @@ from app.timezones import local_datetime
 from app.i18n import LANGUAGE_CHOICES, date_locale, og_locale, set_ui_language, translate, translate_format, ui_language, system_message
 
 templates = Jinja2Templates(directory="app/templates")
+from app.gallery import gallery_paths
+templates.env.globals['gallery_paths'] = gallery_paths
+templates.env.globals['gallery_image_limit'] = 5
 
 templates.env.globals["csrf_token"] = csrf_token
 templates.env.globals["profile_photo_url"] = photo_url
@@ -243,6 +246,7 @@ def refresh_site_branding_globals(site_settings: SiteSettings) -> None:
     This process-local cache assumes the supported single-worker deployment.
     """
     templates.env.globals["site_name"] = site_settings.site_name
+    templates.env.globals['gallery_image_limit'] = site_settings.gallery_image_limit
     templates.env.globals["site_language"] = site_settings.site_language
     templates.env.globals["site_timezone"] = site_settings.site_timezone
     set_ui_language(site_settings.site_language)

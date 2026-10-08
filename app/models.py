@@ -212,6 +212,7 @@ class SiteSettings(Base):
     hero_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     image_compression_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     image_compression_level: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
+    gallery_image_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=5, server_default="5")
     hero_background: Mapped[str] = mapped_column(String(20), nullable=False, default="soft")
     hero_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hero_components: Mapped[str] = mapped_column(
@@ -300,6 +301,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     media_quota_mb: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    publisher_report_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     deletion_requested_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -378,6 +380,7 @@ class Download(Base):
     slug: Mapped[str] = mapped_column(String(220), unique=True, nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Ön açıklama: ana sayfa kartlarında gösterilen kısa, düz metin özet.
+    gallery_images: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     # Boşsa kart, tam açıklamanın (WYSIWYG) etiketsiz kısaltmasına düşer.
     short_description: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

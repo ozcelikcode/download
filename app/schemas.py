@@ -311,6 +311,7 @@ class AppearanceSettingsUpdate(BaseModel):
 # ===========================================================================
 
 class DownloadBase(BaseModel):
+    gallery_paths: List[str] = Field(default_factory=list, max_length=25)
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     short_description: Optional[str] = Field(None, max_length=300)
@@ -365,6 +366,7 @@ class DownloadCreate(DownloadBase):
 
 
 class DownloadUpdate(BaseModel):
+    gallery_paths: Optional[List[str]] = Field(None, max_length=25)
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     slug: Optional[str] = Field(None, max_length=220)
     description: Optional[str] = None

@@ -29,6 +29,7 @@ from app.routers import publishers
 from app.routers import content_reports
 from app.routers import image_settings
 from app.routers import statistics
+from app.routers import gallery
 from app import backups, maintenance_jobs
 from app.models import SiteSettings
 from sqlalchemy import select
@@ -153,6 +154,7 @@ app.include_router(publishers.router)
 app.include_router(content_reports.router)
 app.include_router(image_settings.router)
 app.include_router(statistics.router)
+app.include_router(gallery.router)
 
 
 # ---------------------------------------------------------------------------

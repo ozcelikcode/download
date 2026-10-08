@@ -83,7 +83,7 @@ async def test_publication_requires_review_unless_verified(client, db_session, v
     editor.is_verified = verified
     await db_session.commit()
     login(client, editor)
-    response = await client.post("/panel/downloads/new", data={"title": "Editorial submission", "file_type": "external", "external_url": "https://example.com/download", "is_active": "true", "submission_intent": "publish"})
+    response = await client.post("/panel/downloads/new", data={"title": "Editorial submission", "description": "Useful application documentation. " * 10, "file_type": "external", "external_url": "https://example.com/download", "is_active": "true", "submission_intent": "publish"})
     assert response.status_code == 302
     item = await db_session.scalar(select(Download).where(Download.title == "Editorial submission"))
     assert item.is_active == verified and item.publication_pending != verified
@@ -181,7 +181,7 @@ async def test_new_translation_keys_are_complete():
 
 async def test_bulk_publish_cannot_bypass_review(client, db_session):
     editor, _, _ = await accounts(db_session)
-    item = Download(title="Bulk draft", slug="bulk-draft", is_draft=True, is_active=False,
+    item = Download(title="Bulk draft", slug="bulk-draft", description="Useful application documentation. " * 10, is_draft=True, is_active=False,
                     owner_id=editor.id, external_url="https://example.com")
     db_session.add(item)
     await db_session.commit()
@@ -223,7 +223,7 @@ async def test_editor_write_refreshes_revoked_verification(db_session):
     from app.schemas import DownloadCreate
     editor, _, _ = await accounts(db_session)
     db_session.info.update(editor_owner_id=editor.id, actor_id=editor.id, staff_role="editor", verified_editor=True)
-    item = await crud.create_download(db_session, DownloadCreate(title="Revoked trust", external_url="https://example.com", is_active=True))
+    item = await crud.create_download(db_session, DownloadCreate(title="Revoked trust", description="Useful application documentation. " * 10, external_url="https://example.com", is_active=True))
     assert item.publication_pending and not item.is_active
 
 

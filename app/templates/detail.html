@@ -203,6 +203,7 @@
 <div class="detail-main bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm">
   <div class="detail-tabs flex gap-2 border-b border-slate-200 dark:border-slate-800 p-3" aria-label="{{ t(request, 'detail_sections') }}">
     <button id="detail-description-tab" type="button" data-detail-tab="detail-description-panel" class="btn-secondary" aria-controls="detail-description-panel">{{ t(request, 'description') }}</button>
+    {% if gallery_images %}<button id="detail-gallery-tab" type="button" data-detail-tab="detail-gallery-panel" class="btn-secondary" aria-controls="detail-gallery-panel">{{ t(request, 'gallery') }}</button>{% endif %}
     <button id="detail-history-tab" type="button" data-detail-tab="detail-history-panel" class="btn-secondary" aria-controls="detail-history-panel">{{ t(request, 'version_history') }}</button>
   </div>
 <section id="detail-description-panel" class="detail-tab-panel p-5">
@@ -211,6 +212,15 @@
   </div>
   <button type="button" id="description-toggle" class="btn-secondary mt-3 hidden" aria-expanded="false" aria-controls="application-description" data-more="{{ t(request, 'detail_show_more') }}" data-less="{{ t(request, 'detail_show_less') }}">{{ t(request, 'detail_show_more') }}</button>
 </section>
+{% if gallery_images %}
+<section id="detail-gallery-panel" class="detail-tab-panel p-5">
+  <div class="gallery-grid">{% for path in gallery_images %}<a href="{{ path }}" data-gallery-item aria-label="{{ t(request, 'gallery') }} {{ loop.index }}"><img src="{{ path }}" alt="{{ download.title }} — {{ t(request, 'gallery') }} {{ loop.index }}" loading="lazy" width="640" height="400"></a>{% endfor %}</div>
+</section>
+<dialog id="gallery-lightbox" class="gallery-lightbox" aria-label="{{ t(request, 'gallery') }}">
+  <button type="button" data-gallery-close class="gallery-close btn-secondary" aria-label="{{ t(request, 'gallery_close') }}"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <figure><img id="gallery-full-image" alt=""><figcaption id="gallery-position" aria-live="polite"></figcaption><div class="flex justify-center gap-3 mt-3"><button type="button" data-gallery-previous class="btn-secondary" aria-label="{{ t(request, 'gallery_previous') }}"><i data-lucide="chevron-left" class="w-5 h-5"></i></button><button type="button" data-gallery-next class="btn-secondary" aria-label="{{ t(request, 'gallery_next') }}"><i data-lucide="chevron-right" class="w-5 h-5"></i></button></div></figure>
+</dialog>
+{% endif %}
 <div id="detail-history-panel" class="detail-tab-panel p-5">
   <h2 class="sr-only text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
     <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>
@@ -372,7 +382,7 @@
       <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ t(request, 'related_downloads_help') }}</p>
     </div>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+  <div class="related-grid {{ 'is-compact' if related_downloads|length > 2 else '' }}">
     {% for related in related_downloads %}
     <a href="/download/{{ related.slug }}" class="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-sm hover:border-blue-200 dark:hover:border-blue-500/40 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-colors group">
       <div class="icon-box {{ related.icon_type.value }} w-9 h-9 shrink-0 overflow-hidden bg-slate-50 dark:bg-slate-800">

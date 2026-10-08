@@ -443,6 +443,7 @@ async def build_download_detail_context(
         else None
     )
     related_downloads = await crud.get_related_downloads(session, download)
+    from app.gallery import gallery_paths
 
     ctx = {
         "request": request,
@@ -457,6 +458,7 @@ async def build_download_detail_context(
         "current_search": None,
         "version_timeline": _build_version_timeline(download),
         "related_downloads": related_downloads,
+        "gallery_images": gallery_paths(download.gallery_images),
         "download_filename": local_file.name if local_file else None,
         "is_preview": is_preview,
         "sha256": (

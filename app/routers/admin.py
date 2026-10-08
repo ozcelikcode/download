@@ -154,6 +154,11 @@ def _download_form_error(request: Request, exc: Exception) -> str:
     return translate(request, "content_save_failed")
 
 
+def _gallery_form_paths(value: str | None) -> list[str] | None:
+    from app.gallery import gallery_paths
+    return gallery_paths(value) if value is not None else None
+
+
 def _same_admin_page(request: Request, fallback: str) -> str:
     """Yönlendirmeyi yalnızca bu uygulamadaki admin sayfalarında tutar."""
     candidate = request.query_params.get("return_to") or fallback
@@ -1216,6 +1221,7 @@ async def download_new_post(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     short_description: Optional[str] = Form(None),
+    gallery_images: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
     is_latest_version: bool = Form(False),
     file_type: str = Form(...),
@@ -1268,6 +1274,7 @@ async def download_new_post(
 
     try:
         data = DownloadCreate(
+            gallery_paths=_gallery_form_paths(gallery_images) or [],
             title=title,
             description=description or None,
             short_description=short_description or None,
@@ -1379,6 +1386,7 @@ async def download_draft_autosave(
 
         data = DownloadUpdate(
             title=str(form.get("title") or "").strip()[:200] or "İsimsiz taslak",
+            gallery_paths=_gallery_form_paths(form.get('gallery_images')),
             description=str(form.get("description") or "").strip() or None,
             short_description=str(form.get("short_description") or "").strip() or None,
             version=None if is_latest else str(form.get("version") or "").strip() or None,
@@ -1484,6 +1492,7 @@ async def download_edit_post(
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     short_description: Optional[str] = Form(None),
+    gallery_images: Optional[str] = Form(None),
     version: Optional[str] = Form(None),
     is_latest_version: bool = Form(False),
     file_type: Optional[str] = Form(None),
@@ -1550,6 +1559,7 @@ async def download_edit_post(
                 raise ValueError("Lokal dosya zorunludur.")
         data = DownloadUpdate(
             title=title,
+            gallery_paths=_gallery_form_paths(gallery_images),
             description=description or None,
             short_description=short_description or None,
             version=None if is_latest_version and file_type == "external" else version or None,

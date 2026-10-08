@@ -55,6 +55,17 @@
 </section>
 {% endif %}
 
+{% if request.state.admin_role == 'admin' %}
+<section class="border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900 p-5 mb-5">
+  <h2 class="text-sm font-semibold flex items-center gap-2"><i data-lucide="images" class="w-4 h-4"></i>{{ t(request, 'gallery') }}</h2>
+  <p class="form-hint mt-2 mb-4">{{ t(request, 'gallery_policy_help') }}</p>
+  <form method="post" action="/panel/settings/gallery" class="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <fieldset><legend class="form-label">{{ t(request, 'gallery_limit') }}</legend><div class="flex flex-wrap gap-2">{% for count in [3,5,10,15,20,25] %}<label class="choice-card px-3 py-2"><input type="radio" class="choice-input" name="limit" value="{{ count }}" {% if count == site_settings.gallery_image_limit %}checked{% endif %}><span>{{ count }}</span></label>{% endfor %}</div></fieldset>
+    <button type="submit" class="btn-primary">{{ t(request, 'save') }}</button>
+  </form>
+</section>
+{% endif %}
 <form method="post" action="/panel/settings/appearance" enctype="multipart/form-data" class="space-y-5">
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
 

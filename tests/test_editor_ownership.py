@@ -187,6 +187,7 @@ async def test_editor_upload_and_publication_keep_ownership(client, db_session):
     assert uploaded.status_code == 200
     response = await client.post("/panel/downloads/new", data={
         "title": "My local file", "file_type": "local", "submission_intent": "publish",
+        "description": "Useful application documentation. " * 10,
         "file_final_path": uploaded.json()["storage_path"], "is_active": "true",
     })
     assert response.status_code == 302

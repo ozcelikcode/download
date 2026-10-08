@@ -96,8 +96,10 @@
       <button type="submit" form="download-bulk-form" name="action" value="publish" class="btn-primary py-1 px-2 text-xs">{{ t(request, 'publish') }}</button>
       <button type="submit" form="download-bulk-form" name="action" value="hide" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'hide_content') }}</button>
       <button type="submit" form="download-bulk-form" name="action" value="unpublish" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unpublish') }}</button>
+      {% if request.state.admin_role in ['admin', 'manager'] %}
       <button type="submit" form="download-bulk-form" name="action" value="feature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'feature') }}</button>
       <button type="submit" form="download-bulk-form" name="action" value="unfeature" class="btn-secondary py-1 px-2 text-xs">{{ t(request, 'unfeature') }}</button>
+      {% endif %}
       <button type="submit" form="download-bulk-form" name="action" value="delete" data-confirm-message="{{ t(request, 'trash_confirm') }}" class="btn-danger py-1 px-2 text-xs">{{ t(request, 'move_to_trash') }}</button>
     </div>
   <div class="hidden md:block overflow-x-auto">

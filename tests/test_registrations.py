@@ -263,6 +263,11 @@ async def test_previous_backup_schema_remains_importable(db_session):
     with zipfile.ZipFile(stage / "incoming.zip") as archive:
         manifest = json.loads(archive.read("manifest.json"))
         data = json.loads(archive.read("data.json"))
+    del data['site_settings'][0]['gallery_image_limit']
+    for row in data['users']:
+        del row['publisher_report_count']
+    for row in data['downloads']:
+        del row['gallery_images']
     del data["registration_requests"]
     del data["site_settings"][0]["image_compression_enabled"]
     del data["site_settings"][0]["image_compression_level"]

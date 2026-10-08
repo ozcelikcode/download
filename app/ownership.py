@@ -59,8 +59,12 @@ def protect_owned_changes(session: Session, _context: object, _instances: object
                 continue
             if obj.is_draft:
                 obj.publication_pending = False
-            elif obj.is_active is not False:
-                if editor_id is None or session.info.get("verified_editor"):
+            else:
+                from app.moderation import requires_review
+                flagged = editor_id is not None and requires_review(obj.title, obj.description, obj.short_description)
+                if obj.is_active is False and not flagged:
+                    continue
+                if editor_id is None or (session.info.get("verified_editor") and not flagged):
                     obj.publication_pending = False
                     continue
                 obj.is_active = False
@@ -111,6 +115,18 @@ async def require_owned_media(session: AsyncSession, value: str | None, *, mutat
 
 
 async def validate_download_references(session: AsyncSession, data: object) -> None:
+    from app.gallery import gallery_paths
+    from app.crud import get_site_settings
+    import json
+
+    paths = getattr(data, 'gallery_paths', None)
+    if paths is not None:
+        gallery_paths(json.dumps(paths))
+        if len(paths) > (await get_site_settings(session)).gallery_image_limit:
+            raise ValueError('Gallery image limit exceeded')
+        for path in paths:
+            if await session.scalar(select(MediaAsset.id).where(MediaAsset.path == path)) is None:
+                raise HTTPException(404)
     if session.info.get("editor_owner_id") is None:
         return
     for model, field in ((Category, "category_id"), (Download, "parent_id")):

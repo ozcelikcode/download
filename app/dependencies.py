@@ -188,7 +188,7 @@ def role_allows(role: str, path: str, method: str) -> bool:
         return method == "POST"
     if path == "/panel/content-reports":
         return method == "GET"
-    if path == "/panel/settings/image-compression":
+    if path in {"/panel/settings/image-compression", "/panel/settings/gallery"}:
         return False
     if path in {"/panel/statistics", "/panel/site-information"}:
         return False

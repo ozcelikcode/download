@@ -56,8 +56,8 @@ async def snapshot(request: Request, session: AsyncSession) -> dict[str, Any]:
                     Download.owner_id == request.state.admin_id,
                     join=(Download, Download.id == AuditLog.entity_id))
     else:
-        await group("publisher_reports", "publisher_reports", "/panel/content-reports", AuditLog, AuditLog.created_at,
-                    AuditLog.entity == "publisher_reports", AuditLog.action == "report")
+        await group("publisher_alerts", "publisher_report_alert", "/panel/content-reports", AuditLog, AuditLog.created_at,
+                    AuditLog.entity == "publisher_alerts", AuditLog.action == "report")
         await group("reports", "visitor_reports", "/panel/links/reports", AuditLog, AuditLog.created_at,
                     AuditLog.entity == "visitor_reports", AuditLog.action == "report")
         await group("registrations", "registration_requests", "/panel/registrations", RegistrationRequest, RegistrationRequest.created_at)

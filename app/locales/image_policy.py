@@ -1,6 +1,22 @@
 """Image policy and site-wide statistics interface copy."""
 
 _COPY = {
+    'gallery': ('Photo gallery', 'Galería de fotos', 'Galerie photo', 'Fotoğraf galerisi'),
+    'gallery_limit': ('Images per content', 'Imágenes por contenido', 'Images par contenu', 'İçerik başına resim sınırı'),
+    'gallery_policy_help': ('Gallery images are always compressed to WebP and stripped of metadata. The limit applies to new submissions; existing images are not deleted.', 'Las imágenes siempre se comprimen a WebP sin metadatos. El límite se aplica a nuevos envíos; no se eliminan imágenes existentes.', 'Les images sont toujours compressées en WebP sans métadonnées. La limite s’applique aux nouveaux envois ; les images existantes ne sont pas supprimées.', 'Galeri resimleri daima WebP olarak sıkıştırılır ve metadata temizlenir. Sınır yeni gönderimlerde uygulanır; mevcut resimler silinmez.'),
+    'gallery_upload_help': ('Choose screenshots. They are always compressed; drag files into the file chooser or select multiple images.', 'Seleccione capturas. Siempre se comprimen; arrastre archivos al selector o elija varias imágenes.', 'Choisissez des captures. Elles sont toujours compressées ; déposez des fichiers dans le sélecteur ou choisissez plusieurs images.', 'Ekran görüntülerini seçin. Resimler daima sıkıştırılır; dosya seçiciye sürükleyebilir veya birden çok resim seçebilirsiniz.'),
+    'gallery_limit_exceeded': ('Gallery image limit exceeded', 'Se ha superado el límite de imágenes', 'Limite d’images dépassée', 'Galeri resim sınırı aşıldı'),
+    'gallery_limit_invalid': ('Choose an available gallery limit.', 'Elija un límite disponible.', 'Choisissez une limite disponible.', 'Geçerli bir galeri sınırı seçin.'),
+    'gallery_saved': ('Gallery limit saved.', 'Límite guardado.', 'Limite enregistrée.', 'Galeri sınırı kaydedildi.'),
+    'gallery_remove': ('Remove from gallery', 'Quitar de la galería', 'Retirer de la galerie', 'Galeriden çıkar'),
+    'gallery_upload_failed': ('Image upload failed. Please try again.', 'No se pudo cargar la imagen. Inténtelo de nuevo.', 'Échec de l’envoi de l’image. Réessayez.', 'Resim yüklenemedi. Yeniden deneyin.'),
+    'gallery_invalid': ('Invalid gallery images', 'Imágenes de galería no válidas', 'Images de galerie invalides', 'Galeri resimleri geçersiz'),
+    'gallery_close': ('Close photo', 'Cerrar foto', 'Fermer la photo', 'Fotoğrafı kapat'),
+    'gallery_previous': ('Previous photo', 'Foto anterior', 'Photo précédente', 'Önceki fotoğraf'),
+    'gallery_next': ('Next photo', 'Foto siguiente', 'Photo suivante', 'Sonraki fotoğraf'),
+    'publisher_report_alert': ('Repeated publisher reports', 'Avisos reiterados al editor', 'Signalements répétés à l’éditeur', 'Tekrarlanan editör bildirimleri'),
+    'editor_description_minimum': ('Editor descriptions require at least 200 visible characters', 'Las descripciones de los editores requieren al menos 200 caracteres visibles', 'Les descriptions des éditeurs exigent au moins 200 caractères visibles', 'Editör açıklamalarında en az 200 görünür karakter gerekir'),
+    'editor_description_help': ('At least 200 visible characters are required to submit new content. Short drafts can be saved. Flagged language always requires staff review.', 'Se requieren 200 caracteres visibles para enviar contenido nuevo. Se pueden guardar borradores cortos. El lenguaje problemático siempre requiere revisión.', '200 caractères visibles sont nécessaires pour soumettre un nouveau contenu. Les brouillons courts sont autorisés. Tout langage signalé nécessite une validation.', 'Yeni içerik göndermek için en az 200 görünür karakter gerekir. Kısa taslaklar kaydedilebilir. Problemli metinler doğrulanmış hesaplarda da onaya gönderilir.'),
     'compression_failed': ('Image processing failed. Try another image.', 'No se pudo procesar la imagen. Pruebe otra imagen.', 'Le traitement de l’image a échoué. Essayez une autre image.', 'Resim işlenemedi. Başka bir resim deneyin.'),
     'site_statistics': ('Site information', 'Información del sitio', 'Informations du site', 'Site bilgileri'),
     'site_runtime': ('Infrastructure', 'Infraestructura', 'Infrastructure', 'Site altyapısı'),

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 
 import logging
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
@@ -931,9 +932,9 @@ async def get_download_detail_by_id(
 
 
 async def get_related_downloads(
-    session: AsyncSession, download: Download, limit: int = 4
+    session: AsyncSession, download: Download, limit: int = 5
 ) -> List[Download]:
-    """Aynı kategori ve ortak etiketlere göre ilişkili aktif içerikleri döndürür."""
+    """Rank related public downloads by shared categories and tags."""
     tag_ids = [tag.id for tag in download.tags]
     relation_filters = []
     score = literal(0)
@@ -998,6 +999,13 @@ async def create_download(
     session: AsyncSession, data: DownloadCreate
 ) -> Download:
     await _lock_editor_write(session)
+    if session.info.get("editor_owner_id") is not None and data.is_featured:
+        from fastapi import HTTPException
+        raise HTTPException(403)
+    if session.info.get("editor_owner_id") is not None and not data.is_draft:
+        from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+        if len(visible_text(data.description)) < MIN_EDITOR_DESCRIPTION:
+            raise ValueError("Editor descriptions require at least 200 visible characters")
     from app.ownership import validate_download_references
     await validate_download_references(session, data)
     # Slug üret
@@ -1019,6 +1027,7 @@ async def create_download(
         slug=slug,
         description=data.description,
         short_description=data.short_description,
+        gallery_images=json.dumps(data.gallery_paths),
         version=data.version,
         is_latest_version=data.is_latest_version,
         file_type=data.file_type,
@@ -1102,7 +1111,21 @@ async def update_download(
     await validate_download_references(session, data)
     update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
 
+    gallery = update_data.pop("gallery_paths", None)
+    if gallery is not None:
+        update_data["gallery_images"] = json.dumps(gallery)
+
+    if session.info.get("editor_owner_id") is not None:
+        if update_data.get("is_featured") is True and not download.is_featured:
+            from fastapi import HTTPException
+            raise HTTPException(403)
+        update_data.pop("is_featured", None)
+
     if update_data.get("is_draft") is False and download.is_draft:
+        if session.info.get("editor_owner_id") is not None:
+            from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+            if len(visible_text(update_data.get("description", download.description))) < MIN_EDITOR_DESCRIPTION:
+                raise ValueError("Editor descriptions require at least 200 visible characters")
         title = str(update_data.get("title") or download.title)
         base_slug = _make_slug(title) or "isimsiz-icerik"
         update_data["slug"] = await _unique_slug(
@@ -1231,6 +1254,9 @@ async def update_trashed_downloads(session: AsyncSession, download_ids: list[int
 async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], action: str) -> int:
     """Seçili içerikler için geri alınabilir durum işlemleri veya silme uygular."""
     await _lock_editor_write(session)
+    if session.info.get("editor_owner_id") is not None and action in {"feature", "unfeature"}:
+        from fastapi import HTTPException
+        raise HTTPException(403)
     ids = sorted(set(download_ids))
     if not ids:
         raise ValueError("En az bir içerik seçin.")
@@ -1259,6 +1285,10 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
     elif action == "publish":
         for download in downloads:
             if download.is_draft:
+                if session.info.get("editor_owner_id") is not None:
+                    from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+                    if len(visible_text(download.description)) < MIN_EDITOR_DESCRIPTION:
+                        raise ValueError("Editor descriptions require at least 200 visible characters")
                 base_slug = _make_slug(download.title) or "isimsiz-icerik"
                 download.slug = await _unique_slug(
                     session, Download, base_slug, exclude_id=download.id

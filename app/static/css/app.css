@@ -807,7 +807,14 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
 .fact-third-party { color: #a16207; }
 .dark .fact-local, .dark .fact-official { color: #4ade80; }
 .dark .fact-third-party { color: #facc15; }
-.detail-platforms { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem .75rem; }
+.detail-platforms { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: .4rem .75rem; }
+.detail-facts dl > div:has(.detail-platforms) { align-items: flex-start; }
+.detail-facts dd:has(.detail-platforms) { flex: 1 1 15rem; min-width: 0; text-align: left; }
+.detail-platforms > span { white-space: nowrap; }
+.detail-facts dl > div:last-child { border-bottom: 0; }
+.related-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+@media (min-width: 640px) { .related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .related-grid.is-compact { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .platform-windows { color: #0078d4; }
 .platform-android { color: #237b43; }
 .platform-linux { color: #946b00; }
@@ -818,6 +825,16 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
 .dark .platform-linux { color: #f5cf49; }
 .detail-facts { height: 100%; margin-bottom: 0; }
 .detail-tab-panel[hidden] { display: none; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .75rem; }
+.gallery-grid img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: var(--theme-panel-muted, #f1f5f9); }
+.gallery-editor-card { min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
+.gallery-lightbox { display: none; border: 0; padding: 2rem; background: transparent; color: white; }
+.gallery-lightbox[open] { display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; }
+.gallery-lightbox::backdrop { background: rgb(0 0 0 / .92); }
+.gallery-lightbox figure { margin: 0; max-width: 100%; text-align: center; }
+.gallery-lightbox figure img { max-width: 100%; max-height: calc(100dvh - 10rem); object-fit: contain; }
+.gallery-lightbox figcaption { margin-top: .75rem; }
+.gallery-close { position: absolute; top: 1rem; right: 1rem; }
 .image-compression-range { accent-color: var(--theme-accent, #71717a); }
 .detail-tabs [aria-selected="true"] { background: var(--theme-panel-muted, #f1f5f9); border-color: var(--theme-text-muted, #64748b); }
 .detail-main, .detail-side { min-width: 0; }
