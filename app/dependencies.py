@@ -133,6 +133,7 @@ async def require_admin(
     session.info["actor_id"] = user.id
     session.info["staff_role"] = user.role
     session.info["verified_editor"] = user.is_verified
+    session.info["editor_direct_publication"] = account.editor_publication_policy == 'everyone' or user.is_verified
     session.info["authenticated_credential"] = credential_stamp(user.username, user.password_hash)
     session.info["authenticated_generation"] = account.session_generation
     if user.role == "editor":

@@ -105,6 +105,7 @@ async def test_favicon_backup_adapter_is_strict(db_session, value):
             data = json.loads(archive.read("data.json"))
         if value == "legacy":
             del data['site_settings'][0]['gallery_image_limit']
+            del data['site_settings'][0]['editor_publication_policy']
             for row in data['users']:
                 del row['publisher_report_count']
             for row in data['downloads']:

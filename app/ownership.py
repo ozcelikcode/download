@@ -60,11 +60,9 @@ def protect_owned_changes(session: Session, _context: object, _instances: object
             if obj.is_draft:
                 obj.publication_pending = False
             else:
-                from app.moderation import requires_review
-                flagged = editor_id is not None and requires_review(obj.title, obj.description, obj.short_description)
-                if obj.is_active is False and not flagged:
+                if obj.is_active is False:
                     continue
-                if editor_id is None or (session.info.get("verified_editor") and not flagged):
+                if editor_id is None or session.info.get("editor_direct_publication", session.info.get("verified_editor", False)):
                     obj.publication_pending = False
                     continue
                 obj.is_active = False
@@ -108,7 +106,10 @@ async def require_owned_media(session: AsyncSession, value: str | None, *, mutat
         # Replacing a live binary or illustration must not bypass publication review.
         from app.models import User
         verified = await session.scalar(select(User.is_verified).where(User.id == session.info["editor_owner_id"], User.is_active.is_(True)))
-        if not verified:
+        from app.crud import get_site_settings
+        policy = await get_site_settings(session)
+        await session.refresh(policy)
+        if not verified and policy.editor_publication_policy != 'everyone':
             live_ids = set(await session.scalars(select(Download.id).where(Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None))))
             if any(row["id"] in live_ids for row in usage.get(path, [])):
                 raise HTTPException(409)

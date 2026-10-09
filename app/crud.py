@@ -74,6 +74,9 @@ async def _lock_editor_write(session: AsyncSession) -> None:
     if generation and not secrets.compare_digest(generation, (await get_site_settings(session)).session_generation):
         raise HTTPException(403)
     session.info["verified_editor"] = actor.is_verified
+    policy = await get_site_settings(session)
+    await session.refresh(policy)
+    session.info["editor_direct_publication"] = policy.editor_publication_policy == 'everyone' or actor.is_verified
 
 
 # ===========================================================================
@@ -587,7 +590,7 @@ async def _review_history_change(session: AsyncSession, entry: DownloadVersionHi
     parent = await get_download_by_id(session, entry.download_id) if entry else None
     if parent is None:
         raise HTTPException(404)
-    if parent.is_active and not session.info.get("verified_editor"):
+    if parent.is_active and not session.info.get("editor_direct_publication"):
         parent.is_active = False
         parent.publication_pending = True
         parent.publication_feedback = None
@@ -1003,7 +1006,7 @@ async def create_download(
         from fastapi import HTTPException
         raise HTTPException(403)
     if session.info.get("editor_owner_id") is not None and not data.is_draft:
-        from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+        from app.editorial_text import MIN_EDITOR_DESCRIPTION, visible_text
         if len(visible_text(data.description)) < MIN_EDITOR_DESCRIPTION:
             raise ValueError("Editor descriptions require at least 200 visible characters")
     from app.ownership import validate_download_references
@@ -1123,7 +1126,7 @@ async def update_download(
 
     if update_data.get("is_draft") is False and download.is_draft:
         if session.info.get("editor_owner_id") is not None:
-            from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+            from app.editorial_text import MIN_EDITOR_DESCRIPTION, visible_text
             if len(visible_text(update_data.get("description", download.description))) < MIN_EDITOR_DESCRIPTION:
                 raise ValueError("Editor descriptions require at least 200 visible characters")
         title = str(update_data.get("title") or download.title)
@@ -1286,7 +1289,7 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
         for download in downloads:
             if download.is_draft:
                 if session.info.get("editor_owner_id") is not None:
-                    from app.moderation import MIN_EDITOR_DESCRIPTION, visible_text
+                    from app.editorial_text import MIN_EDITOR_DESCRIPTION, visible_text
                     if len(visible_text(download.description)) < MIN_EDITOR_DESCRIPTION:
                         raise ValueError("Editor descriptions require at least 200 visible characters")
                 base_slug = _make_slug(download.title) or "isimsiz-icerik"

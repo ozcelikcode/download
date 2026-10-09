@@ -91,6 +91,7 @@ async def test_previous_gallery_backup_schema_is_strict(db_session, tmp_path):
         data = json.loads(archive.read('data.json'))
     manifest['schema'] = backups.schema_fingerprint(before_gallery=True)
     del data['site_settings'][0]['gallery_image_limit']
+    del data['site_settings'][0]['editor_publication_policy']
     for row in data['downloads']:
         del row['gallery_images']
     for row in data['users']:
@@ -101,6 +102,21 @@ async def test_previous_gallery_backup_schema_is_strict(db_session, tmp_path):
     _, imported = backups.validate_archive(tmp_path)
     assert imported['site_settings'][0]['gallery_image_limit'] == 5
     assert all(row['publisher_report_count'] == 0 for row in imported['users'])
+
+
+async def test_previous_submission_policy_backup_defaults(db_session, tmp_path):
+    path = tmp_path / 'incoming.zip'
+    backups.write_archive(path)
+    with zipfile.ZipFile(path) as archive:
+        manifest = json.loads(archive.read('manifest.json'))
+        data = json.loads(archive.read('data.json'))
+    manifest['schema'] = backups.schema_fingerprint(before_publication_policy=True)
+    del data['site_settings'][0]['editor_publication_policy']
+    with zipfile.ZipFile(path, 'w') as archive:
+        archive.writestr('manifest.json', json.dumps(manifest))
+        archive.writestr('data.json', json.dumps(data))
+    _, imported = backups.validate_archive(tmp_path)
+    assert imported['site_settings'][0]['editor_publication_policy'] == 'verified_only'
 
 
 async def test_ten_new_editor_reports_create_one_staff_alert(client, admin_client, db_session, monkeypatch):

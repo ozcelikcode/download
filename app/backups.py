@@ -73,8 +73,10 @@ def fingerprint(pem: str) -> str:
 
 def schema_fingerprint(*, before_registrations: bool = False, before_timezone: bool = False,
                        before_quotas: bool = False, before_favicon: bool = False, before_image_policy: bool = False,
-                       before_gallery: bool = False) -> str:
+                       before_gallery: bool = False, before_publication_policy: bool = False) -> str:
     schema = {table.name: [(column.name, str(column.type), column.nullable) for column in table.columns
+                         if not ((before_publication_policy or before_gallery or before_image_policy or before_favicon or before_quotas or before_timezone or before_registrations)
+                                 and table.name == 'site_settings' and column.name == 'editor_publication_policy')
                          if not ((before_gallery or before_image_policy or before_favicon or before_quotas or before_timezone or before_registrations)
                                  and ((table.name == 'site_settings' and column.name == 'gallery_image_limit')
                                       or (table.name == 'downloads' and column.name == 'gallery_images')
@@ -244,7 +246,8 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
             old_favicon = old_quotas or manifest.get("schema") == schema_fingerprint(before_favicon=True)
             old_image_policy = old_favicon or manifest.get("schema") == schema_fingerprint(before_image_policy=True)
             old_gallery = old_image_policy or manifest.get('schema') == schema_fingerprint(before_gallery=True)
-            if manifest.get("format") != 1 or (not old_gallery and manifest.get("schema") != schema_fingerprint()):
+            old_publication_policy = old_gallery or manifest.get('schema') == schema_fingerprint(before_publication_policy=True)
+            if manifest.get("format") != 1 or (not old_publication_policy and manifest.get("schema") != schema_fingerprint()):
                 raise BackupError("backup_incompatible")
             expected = {t.name for t in Base.metadata.sorted_tables if t.name != "backup_policy"}
             if legacy:
@@ -253,6 +256,11 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 raise BackupError("backup_invalid")
             if legacy:
                 data["registration_requests"] = []
+            if old_publication_policy:
+                for row in data['site_settings']:
+                    if not isinstance(row, dict) or 'editor_publication_policy' in row:
+                        raise BackupError('backup_invalid')
+                    row['editor_publication_policy'] = 'verified_only'
             if old_gallery:
                 for table_name, field, default in [('site_settings', 'gallery_image_limit', 5), ('downloads', 'gallery_images', '[]'), ('users', 'publisher_report_count', 0)]:
                     if not isinstance(data.get(table_name), list):
@@ -313,6 +321,8 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
                 validate_quota(data["site_settings"][0]["manager_media_quota_mb"])
                 compression = data["site_settings"][0]
+                if compression['editor_publication_policy'] not in {'everyone', 'verified_only'}:
+                    raise BackupError('backup_invalid')
                 if type(compression['gallery_image_limit']) is not int or compression['gallery_image_limit'] not in GALLERY_LIMITS:
                     raise ValueError('Invalid gallery limit')
                 for download in data['downloads']:

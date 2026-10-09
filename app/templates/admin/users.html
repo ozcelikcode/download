@@ -17,12 +17,26 @@
 <div class="mb-6">{{ page_heading(request, t(request, 'users'), t(request, 'users_help')) }}</div>
 {% if staff_role == 'admin' %}
 <nav class="mb-6 flex flex-wrap gap-2" aria-label="{{ t(request, 'users') }}">
-  {% for key, label, icon in [('accounts', t(request, 'users'), 'users'), ('new', t(request, 'new_user'), 'user-plus'), ('storage', t(request, 'quota_defaults'), 'hard-drive')] %}
+  {% for key, label, icon in [('accounts', t(request, 'users'), 'users'), ('new', t(request, 'new_user'), 'user-plus'), ('publication', t(request, 'publication_policy'), 'send'), ('storage', t(request, 'quota_defaults'), 'hard-drive')] %}
   <a href="/panel/users{% if key != 'accounts' %}?section={{ key }}{% endif %}" class="{{ 'btn-primary' if users_section == key else 'btn-secondary' }}" {% if users_section == key %}aria-current="page"{% endif %}><i data-lucide="{{ icon }}" class="w-4 h-4"></i>{{ label }}</a>
   {% endfor %}
 </nav>
 {% endif %}
-{% if users_section == 'storage' and staff_role == 'admin' %}
+{% if users_section == 'publication' and staff_role == 'admin' %}
+<section class="rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+  <h2 class="text-sm font-semibold">{{ t(request, 'publication_policy') }}</h2>
+  <p class="form-hint mt-2 mb-4">{{ t(request, 'publication_policy_help') }}</p>
+  <form method="post" action="/panel/users/publication-policy" class="space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+    <fieldset class="flex flex-wrap gap-3"><legend class="sr-only">{{ t(request, 'publication_policy') }}</legend>
+      {% for value, label in [('everyone', 'publication_everyone'), ('verified_only', 'publication_verified_only')] %}
+      <label class="choice-card flex items-center gap-2 px-3 py-2"><input type="radio" class="choice-input" name="policy" value="{{ value }}" {% if quota_settings.editor_publication_policy == value %}checked{% endif %} required><span>{{ t(request, label) }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <button class="btn-secondary" type="submit">{{ t(request, 'save') }}</button>
+  </form>
+</section>
+{% elif users_section == 'storage' and staff_role == 'admin' %}
 <section class="rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
   <h2 class="text-sm font-semibold">{{ t(request, 'quota_defaults') }}</h2>
   <p class="form-hint mt-2 mb-5">{{ t(request, 'quota_help') }}</p>

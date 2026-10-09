@@ -213,6 +213,7 @@ class SiteSettings(Base):
     image_compression_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     image_compression_level: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default="2")
     gallery_image_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=5, server_default="5")
+    editor_publication_policy: Mapped[str] = mapped_column(String(20), nullable=False, default='verified_only', server_default='verified_only')
     hero_background: Mapped[str] = mapped_column(String(20), nullable=False, default="soft")
     hero_image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hero_components: Mapped[str] = mapped_column(

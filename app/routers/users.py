@@ -69,7 +69,7 @@ async def _lock_actor(request: Request, session: AsyncSession, role: str, *, dur
 @router.get("")
 async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
     section = request.query_params.get("section", "accounts")
-    if section not in {"accounts", "new", "storage"} or request.state.admin_role != "admin":
+    if section not in {"accounts", "new", "storage", "publication"} or request.state.admin_role != "admin":
         section = "accounts"
     users = (await session.scalars(select(User).order_by(User.is_active.desc(), User.username))).all()
     account = await session.scalar(select(SiteSettings))
@@ -81,6 +81,21 @@ async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
         "flash_message": request.session.pop("flash_message", None),
         "flash_type": request.session.pop("flash_type", "success"),
     })
+
+
+@router.post('/publication-policy')
+async def update_publication_policy(request: Request, policy: str = Form(...), session: AsyncSession = Depends(get_db)):
+    _forbid(request)
+    if policy not in {'everyone', 'verified_only'}:
+        raise HTTPException(422, detail=translate(request, 'publication_policy_invalid'))
+    await _lock_actor(request, session, 'admin')
+    account = await session.scalar(select(SiteSettings).execution_options(populate_existing=True))
+    before = account.editor_publication_policy
+    account.editor_publication_policy = policy
+    add_event(session, 'update', 'site_settings', 'Editor publication policy', changes={'editor_publication_policy': [before, policy]})
+    await session.commit()
+    request.session['flash_message'] = translate(request, 'publication_policy_saved')
+    return RedirectResponse('/panel/users?section=publication', status_code=303)
 
 
 @router.post("/media-quota/defaults")
