@@ -1,6 +1,12 @@
 """Image policy and site-wide statistics interface copy."""
 
 _COPY = {
+    'gallery_upload_complete': ('Gallery images are ready', 'Las imágenes de la galería están listas', 'Les images de la galerie sont prêtes', 'Galeri resimleri hazır'),
+    'gallery_processing': ('Processing images…', 'Procesando imágenes…', 'Traitement des images…', 'Resimler işleniyor…'),
+    'version_relationship_invalid': ('Choose an independent parent record. A record cannot be its own parent or contain nested version families.', 'Elija un registro padre independiente. No se permiten referencias a sí mismo ni familias de versiones anidadas.', 'Choisissez un parent indépendant. Une entrée ne peut pas être son propre parent ni imbriquer des familles de versions.', 'Bağımsız bir üst kayıt seçin. Bir içerik kendisine bağlanamaz; iç içe sürüm aileleri oluşturulamaz.'),
+    'publication_none': ('Nobody', 'Nadie', 'Personne', 'Hiç kimse'),
+    'publication_locked': ('Editor submissions are disabled. Only administrators and managers can submit content.', 'Los envíos de editores están desactivados. Solo administradores y gestores pueden enviar contenido.', 'Les publications des éditeurs sont désactivées. Seuls les administrateurs et gestionnaires peuvent publier.', 'Editör gönderimleri kapalı. Yalnızca admin ve yöneticiler içerik gönderebilir.'),
+    'publication_none_help': ('Nobody locks editor submissions, including verified editors. Administrators and managers retain access.', 'Nadie bloquea los envíos de todos los editores, incluso los verificados. Administradores y gestores conservan el acceso.', 'Personne bloque les publications de tous les éditeurs, même vérifiés. Les administrateurs et gestionnaires conservent leur accès.', 'Hiç kimse seçeneği, tikli olanlar dahil tüm editörlerin gönderimlerini kilitler. Admin ve yöneticiler gönderim yapmaya devam eder.'),
     'publication_policy': ('Submission preference', 'Preferencia de envío', 'Préférence de publication', 'Gönderim tercihi'),
     'publication_everyone': ('Everyone', 'Todos', 'Tout le monde', 'Herkes'),
     'publication_verified_only': ('Verified only', 'Solo verificados', 'Comptes vérifiés uniquement', 'Sadece tikli'),

@@ -28,15 +28,20 @@ async def upload_gallery_image(request: Request, file: UploadFile = File(...), s
     level = policy.image_compression_level
     filename = uuid4().hex + '.webp'
     destination = settings.upload_path / 'gallery' / filename
+    result_path = '/static/uploads/gallery/' + filename
 
     def prepare(staged: Path) -> None:
         prepare_gallery_image(staged, level=level)
 
+    async def publish(staged: Path, target: Path) -> None:
+        nonlocal result_path
+        result_path = await publish_media(session, staged, target, reuse_identical=True)
+
     try:
-        await save_upload(file, destination, validator=prepare, publisher=lambda staged, target: publish_media(session, staged, target), max_bytes=20 * 1024 * 1024)
+        await save_upload(file, destination, validator=prepare, publisher=publish, max_bytes=20 * 1024 * 1024)
     except ValueError:
         raise HTTPException(400, translate(request, 'compression_failed')) from None
-    return {'path': '/static/uploads/gallery/' + filename}
+    return {'path': result_path}
 
 
 @router.post('/settings/gallery')

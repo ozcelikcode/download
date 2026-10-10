@@ -93,6 +93,7 @@ def compress_image_file(path: Path, max_dimension: int | None = None, *, level: 
 
 def make_square_icon(src_path: Path, dest_path: Path, size: int = 256) -> None:
     """Center-crop a raster to an optimized square PNG, preserving transparency."""
+    validate_raster_image_file(src_path)
     with Image.open(src_path) as img:
         img = ImageOps.exif_transpose(img)
         if img.mode not in ("RGBA", "RGB", "L"):

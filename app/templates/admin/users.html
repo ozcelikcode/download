@@ -26,10 +26,11 @@
 <section class="rounded-sm border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
   <h2 class="text-sm font-semibold">{{ t(request, 'publication_policy') }}</h2>
   <p class="form-hint mt-2 mb-4">{{ t(request, 'publication_policy_help') }}</p>
+  <p class="form-hint mb-4">{{ t(request, 'publication_none_help') }}</p>
   <form method="post" action="/panel/users/publication-policy" class="space-y-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
     <fieldset class="flex flex-wrap gap-3"><legend class="sr-only">{{ t(request, 'publication_policy') }}</legend>
-      {% for value, label in [('everyone', 'publication_everyone'), ('verified_only', 'publication_verified_only')] %}
+      {% for value, label in [('everyone', 'publication_everyone'), ('verified_only', 'publication_verified_only'), ('none', 'publication_none')] %}
       <label class="choice-card flex items-center gap-2 px-3 py-2"><input type="radio" class="choice-input" name="policy" value="{{ value }}" {% if quota_settings.editor_publication_policy == value %}checked{% endif %} required><span>{{ t(request, label) }}</span></label>
       {% endfor %}
     </fieldset>

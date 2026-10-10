@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (lightbox && typeof lightbox.showModal === 'function') {
     let selected = 0;
     let previousOverflow = '';
+    let opener = null;
     const image = document.getElementById('gallery-full-image');
     function show(index) {
       selected = (index + gallery.length) % gallery.length;
@@ -13,12 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('gallery-position').textContent = `${selected + 1} / ${gallery.length}`;
     }
     gallery.forEach((item, index) => item.addEventListener('click', event => {
-      event.preventDefault(); show(index); previousOverflow = document.body.style.overflow;
+      event.preventDefault(); opener = item; show(index); previousOverflow = document.body.style.overflow;
+      // Native dialogs restore the focused element, not necessarily the clicked link.
+      item.focus({preventScroll: true});
       document.body.style.overflow = 'hidden'; lightbox.showModal();
     }));
     lightbox.querySelector('[data-gallery-close]').addEventListener('click', () => lightbox.close());
     lightbox.addEventListener('click', event => { if (event.target === lightbox) lightbox.close(); });
-    lightbox.addEventListener('close', () => { document.body.style.overflow = previousOverflow; });
+    lightbox.addEventListener('close', () => {
+      document.body.style.overflow = previousOverflow;
+      if (opener?.isConnected) opener.focus({preventScroll: true});
+    });
     lightbox.querySelector('[data-gallery-previous]').addEventListener('click', () => show(selected - 1));
     lightbox.querySelector('[data-gallery-next]').addEventListener('click', () => show(selected + 1));
     lightbox.addEventListener('keydown', event => {

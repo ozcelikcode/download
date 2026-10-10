@@ -86,7 +86,7 @@ async def list_users(request: Request, session: AsyncSession = Depends(get_db)):
 @router.post('/publication-policy')
 async def update_publication_policy(request: Request, policy: str = Form(...), session: AsyncSession = Depends(get_db)):
     _forbid(request)
-    if policy not in {'everyone', 'verified_only'}:
+    if policy not in {'everyone', 'verified_only', 'none'}:
         raise HTTPException(422, detail=translate(request, 'publication_policy_invalid'))
     await _lock_actor(request, session, 'admin')
     account = await session.scalar(select(SiteSettings).execution_options(populate_existing=True))

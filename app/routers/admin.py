@@ -286,6 +286,7 @@ async def _save_icon_upload(file: UploadFile, session: AsyncSession, compress: b
     icons_dir.mkdir(parents=True, exist_ok=True)
     filename = _unique_icon_filename(file.filename)
     dest = icons_dir / filename
+    result_path = f"/static/uploads/icons/{filename}"
     policy = await crud.get_site_settings(session)
     compress = policy.image_compression_enabled if compress is None else compress
     level = policy.image_compression_level
@@ -294,12 +295,17 @@ async def _save_icon_upload(file: UploadFile, session: AsyncSession, compress: b
             validate_raster_image_file(staged)
             if compress:
                 compress_image_file(staged, level=level)
+
+        async def publish(staged: Path, target: Path) -> None:
+            nonlocal result_path
+            result_path = await publish_media(session, staged, target, reuse_identical=True)
+
         await save_upload(file, dest, validator=prepare,
-                          publisher=lambda staged, target: publish_media(session, staged, target))
+                          publisher=publish)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     logger.info("Icon uploaded: compressed=%s", compress)
-    return f"/static/uploads/icons/{filename}"
+    return result_path
 
 
 def _resolve_icon_path(path: str) -> Path:
@@ -309,19 +315,23 @@ def _resolve_icon_path(path: str) -> Path:
 
 
 async def _replace_icon_upload(file: UploadFile, existing_path: str, session: AsyncSession) -> str:
-    """Replace a prepared icon in place without changing its URL or recompressing."""
+    """Replace a prepared icon, copying shared illustrations before editing."""
     dest = _resolve_icon_path(existing_path)
     if not dest.is_file():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
     if dest.suffix.lower() not in _SAFE_IMAGE_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Güvensiz görsel uzantısı yerinde güncellenemez.")
+    result_path = existing_path
+    async def publish(staged: Path, target: Path) -> None:
+        nonlocal result_path
+        result_path = await publish_media(session, staged, target, copy_if_shared=True)
     try:
         await save_upload(file, dest, validator=validate_raster_image_file,
-                          publisher=lambda staged, target: publish_media(session, staged, target))
+                          publisher=publish)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     logger.info("Icon replaced in place")
-    return existing_path
+    return result_path
 
 
 # İlerleme durumu: {token: {"percent": int, "done": bool, "error": str|None, "path": str|None}}
@@ -401,7 +411,7 @@ async def _fetch_icon_from_url(url: str, token: str, uploaded_by: str, actor_inf
             session.info["audit_actor"] = uploaded_by
             session.info["actor_id"] = _icon_fetch_progress[token].get("owner_id")
             session.info.update(actor_info or {})
-            await publish_media(session, staged, dest)
+            final_path = await publish_media(session, staged, dest, reuse_identical=True)
         _icon_fetch_progress[token].update(
             {"percent": 100, "done": True, "phase": "done", "path": final_path}
         )
@@ -857,15 +867,11 @@ async def upload_icon_auto_crop(
     size: int = Form(256),
     in_place: bool = Form(False),
 ):
-    """Mevcut bir ikon görselini otomatik olarak ortadan kare kırpıp yeniden boyutlandırır.
-
-    `in_place=True`: sonucu KAYNAKLA AYNI dosya yoluna yazar (link asla değişmez).
-    `in_place=False` (varsayılan): yeni, benzersiz adlı bir dosya oluşturur.
-    """
+    """Crop a stored icon in a worker, optionally preserving its public URL."""
     await require_owned_media(session, path, mutation=in_place)
-    filename = Path(unquote(path or "")).name
-    src = settings.upload_path / "icons" / filename
-    if not filename or not src.exists():
+    src = media_path(path)
+    icon_root = (settings.upload_path / "icons").resolve()
+    if src is None or src.parent != icon_root or src.name.startswith(".") or not src.is_file():
         raise HTTPException(status_code=404, detail="Kaynak görsel bulunamadı.")
 
     if in_place:
@@ -878,7 +884,7 @@ async def upload_icon_auto_crop(
     staged = Path(name)
     try:
         try:
-            make_square_icon(src, staged, size=max(32, min(int(size), 1024)))
+            await run_in_threadpool(make_square_icon, src, staged, size=max(32, min(int(size), 1024)))
         except Exception as exc:
             logger.error("Automatic icon cropping failed: error_type=%s", type(exc).__name__)
             raise HTTPException(status_code=422, detail="Görsel işlenemedi.") from exc

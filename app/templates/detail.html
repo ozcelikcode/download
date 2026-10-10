@@ -309,7 +309,7 @@
 
     <div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800">
       <dt class="text-slate-400 dark:text-slate-500 shrink-0">{{ t(request, 'type') }}</dt>
-      <dd class="detail-fact-value {{ 'fact-external' if download.file_type.value == 'external' else 'fact-local' }}">
+      <dd class="detail-fact-value text-slate-700 dark:text-slate-300 {{ 'fact-local' if download.file_type.value == 'local' else '' }}">
         {% if download.file_type.value == 'external' %}
         <i data-lucide="external-link" class="w-3.5 h-3.5" aria-hidden="true"></i>
         {{ t(request, 'external_link') }}

@@ -111,7 +111,8 @@
 <form id="application-form" method="post"
   action="{% if edit_mode %}/panel/downloads/{{ download.id }}/edit{% else %}/panel/downloads/new{% endif %}"
   enctype="multipart/form-data"
-  data-autosave="{{ 'true' if not edit_mode or download.is_draft else 'false' }}">
+  data-autosave="{{ 'true' if not request.state.editor_submissions_locked and (not edit_mode or download.is_draft) else 'false' }}">
+  <fieldset class="contents" {% if request.state.editor_submissions_locked %}disabled{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
   <input type="hidden" id="draft-id" name="draft_id" value="{{ download.id if download and download.is_draft else '' }}">
   <input type="hidden" id="draft-token" name="draft_token" value="{{ draft_token }}">
@@ -289,7 +290,7 @@
         {% if request.state.admin_role == 'editor' %}<p class="form-hint mt-2">{{ t(request, 'editor_description_help') }}</p>{% endif %}
       </div>
 
-      <section id="gallery-editor" class="sm:col-span-2" data-limit="{{ gallery_image_limit }}" data-remove="{{ t(request, 'gallery_remove') }}" data-error="{{ t(request, 'gallery_upload_failed') }}" data-limit-message="{{ t(request, 'gallery_limit_exceeded') }}" data-add="{{ t(request, 'gallery_add') }}" data-image="{{ t(request, 'gallery') }}" data-uploading="{{ t(request, 'uploading') }}" aria-labelledby="gallery-editor-title">
+      <section id="gallery-editor" class="sm:col-span-2" data-limit="{{ gallery_image_limit }}" data-remove="{{ t(request, 'gallery_remove') }}" data-error="{{ t(request, 'gallery_upload_failed') }}" data-limit-message="{{ t(request, 'gallery_limit_exceeded') }}" data-add="{{ t(request, 'gallery_add') }}" data-image="{{ t(request, 'gallery') }}" data-uploading="{{ t(request, 'uploading') }}" data-processing="{{ t(request, 'gallery_processing') }}" data-complete="{{ t(request, 'gallery_upload_complete') }}" aria-labelledby="gallery-editor-title">
         <h2 id="gallery-editor-title" class="form-label">{{ t(request, 'gallery') }}</h2>
         <p class="form-hint mb-2">{{ t(request, 'gallery_upload_help') }} · {{ t(request, 'gallery_limit') }}: {{ gallery_image_limit }}</p>
         <input id="gallery-files" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" hidden aria-label="{{ t(request, 'gallery_add') }}">
@@ -300,6 +301,7 @@
         </div>
         <button id="gallery-more" type="button" class="btn-secondary mt-2" hidden>{{ t(request, 'gallery_more') }}</button>
         <p id="gallery-status" role="status" aria-live="polite" class="form-hint mt-2"></p>
+        <progress id="gallery-progress" class="gallery-upload-progress mt-2" max="100" value="0" hidden aria-label="{{ t(request, 'uploading') }}"></progress>
       </section>
 
     </div>
@@ -538,11 +540,10 @@
 
   {# ── İşletim Sistemi Uyumu ────────────────────────── #}
   {% set current_os = download.os_compatibility.split(',') if download and download.os_compatibility else [] %}
-  <details class="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors" {% if current_os %}open{% endif %}>
-    <summary class="flex list-none [&::-webkit-details-marker]:hidden cursor-pointer items-center justify-between gap-3 text-sm font-semibold text-slate-700 dark:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm">
+  <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5">
+    <h2 class="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
       <span class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></i>{{ t(request, 'os_compatibility') }}</span>
-      <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform group-open:rotate-180"></i>
-    </summary>
+    </h2>
     <p class="text-xs text-slate-400 dark:text-slate-500 mt-2 mb-3">{{ t(request, 'multiple_allowed') }}</p>
     <div class="flex flex-wrap gap-3">
       {% for os_val, os_label, os_icon in [
@@ -563,7 +564,7 @@
       </label>
       {% endfor %}
     </div>
-  </details>
+  </section>
 
   {# ── Ayarlar ─────────────────────────────────────── #}
   <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm p-5 transition-colors">
@@ -646,6 +647,7 @@
   </div>
   {# ══════════════════════════ /GRID ══════════════════════════ #}
 
+  </fieldset>
 </form>
 
 {% endblock %}

@@ -109,16 +109,27 @@ async def require_owned_media(session: AsyncSession, value: str | None, *, mutat
         from app.crud import get_site_settings
         policy = await get_site_settings(session)
         await session.refresh(policy)
-        if not verified and policy.editor_publication_policy != 'everyone':
+        if policy.editor_publication_policy == 'none' or (not verified and policy.editor_publication_policy != 'everyone'):
             live_ids = set(await session.scalars(select(Download.id).where(Download.is_active.is_(True), Download.is_draft.is_(False), Download.deleted_at.is_(None))))
             if any(row["id"] in live_ids for row in usage.get(path, [])):
                 raise HTTPException(409)
 
 
-async def validate_download_references(session: AsyncSession, data: object) -> None:
+async def validate_download_references(session: AsyncSession, data: object, *, current_id: int | None = None) -> None:
     from app.gallery import gallery_paths
     from app.crud import get_site_settings
     import json
+
+    parent_id = getattr(data, 'parent_id', None)
+    if parent_id is not None:
+        parent = await session.scalar(select(Download).where(Download.id == parent_id, Download.deleted_at.is_(None)))
+        if parent is None:
+            raise HTTPException(404)
+        # A version family has one root and direct children, never cycles or nested roots.
+        if parent.id == current_id or parent.parent_id is not None:
+            raise ValueError('Invalid version relationship')
+        if current_id is not None and await session.scalar(select(Download.id).where(Download.parent_id == current_id).limit(1)) is not None:
+            raise ValueError('Invalid version relationship')
 
     paths = getattr(data, 'gallery_paths', None)
     if paths is not None:

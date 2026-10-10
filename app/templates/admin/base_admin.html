@@ -177,6 +177,7 @@
 
   {# ── Ana İçerik ──────────────────────────────────── #}
   <main id="main-content" tabindex="-1" class="flex-1 min-w-0 p-6">
+    {% if request.state.editor_submissions_locked %}<p class="rounded-sm border border-slate-200 dark:border-slate-800 p-3 mb-5" role="status">{{ t(request, 'publication_locked') }}</p>{% endif %}
     <details class="admin-mobile-menu sm:hidden mb-5 border border-slate-200 dark:border-slate-800 rounded-sm bg-white dark:bg-slate-900">
       <summary data-panel-group class="admin-nav-summary"><i data-lucide="menu" class="w-4 h-4"></i><span class="flex-1">{{ t(request, 'menu') }}</span><i data-lucide="chevron-down" class="admin-nav-chevron w-4 h-4"></i></summary>
       <nav class="px-2 py-2 border-t border-slate-100 dark:border-slate-800" aria-label="{{ t(request, 'menu') }}">

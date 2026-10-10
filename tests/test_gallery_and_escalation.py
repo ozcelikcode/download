@@ -57,6 +57,48 @@ async def test_gallery_limit_admin_only(admin_client, client, db_session, limit)
     assert (await admin_client.post('/panel/settings/gallery', data={'limit': 4})).status_code == 422
 
 
+async def test_gallery_deduplicates_bytes_not_names(client, db_session):
+    await editor(client, db_session)
+    first = await client.post('/panel/upload/gallery-image', files={'file': ('one.png', png(), 'image/png')})
+    db_session.add(Download(title='Published image', slug='published-image', gallery_images=json.dumps([first.json()['path']]), owner_id=(await db_session.scalar(select(User.id).where(User.username == 'gallery-editor')))))
+    await db_session.commit()
+    same = await client.post('/panel/upload/gallery-image', files={'file': ('different-name.png', png(), 'image/png')})
+    assert first.json()['path'] == same.json()['path']
+    buffer = io.BytesIO()
+    Image.new('RGB', (1200, 800), 'red').save(buffer, 'PNG')
+    different = await client.post('/panel/upload/gallery-image', files={'file': ('one.png', buffer.getvalue(), 'image/png')})
+    assert different.json()['path'] != first.json()['path']
+    assert await db_session.scalar(select(func.count()).select_from(MediaAsset)) == 2
+
+
+async def test_gallery_dedup_does_not_disclose_another_editors_assets(client, db_session):
+    first_actor = await editor(client, db_session)
+    first = await client.post('/panel/upload/gallery-image', files={'file': ('same.png', png(), 'image/png')})
+    other = User(username='another-editor', password_hash=first_actor.password_hash, role='editor')
+    db_session.add(other)
+    await db_session.commit()
+    client.cookies.set(SESSION_COOKIE, create_admin_session_token(other.username, other.password_hash, user_id=other.id), domain='test.local', path='/')
+    second = await client.post('/panel/upload/gallery-image', files={'file': ('same.png', png(), 'image/png')})
+    assert second.status_code == 200 and first.json()['path'] != second.json()['path']
+
+
+async def test_shared_icon_edits_copy_instead_of_changing_other_publications(admin_client, db_session):
+    first = await admin_client.post('/panel/upload/icon-image', files={'file': ('one.png', png(), 'image/png')})
+    same = await admin_client.post('/panel/upload/icon-image', files={'file': ('renamed.png', png(), 'image/png')})
+    assert first.json()['path'] == same.json()['path']
+    path = first.json()['path']
+    original = settings.upload_path / path.removeprefix('/static/uploads/')
+    original_bytes = original.read_bytes()
+    for index in range(2):
+        db_session.add(Download(title=f'Shared illustration {index}', slug=f'shared-illustration-{index}', icon_image_path=path))
+    await db_session.commit()
+    buffer = io.BytesIO()
+    Image.new('RGB', (100, 100), 'red').save(buffer, 'PNG')
+    replaced = await admin_client.post('/panel/upload/icon-image', files={'file': ('one.png', buffer.getvalue(), 'image/png')}, data={'replace_path': path})
+    assert replaced.status_code == 200 and replaced.json()['path'] != path
+    assert original.read_bytes() == original_bytes
+
+
 async def test_gallery_form_public_tabs_and_media_usage(admin_client, db_session):
     from app.media import media_usage
     response = await admin_client.post('/panel/upload/gallery-image', files={'file': ('screen.png', png(), 'image/png')})

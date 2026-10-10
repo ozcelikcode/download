@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import tempfile
 from pathlib import Path
 from urllib.parse import quote
+from uuid import uuid4
 
 import anyio
 from fastapi import HTTPException
@@ -65,7 +67,12 @@ def _web_path(destination: Path) -> str:
     return "/static/uploads/" + destination.relative_to(settings.upload_path.resolve()).as_posix()
 
 
-async def publish_media(session: AsyncSession, staged: Path, destination: Path) -> None:
+def _digest_file(path: Path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+async def publish_media(session: AsyncSession, staged: Path, destination: Path, *, reuse_identical: bool = False, copy_if_shared: bool = False) -> str:
     """Check fresh permissions and quota before replacing any public/private file.
 
     SQLite's write lock covers the quota check, media ownership, promotion, and
@@ -74,6 +81,9 @@ async def publish_media(session: AsyncSession, staged: Path, destination: Path) 
     """
     if session.new or session.dirty or session.deleted:
         raise RuntimeError("Media publication requires a clean transaction")
+    # Prepared staging files are private; hash them before acquiring the write lock.
+    incoming_digest = await anyio.to_thread.run_sync(_digest_file, staged) if reuse_identical else None
+    incoming_size = staged.stat().st_size
     await session.commit()  # End the read snapshot without expiring route objects.
     await session.execute(text("BEGIN IMMEDIATE"))
     backup: Path | None = None
@@ -90,11 +100,37 @@ async def publish_media(session: AsyncSession, staged: Path, destination: Path) 
                 or session.info.get("staff_role") != actor.role):
             raise HTTPException(403, "Forbidden")
         session.info["verified_editor"] = actor.is_verified
+        if reuse_identical:
+            candidates = list(await session.scalars(select(MediaAsset)))
+            for candidate in candidates:
+                existing = media_path(candidate.path)
+                # Reuse only authorized assets in the same image storage class.
+                if existing is None or existing.parent != destination.parent or not existing.is_file():
+                    continue
+                stat = existing.stat()
+                if stat.st_size != incoming_size:
+                    continue
+                existing_digest = candidate.sha256 if candidate.sha256 and (candidate.checksum_size, candidate.checksum_mtime_ns) == (stat.st_size, stat.st_mtime_ns) else await anyio.to_thread.run_sync(_digest_file, existing)
+                # Cache nonmatches too, so legacy files are not rehashed on every upload.
+                candidate.sha256 = existing_digest
+                candidate.checksum_size = stat.st_size
+                candidate.checksum_mtime_ns = stat.st_mtime_ns
+                if existing_digest == incoming_digest:
+                    await session.commit()
+                    committed = True
+                    return candidate.path
         assets = list(await session.scalars(select(MediaAsset).execution_options(include_all_owners=True))) if destination.exists() else []
         matching = [asset for asset in assets if media_path(asset.path) == destination]
         if destination.exists():
             from app.ownership import require_owned_media
             await require_owned_media(session, _web_path(destination), mutation=True)
+            if copy_if_shared:
+                from app.media import media_usage
+                usage = await media_usage(session, all_owners=True)
+                if len(usage.get(destination, [])) > 1:
+                    # A form edit must not alter another publication sharing this image.
+                    destination = destination.with_name(uuid4().hex[:12] + destination.suffix)
+                    matching = []
         owner_ids = {asset.owner_id for asset in matching if asset.owner_id is not None} if matching else {actor.id}
         old_size = destination.stat().st_size if destination.is_file() else 0
         new_size = staged.stat().st_size
@@ -108,7 +144,11 @@ async def publish_media(session: AsyncSession, staged: Path, destination: Path) 
             if limit is not None and used + new_size - credited_size > limit and new_size > credited_size:
                 raise HTTPException(413, QUOTA_EXCEEDED)
         if not matching:
-            session.add(MediaAsset(path=_web_path(destination), uploaded_by=actor.username))
+            stat = staged.stat()
+            session.add(MediaAsset(path=_web_path(destination), uploaded_by=actor.username,
+                                   sha256=incoming_digest if reuse_identical else None,
+                                   checksum_size=stat.st_size if reuse_identical else None,
+                                   checksum_mtime_ns=stat.st_mtime_ns if reuse_identical else None))
         else:
             for asset in matching:
                 asset.sha256 = None
@@ -129,6 +169,7 @@ async def publish_media(session: AsyncSession, staged: Path, destination: Path) 
         promoted = True
         await session.commit()
         committed = True
+        return _web_path(destination)
     except BaseException:
         try:
             await session.rollback()

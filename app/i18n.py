@@ -48,7 +48,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "cancel": "Vazgeç", "yes_delete": "Evet, Sil", "old_version": "uygulamasının eski bir sürümüdür.",
         "latest_version": "En güncel sürüme geç →", "downloaded_times": "kez indirildi", "open_link": "Bağlantıya Git",
         "download_now": "Şimdi İndir", "source": "Kaynak", "file_size": "Dosya boyutu", "official_site": "Resmî Site",
-        "third_party": "Üçüncü taraf sitesi", "safe_download": "Güvenli indirme", "file_info": "Dosya Bilgileri",
+        "third_party": "Üçüncü taraf site", "safe_download": "Güvenli indirme", "file_info": "Dosya Bilgileri",
         "version": "Sürüm", "type": "Tür", "external_link": "Dış Bağlantı", "local_file": "Yerel dosya",
         "checksum_help": "İndirdiğiniz dosyanın özetini bu değerle karşılaştırarak bütünlüğünü doğrulayabilirsiniz.",
         "source_type": "Kaynak Türü", "added": "Eklendi", "updated": "Güncellendi", "version_history": "Sürüm Geçmişi",
@@ -784,6 +784,8 @@ _SYSTEM_MESSAGE_KEYS['Image processing failed'] = 'compression_failed'
 _SYSTEM_MESSAGE_KEYS['Editor descriptions require at least 200 visible characters'] = 'editor_description_minimum'
 _SYSTEM_MESSAGE_KEYS['Gallery image limit exceeded'] = 'gallery_limit_exceeded'
 _SYSTEM_MESSAGE_KEYS['Invalid gallery images'] = 'gallery_invalid'
+_SYSTEM_MESSAGE_KEYS['Invalid version relationship'] = 'version_relationship_invalid'
+_SYSTEM_MESSAGE_KEYS['Editor submissions are disabled'] = 'publication_locked'
 _SYSTEM_MESSAGE_KEYS['Gallery image limit'] = 'gallery_limit'
 _SYSTEM_MESSAGE_KEYS['Publisher report threshold reached'] = 'publisher_report_alert'
 

@@ -76,6 +76,8 @@ async def _lock_editor_write(session: AsyncSession) -> None:
     session.info["verified_editor"] = actor.is_verified
     policy = await get_site_settings(session)
     await session.refresh(policy)
+    if policy.editor_publication_policy == 'none':
+        raise HTTPException(403, 'Editor submissions are disabled')
     session.info["editor_direct_publication"] = policy.editor_publication_policy == 'everyone' or actor.is_verified
 
 
@@ -1078,6 +1080,7 @@ async def get_download_draft_by_token(
 async def create_download_draft(
     session: AsyncSession, draft_token: str, title: str
 ) -> Download:
+    await _lock_editor_write(session)
     clean_title = title.strip()[:200] or "İsimsiz taslak"
     base_slug = _make_slug(clean_title) or "isimsiz-taslak"
     statement = sqlite_insert(Download).values(
@@ -1111,7 +1114,7 @@ async def update_download(
             from fastapi import HTTPException
             raise HTTPException(404)
     from app.ownership import validate_download_references
-    await validate_download_references(session, data)
+    await validate_download_references(session, data, current_id=download_id)
     update_data = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
 
     gallery = update_data.pop("gallery_paths", None)

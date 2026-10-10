@@ -8,6 +8,7 @@ gerçek app/static/uploads dizinine asla dokunmaz.
 from __future__ import annotations
 
 import io
+import threading
 
 import httpx
 import pytest
@@ -208,6 +209,51 @@ async def test_icon_auto_crop_missing_source_returns_404(admin_client: AsyncClie
         data={"path": "/static/uploads/icons/olmayan-dosya.png", "size": "256"},
     )
     assert response.status_code == 404
+
+
+async def test_icon_auto_crop_runs_in_worker(admin_client, monkeypatch):
+    from app.routers import admin
+
+    uploaded = await admin_client.post(
+        "/panel/upload/icon-image", files={"file": ("icon.png", _make_png_bytes(40, 30), "image/png")},
+    )
+    event_loop_thread = threading.get_ident()
+    original = admin.make_square_icon
+    threads = []
+
+    def observed(*args, **kwargs):
+        threads.append(threading.get_ident())
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(admin, "make_square_icon", observed)
+    response = await admin_client.post("/panel/upload/icon-auto-crop", data={"path": uploaded.json()["path"]})
+    assert response.status_code == 200
+    assert len(threads) == 1 and threads[0] != event_loop_thread
+
+
+async def test_icon_auto_crop_rejects_oversized_legacy_source(admin_client, monkeypatch):
+    from app import imaging
+
+    source = settings.upload_path / "icons" / "legacy.png"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(_make_png_bytes(40, 30))
+    monkeypatch.setattr(imaging, "MAX_IMAGE_PIXELS", 100)
+    response = await admin_client.post("/panel/upload/icon-auto-crop", data={"path": "/static/uploads/icons/legacy.png"})
+    assert response.status_code == 422
+    assert list(source.parent.iterdir()) == [source]
+
+
+async def test_icon_auto_crop_rejects_foreign_url_and_escaping_symlink(admin_client, tmp_path):
+    source = settings.upload_path / "icons" / "source.png"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(_make_png_bytes(40, 30))
+    outside = tmp_path / "private.png"
+    outside.write_bytes(_make_png_bytes(40, 30))
+    (source.parent / "linked.png").symlink_to(outside)
+    for path in ("https://untrusted.example/static/uploads/icons/source.png", "/static/uploads/icons/linked.png"):
+        response = await admin_client.post("/panel/upload/icon-auto-crop", data={"path": path})
+        assert response.status_code == 404
+    assert {path.name for path in source.parent.iterdir()} == {"source.png", "linked.png"}
 
 
 async def test_media_upload_file_generic_and_unique_name(admin_client: AsyncClient):

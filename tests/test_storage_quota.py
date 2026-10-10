@@ -72,6 +72,39 @@ def test_quota_validation_is_strict():
             validate_quota(value)
 
 
+async def test_identical_upload_caches_legacy_nonmatches_and_hashes_before_write_lock(db_session, monkeypatch):
+    from app import storage_quota
+
+    user = await _editor(db_session)
+    db_session.info.update(await _context(db_session, user))
+    directory = settings.upload_path / "icons"
+    directory.mkdir(parents=True)
+    legacy = directory / "legacy.png"
+    legacy.write_bytes(b"old bytes")
+    asset = MediaAsset(path="/static/uploads/icons/legacy.png", owner_id=user.id, uploaded_by=user.username)
+    db_session.add(asset)
+    await db_session.commit()
+    original = storage_quota._digest_file
+    calls = []
+
+    def observe(path):
+        calls.append(path.name)
+        if path.name.startswith(".upload-"):
+            assert not db_session.in_transaction()
+        return original(path)
+
+    monkeypatch.setattr(storage_quota, "_digest_file", observe)
+    for index, content in enumerate((b"new bytes", b"new bytes")):
+        staged = directory / f".upload-{index}.part"
+        staged.write_bytes(content)
+        await publish_media(db_session, staged, directory / f"new-{index}.png", reuse_identical=True)
+        staged.unlink(missing_ok=True)
+    assert calls == [".upload-0.part", "legacy.png", ".upload-1.part"]
+    await db_session.refresh(asset)
+    assert asset.sha256 == original(legacy)
+    assert not (directory / "new-1.png").exists()
+
+
 async def test_staging_files_are_not_served_or_listed(client, admin_client):
     public = settings.upload_path / "icons" / ".upload-secret.part"
     public.parent.mkdir(parents=True, exist_ok=True)

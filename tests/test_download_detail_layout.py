@@ -61,11 +61,12 @@ async def test_detail_metadata_order_and_local_platform_logos(client, admin_clie
     assert '<script>unsafe</script>' not in side
     assert '&lt;script&gt;unsafe&lt;/script&gt;' in side
     assert '<use ' not in side and '<image ' not in side
+    assert 'fact-external' not in side
 
 
 def test_detail_turkish_terminology():
     assert TRANSLATIONS['tr']['local_file'] == 'Yerel dosya'
-    assert TRANSLATIONS['tr']['third_party'] == 'Üçüncü taraf sitesi'
+    assert TRANSLATIONS['tr']['third_party'] == 'Üçüncü taraf site'
     assert TRANSLATIONS['tr']['detail_show_more'] == 'Devamını oku'
 
 

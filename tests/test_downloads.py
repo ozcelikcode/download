@@ -100,7 +100,7 @@ async def test_third_party_source_badge_on_detail_page(
         is_official_source=False,
     )
     page = await client.get(f"/download/{d.slug}")
-    assert "Üçüncü taraf sitesi" in page.text
+    assert "Üçüncü taraf site" in page.text
 
 
 async def test_detail_cta_says_baglantiya_git_for_external(

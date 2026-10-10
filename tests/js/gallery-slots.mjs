@@ -23,18 +23,27 @@ class Element {
   closest() { return form; }
 }
 const form = new Element();
-const ids = Object.fromEntries(['gallery-editor', 'gallery-images-input', 'gallery-files', 'gallery-previews', 'gallery-dropzone', 'gallery-more', 'gallery-status'].map(id => [id, new Element()]));
+const ids = Object.fromEntries(['gallery-editor', 'gallery-images-input', 'gallery-files', 'gallery-previews', 'gallery-dropzone', 'gallery-more', 'gallery-status', 'gallery-progress'].map(id => [id, new Element()]));
 const root = ids['gallery-editor'];
-root.dataset = {limit:'25', add:'Add photo', image:'Gallery', remove:'Remove', error:'Failed', limitMessage:'Too many', uploading:'Uploading'};
+root.dataset = {limit:'25', add:'Add photo', image:'Gallery', remove:'Remove', error:'Failed', limitMessage:'Too many', uploading:'Uploading', processing:'Processing', complete:'Ready'};
 ids['gallery-images-input'].value = '[]';
 globalThis.document = {getElementById:id => ids[id], createElement:() => new Element(), querySelector:() => ({content:'csrf'})};
 globalThis.window = {};
 const uploaded = [];
 let rejectAt = -1;
-globalThis.fetch = async (_url, options) => {
-  uploaded.push(options.body.get('file').name);
-  const okay = uploaded.length !== rejectAt;
-  return {ok:okay, headers:{get:() => 'application/json'}, json:async () => ({path:`/static/uploads/gallery/${uploaded.length.toString(16).padStart(32,'0')}.webp`})};
+globalThis.XMLHttpRequest = class {
+  constructor() { this.events = {}; this.upload = {addEventListener: (_name, callback) => { this.progress = callback; }}; }
+  open() {}
+  setRequestHeader() {}
+  addEventListener(name, callback) { this.events[name] = callback; }
+  getResponseHeader() { return 'application/json'; }
+  send(body) {
+    uploaded.push(body.get('file').name);
+    this.progress({lengthComputable:true, loaded:50, total:100});
+    this.status = uploaded.length !== rejectAt ? 200 : 400;
+    this.responseText = JSON.stringify({path:`/static/uploads/gallery/${uploaded.length.toString(16).padStart(32,'0')}.webp`});
+    queueMicrotask(() => this.events.load());
+  }
 };
 await import('../../app/static/js/gallery-editor.js');
 assert.equal(ids['gallery-previews'].children.length, 10);
@@ -47,12 +56,15 @@ drop.events.dragleave(); assert.ok(!drop.classes.has('is-dragging'));
 const files = ['media-10.png', 'media-2.png', 'media-1.png'].map(name => new File(['test'], name, {type:'image/png'}));
 drop.events.drop(event(files));
 assert.equal(root['aria-busy'], 'true');
+assert.ok(ids['gallery-progress'].value > 0 && ids['gallery-progress'].value < 100);
 let blocked = false;
 form.events.submit({preventDefault(){blocked=true;}, stopImmediatePropagation(){}}); assert.ok(blocked);
 await new Promise(resolve => setImmediate(resolve));
 assert.deepEqual(uploaded, ['media-1.png', 'media-2.png', 'media-10.png']);
 assert.equal(JSON.parse(ids['gallery-images-input'].value).length, 3);
 assert.equal(root['aria-busy'], undefined);
+assert.equal(ids['gallery-progress'].value, 100);
+assert.equal(ids['gallery-status'].textContent, 'Ready · 100%');
 drop.events.drop(event(Array(23).fill(files[0])));
 assert.equal(ids['gallery-status'].textContent, 'Too many'); assert.equal(uploaded.length, 3);
 rejectAt = 5;

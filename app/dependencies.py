@@ -123,17 +123,22 @@ async def require_admin(
         )
     if not role_allows(user.role, request.url.path, request.method):
         raise HTTPException(status_code=403, detail=translate(request, "permission_denied"))
+    if (user.role == 'editor' and account.editor_publication_policy == 'none'
+            and request.url.path.startswith('/panel/downloads')
+            and request.method not in {'GET', 'HEAD'}):
+        raise HTTPException(403, detail=translate(request, 'publication_locked'))
     session.info["audit_actor"] = user.username
     request.state.admin_user = user.username
     request.state.admin_role = user.role
     request.state.admin_id = user.id
     request.state.profile_icon = user.profile_icon
     request.state.editor_verified = user.role == "editor" and user.is_verified
+    request.state.editor_submissions_locked = user.role == 'editor' and account.editor_publication_policy == 'none'
     from app import ownership  # Register the ORM ownership boundary before route queries.
     session.info["actor_id"] = user.id
     session.info["staff_role"] = user.role
     session.info["verified_editor"] = user.is_verified
-    session.info["editor_direct_publication"] = account.editor_publication_policy == 'everyone' or user.is_verified
+    session.info["editor_direct_publication"] = account.editor_publication_policy == 'everyone' or (account.editor_publication_policy == 'verified_only' and user.is_verified)
     session.info["authenticated_credential"] = credential_stamp(user.username, user.password_hash)
     session.info["authenticated_generation"] = account.session_generation
     if user.role == "editor":

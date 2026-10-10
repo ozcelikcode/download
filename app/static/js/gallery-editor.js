@@ -1,5 +1,6 @@
 /* Ordered, bounded drop uploads; existing assets retain their saved order. */
 import {initialGallerySlots, nextGallerySlots, sortGalleryFiles} from './gallery-policy.mjs';
+import {uploadGalleryFile} from './gallery-upload.mjs';
 
 const root = document.getElementById('gallery-editor');
 if (root) {
@@ -9,6 +10,7 @@ if (root) {
   const dropzone = document.getElementById('gallery-dropzone');
   const more = document.getElementById('gallery-more');
   const status = document.getElementById('gallery-status');
+  const progress = document.getElementById('gallery-progress');
   const form = root.closest('form');
   const limit = Number(root.dataset.limit);
   const paths = JSON.parse(input.value || '[]');
@@ -67,18 +69,25 @@ if (root) {
     const buttons = [...form.querySelectorAll('button[type="submit"], #application-publish-button, #application-preview-button')];
     const prior = buttons.map(button => button.disabled);
     buttons.forEach(button => { button.disabled = true; });
+    const totalBytes = selected.reduce((sum, file) => sum + Math.max(1, file.size), 0);
+    let completedBytes = 0;
+    if (progress) { progress.hidden = false; progress.value = 0; progress.setAttribute('aria-label', root.dataset.uploading); }
     try {
       for (const [index, file] of selected.entries()) {
         status.textContent = `${root.dataset.uploading} ${index + 1} / ${selected.length}`;
-        const body = new FormData(); body.append('file', file);
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const response = await fetch('/panel/upload/gallery-image', {method: 'POST', body, headers: {'X-CSRF-Token': csrf}, credentials: 'same-origin'});
-        if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Upload rejected');
-        const data = await response.json();
+        const data = await uploadGalleryFile(file, csrf, fraction => {
+          const percent = Math.min(99, Math.round(100 * (completedBytes + Math.max(1, file.size) * fraction) / totalBytes));
+          if (progress) progress.value = percent;
+          status.textContent = `${fraction === 1 ? root.dataset.processing : root.dataset.uploading} ${index + 1} / ${selected.length} · ${percent}%`;
+        });
         if (!/^\/static\/uploads\/gallery\/[a-f0-9]{32}\.webp$/.test(data.path)) throw new Error('Invalid image path');
-        paths.push(data.path); changed(); render();
+        if (!paths.includes(data.path)) paths.push(data.path);
+        completedBytes += Math.max(1, file.size);
+        changed(); render();
       }
-      status.textContent = '';
+      if (progress) { progress.value = 100; progress.setAttribute('aria-label', root.dataset.complete); }
+      status.textContent = `${root.dataset.complete} · 100%`;
     } catch (_error) { status.textContent = root.dataset.error; }
     finally {
       busy = false; files.disabled = false; root.removeAttribute('aria-busy');

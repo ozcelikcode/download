@@ -321,7 +321,7 @@ def validate_archive(stage: Path) -> tuple[dict, dict]:
                 validate_quota(data["site_settings"][0]["editor_media_quota_mb"])
                 validate_quota(data["site_settings"][0]["manager_media_quota_mb"])
                 compression = data["site_settings"][0]
-                if compression['editor_publication_policy'] not in {'everyone', 'verified_only'}:
+                if compression['editor_publication_policy'] not in {'everyone', 'verified_only', 'none'}:
                     raise BackupError('backup_invalid')
                 if type(compression['gallery_image_limit']) is not int or compression['gallery_image_limit'] not in GALLERY_LIMITS:
                     raise ValueError('Invalid gallery limit')

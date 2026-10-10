@@ -83,3 +83,20 @@ async def test_editor_cannot_feature_or_unfeature(client, db_session):
     assert response.status_code == 403
     page = await client.get(f'/panel/downloads/{item.id}/edit')
     assert 'name="is_featured"' not in page.text
+
+
+@pytest.mark.parametrize('verified', [False, True])
+async def test_nobody_locks_all_editor_submissions(client, admin_client, db_session, verified):
+    editor = await editor_login(client, db_session)
+    editor.is_verified = verified
+    await db_session.commit()
+    assert (await admin_client.post('/panel/users/publication-policy', data={'policy': 'none'})).status_code == 303
+    data = {'title': 'Blocked submission', 'file_type': 'external', 'external_url': 'https://example.com', 'description': 'Useful documentation. ' * 20, 'submission_intent': 'publish'}
+    assert (await client.post('/panel/downloads/new', data=data)).status_code == 403
+    assert await db_session.scalar(select(Download.id).where(Download.title == data['title'])) is None
+    assert (await admin_client.post('/panel/downloads/new', data=data)).status_code == 302
+    html = (await client.get('/panel/downloads/new')).text
+    assert 'Editör gönderimleri kapalı' in html and '<fieldset class="contents" disabled>' in html
+    editor.role = 'manager'
+    await db_session.commit()
+    assert (await client.post('/panel/downloads/new', data={**data, 'title': 'Manager submission'})).status_code == 302
