@@ -10,6 +10,17 @@ from app import crud
 from app.schemas import DownloadCreate
 
 
+async def test_unnamed_draft_stays_empty_and_cannot_publish(admin_client, db_session):
+    response = await admin_client.post('/panel/downloads/drafts/autosave', data={
+        'draft_token': 'blank-draft-token', 'title': '', 'external_url': 'https://example.com',
+    })
+    assert response.status_code == 200
+    draft = await crud.get_download_by_id(db_session, response.json()['draft_id'])
+    assert draft.title == '' and draft.is_draft
+    with pytest.raises(ValueError):
+        await crud.bulk_update_downloads(db_session, [draft.id], 'publish')
+
+
 async def test_autosave_creates_and_updates_one_hidden_draft(
     admin_client: AsyncClient, client: AsyncClient, db_session: AsyncSession
 ) -> None:

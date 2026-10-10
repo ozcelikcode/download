@@ -71,6 +71,8 @@ async def db_session(tmp_path, monkeypatch) -> AsyncIterator[AsyncSession]:
     def _enable_foreign_keys(dbapi_connection, _connection_record) -> None:
         # Test DB'si de uygulamadaki SQLite yabancı anahtar davranışını kullanır.
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
+        from app.search_matching import register_search_function
+        register_search_function(dbapi_connection)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

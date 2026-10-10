@@ -7,7 +7,7 @@
 <section class="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-sm divide-y divide-slate-200 dark:divide-slate-800">
 {% for event, download, reason in items %}
   <article class="p-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-    <div class="min-w-0"><p class="text-sm font-medium break-words">{% if download %}<a href="/panel/downloads/{{ download.id }}/edit">{{ download.title }}</a>{% else %}#{{ event.entity_id }}{% endif %}</p><p class="text-sm text-slate-500 mt-1">{{ t(request, reason) }}</p></div>
+    <div class="min-w-0 flex-1"><p class="text-sm font-medium break-words">{% if download %}<a href="/panel/downloads/{{ download.id }}/edit">{{ download.title }}</a>{% else %}#{{ event.entity_id }}{% endif %}</p><p class="text-sm text-slate-500 mt-1">{{ t(request, reason) }}</p>{% if reason == 'editor_note_text' %}<p class="text-sm mt-2 whitespace-pre-wrap break-words">{{ editor_notes.get(event.id, '') }}</p>{% endif %}</div>
     <time class="text-xs text-slate-500">{{ event.created_at | format_date('%d.%m.%Y %H:%M') }}</time>
   </article>
 {% else %}<div class="report-empty"><i data-lucide="inbox" class="w-5 h-5 shrink-0" aria-hidden="true"></i><p>{{ t(request, 'visitor_reports_empty') }}</p></div>{% endfor %}

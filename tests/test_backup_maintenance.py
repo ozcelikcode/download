@@ -21,7 +21,7 @@ from app import backups, crud
 from app.backup_restore import restore_site
 from app.config import settings
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, hash_admin_password
-from app.models import BackupPolicy, Category, Download, Page, SiteSettings, User
+from app.models import BackupPolicy, Category, Download, Page, User
 from app.trash_retention import RETENTION_DAYS, purge_expired_trash
 
 PASSWORD = "a unique maintenance test password"

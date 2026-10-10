@@ -126,7 +126,7 @@ async def test_duplicates_show_unavailable_without_replacing_password(client, db
 async def test_staff_approval_creates_only_unverified_editor(client, db_session, role):
     assert (await submit(client)).status_code == 303
     row = await db_session.scalar(select(RegistrationRequest))
-    reviewer = await staff(client, db_session, role)
+    await staff(client, db_session, role)
     html = (await client.get("/panel/registrations")).text
     assert "applicant" in html and row.password_hash not in html
     response = await client.post(f"/panel/registrations/{row.id}", data={"action": "approve", "role": "admin"})

@@ -783,9 +783,10 @@ async def get_downloads_paginated(
             Tag, DownloadTag.tag_id == Tag.id
         ).where(Tag.slug == tag_slug)
 
+    search_rank = None
     if search:
-        term = f"%{search}%"
-        stmt = stmt.where(Download.title.ilike(term))
+        search_rank = func.download_search_score(Download.title, search)
+        stmt = stmt.where(search_rank > 0)
 
     if status == "active":
         stmt = stmt.where(Download.is_active == True, Download.is_hidden.is_(False), Download.is_draft == False)  # noqa: E712
@@ -825,6 +826,8 @@ async def get_downloads_paginated(
 
     # Sayfalama
     offset = (page - 1) * page_size
+    if search_rank is not None:
+        stmt = stmt.order_by(search_rank.desc())
     if sort == "popular":
         stmt = stmt.order_by(Download.download_count.desc(), Download.created_at.desc())
     elif sort == "title":
@@ -1081,8 +1084,8 @@ async def create_download_draft(
     session: AsyncSession, draft_token: str, title: str
 ) -> Download:
     await _lock_editor_write(session)
-    clean_title = title.strip()[:200] or "İsimsiz taslak"
-    base_slug = _make_slug(clean_title) or "isimsiz-taslak"
+    clean_title = title.strip()[:200]
+    base_slug = _make_slug(clean_title) or "draft"
     statement = sqlite_insert(Download).values(
         owner_id=session.info.get("actor_id"),
         title=clean_title,
@@ -1128,6 +1131,8 @@ async def update_download(
         update_data.pop("is_featured", None)
 
     if update_data.get("is_draft") is False and download.is_draft:
+        if not str(update_data.get("title", download.title)).strip():
+            raise ValueError("A title is required to publish")
         if session.info.get("editor_owner_id") is not None:
             from app.editorial_text import MIN_EDITOR_DESCRIPTION, visible_text
             if len(visible_text(update_data.get("description", download.description))) < MIN_EDITOR_DESCRIPTION:
@@ -1275,7 +1280,7 @@ async def bulk_update_downloads(session: AsyncSession, download_ids: List[int], 
             for item in downloads
             if item.is_draft
             and (
-                item.title == "İsimsiz taslak"
+                not item.title.strip() or item.title == "İsimsiz taslak"
                 or (item.file_type == FileType.external and not item.external_url)
                 or (item.file_type == FileType.local and not item.file_path)
             )

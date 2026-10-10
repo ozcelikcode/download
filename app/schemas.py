@@ -368,7 +368,7 @@ class DownloadCreate(DownloadBase):
 
 class DownloadUpdate(BaseModel):
     gallery_paths: Optional[List[str]] = Field(None, max_length=25)
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    title: Optional[str] = Field(None, max_length=200)
     slug: Optional[str] = Field(None, max_length=220)
     description: Optional[str] = None
     short_description: Optional[str] = Field(None, max_length=300)
@@ -404,6 +404,8 @@ class DownloadUpdate(BaseModel):
         # yayınlanmış içerik oluşturulurken aynı sıkı doğrulama uygulanır.
         if self.is_draft is True:
             return self
+        if self.title is not None and not self.title.strip():
+            raise ValueError("A title is required to publish")
         for field, label in (("external_url", "Dış URL"), ("icon_image_url", "İkon URL")):
             try:
                 setattr(self, field, normalize_http_url(getattr(self, field)))

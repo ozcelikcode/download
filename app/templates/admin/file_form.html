@@ -1,13 +1,15 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}{% if edit_mode %}{{ t(request, 'edit') }}: {{ download.title }}{% else %}{{ t(request, 'new_file') }}{% endif %}{% endblock %}
+{% set form_title = '' if download and download.is_draft and download.title == 'İsimsiz taslak' else download.title if download else '' %}
+{% block title %}{% if edit_mode %}{{ t(request, 'edit') }}{% if form_title %}: {{ form_title }}{% endif %}{% else %}{{ t(request, 'new_file') }}{% endif %}{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/cropperjs/1.6.2/cropper.min.css">
 <script src="/static/vendor/cropperjs/1.6.2/cropper.min.js" defer></script>
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
-<script src="/static/js/rich_text.js" defer></script>
+<script src="/static/js/rich_text.js?v={{ css_asset_v }}" defer></script>
 <script src="/static/js/gallery-editor.js" type="module"></script>
+<script src="/static/js/inline-tags.js?v={{ css_asset_v }}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -88,7 +90,7 @@
       <span class="text-slate-700 dark:text-slate-300">{% if edit_mode %}{{ t(request, 'edit') }}{% else %}{{ t(request, 'new_file') }}{% endif %}</span>
     </div>
     <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">
-      {% if edit_mode %}{{ download.title }}{% else %}{{ t(request, 'add_download') }}{% endif %}
+      {% if edit_mode %}{{ form_title }}{% else %}{{ t(request, 'new_file') }}{% endif %}
     </h1>
     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
       {% if edit_mode and not download.is_draft %}{{ t(request, 'manual_save_help') }}{% else %}{{ t(request, 'publish_explicit') }}{% endif %}
@@ -136,7 +138,7 @@
       <div class="sm:col-span-2">
         <label for="f-title" class="form-label">{{ t(request, 'title') }} <span class="text-red-500">*</span></label>
         <input id="f-title" name="title" type="text" required
-          value="{{ download.title if download else '' }}"
+          value="{{ form_title }}"
           placeholder="{{ t(request, 'example') }}: Visual Studio Code"
           class="form-input">
       </div>
@@ -182,7 +184,11 @@
         </select>
       </div>
 
-      {# Uzantı ikonu detayları (Sadece 'Uzantı İkonu' seçildiğinde açılır) #}
+      <div id="section-icon-link" class="sm:col-span-2 hidden flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-sm">
+        <i data-lucide="external-link" class="w-6 h-6 shrink-0" aria-hidden="true"></i>
+        <p class="text-sm">{{ t(request, 'link_icon_help') }}</p>
+      </div>
+      {# Extension icon details #}
       <div id="section-icon-extension" class="sm:col-span-2 space-y-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-sm p-4 hidden">
         <label for="f-icon-extension" class="form-label text-xs">{{ t(request, 'file_extension') }}</label>
         <div class="flex items-center gap-2">
@@ -331,23 +337,23 @@
 
       {# Etiketler #}
       <div class="sm:col-span-2">
-        <label class="form-label">{{ t(request, 'tags') }}</label>
-        {% if tags %}
-        <div class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
-          {% for t in tags %}
+        <div class="flex items-center justify-between gap-2 mb-2"><span class="form-label !mb-0">{{ t(request, 'tags') }}</span><button type="button" id="tag-add-toggle" class="btn-secondary" aria-label="{{ t(request, 'add') }}" aria-expanded="false" aria-controls="tag-add-controls"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
+        <div id="tag-add-controls" class="hidden flex flex-wrap items-end gap-2 mb-3" data-error="{{ t(request, 'tag_invalid') }}" data-remove="{{ t(request, 'tag_remove') }}">
+          <div class="min-w-0 flex-1"><label for="inline-tag-name" class="form-label">{{ t(request, 'tag_name') }}</label><input id="inline-tag-name" type="text" maxlength="60" class="form-input" autocomplete="off"></div>
+          <button type="button" id="tag-add-save" class="btn-secondary">{{ t(request, 'add') }}</button>
+          <p id="tag-add-status" role="status" class="w-full text-sm"></p>
+        </div>
+        <div id="application-tags" class="flex flex-wrap gap-2 p-3 border border-slate-200 dark:border-slate-800 rounded-sm bg-slate-50 dark:bg-slate-800/50">
+          {% for tag in tags %}
           <label class="choice-card inline-flex items-center px-2.5 py-1.5 select-none">
-            <input type="checkbox" name="tag_ids" value="{{ t.id }}"
-              {% if download and t in download.tags %}checked{% endif %}
+            <input type="checkbox" name="tag_ids" value="{{ tag.id }}"
+              {% if download and tag in download.tags %}checked{% endif %}
               class="choice-input">
-            <span class="text-sm text-slate-700 dark:text-slate-300">#{{ t.name }}</span>
+            <span class="text-sm text-slate-700 dark:text-slate-300">#{{ tag.name }}</span>
+            <button type="button" class="tag-remove ml-2" aria-label="{{ t(request, 'tag_remove') }}"><i data-lucide="x" class="w-3.5 h-3.5" aria-hidden="true"></i></button>
           </label>
           {% endfor %}
         </div>
-        {% else %}
-        <p class="text-sm text-slate-400 dark:text-slate-500 p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-sm">
-          {{ t(request, 'no_tags_add') }} <a href="/panel/tags" class="text-blue-600 dark:text-blue-400 hover:underline">{{ t(request, 'add') }} →</a>
-        </p>
-        {% endif %}
       </div>
 
       {# Most entries are independent; keep version relationships available but quiet. #}
@@ -1053,6 +1059,7 @@
     if (!iconTypeSelect) return;
     if (iconImgSection) iconImgSection.classList.toggle('hidden', iconTypeSelect.value !== 'image');
     if (iconExtSection) iconExtSection.classList.toggle('hidden', iconTypeSelect.value !== 'extension');
+    document.getElementById('section-icon-link').classList.toggle('hidden', iconTypeSelect.value !== 'link');
   }
 
   if (iconTypeSelect) {

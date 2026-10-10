@@ -213,6 +213,7 @@ async def _sidebar_context(
         "footer_menu_items": footer_menu_items,
         "sidebar_block_order": sidebar_block_order,
         "is_admin": bool(admin_username),
+        "staff_role": staff.role if staff is not None else None,
         "admin_username": admin_username,
         "is_staff": bool(staff_username),
         "staff_username": staff_username,
@@ -325,7 +326,7 @@ async def category_view(
 @router.get("/search", name="search")
 async def search(
     request: Request,
-    q: str = Query("", alias="q"),
+    q: str = Query("", alias="q", max_length=200),
     page: PageNumber = 1,
     filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
@@ -479,6 +480,7 @@ async def build_download_detail_context(
     else:
         ctx["report_received"] = request.session.pop("download_report_received", None) == download.slug
     ctx["hide_sidebar"] = True
+    ctx['editor_note_sent'] = request.session.pop('editor_note_sent', None) == download.slug
     return ctx
 
 

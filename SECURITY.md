@@ -42,6 +42,8 @@ The supplied server commands use `app/logging.json` for English, plain-text UTC 
 
 SQLAlchemy also hides bound SQL parameters, including in debug query logging. HTTP pagination and record identities have explicit numeric bounds before SQLite binding, preventing oversized integers from producing internal server errors. These input checks do not replace rate limiting or deployment-level request budgets.
 
+Content-related staff notes are plain text, limited to 500 characters, escaped when rendered and retained under the existing activity-log policy. Only administrators/managers can send them, and the server resolves the active editor recipient from the content's current owner after fresh actor/session verification under the database write lock. Staff-to-staff notes are rejected. Notes are private from other editors, not from administrators/managers, and are not end-to-end encrypted. CSRF protection and an actor-keyed budget of five submissions per 15 minutes apply.
+
 Media-library deletion revalidates the acting account under the SQLite write lock and checks references across owners. Original bytes are moved to a private same-directory recovery file until metadata deletion commits; a transaction failure restores the original file. Hidden recovery/staging files and escaping symlinks are excluded from archive listings and public delivery. The public upload mount uses the configured upload directory, while profile-photo access protections remain separate.
 
 Stop the server with `Ctrl+C` in the terminal running `make dev`. Restart after changing `.env`.

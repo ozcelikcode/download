@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+from app.search_matching import register_search_function
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ def _set_sqlite_pragmas(dbapi_conn, _):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA secure_delete=ON")
     cursor.close()
+    register_search_function(dbapi_conn)
 
 # ---------------------------------------------------------------------------
 # Session factory

@@ -1388,7 +1388,7 @@ async def download_draft_autosave(
             icon_url = None
 
         data = DownloadUpdate(
-            title=str(form.get("title") or "").strip()[:200] or "İsimsiz taslak",
+            title=str(form.get("title") or "").strip()[:200],
             gallery_paths=_gallery_form_paths(form.get('gallery_images')),
             description=str(form.get("description") or "").strip() or None,
             short_description=str(form.get("short_description") or "").strip() or None,
@@ -1907,6 +1907,24 @@ async def tag_create(
             name=tag.name
         )
     return _redirect("/panel/tags")
+
+
+@router.post('/tags/inline', name='admin_tag_inline')
+async def tag_create_inline(request: Request, name: str = Form(..., min_length=1, max_length=60),
+                            session: AsyncSession = Depends(get_db), _admin: str = Depends(require_admin)):
+    """Create/select an owned tag without leaving the application form."""
+    from app.routers.users import _lock_actor
+    await _lock_actor(request, session, request.state.admin_role)
+    try:
+        data = TagCreate(name=name.strip().lstrip('#').strip())
+    except ValueError:
+        raise HTTPException(422, translate(request, 'tag_invalid')) from None
+    tag = await session.scalar(select(Tag).where(Tag.name == data.name, Tag.owner_id == request.state.admin_id))
+    if tag is None:
+        tag = await crud.create_tag(session, data)
+    else:
+        await session.commit()
+    return {'id': tag.id, 'name': tag.name}
 
 
 @router.post("/tags/{tag_id}/edit", name="admin_tag_edit")

@@ -1,4 +1,6 @@
 from string import Formatter
+from pathlib import Path
+import re
 
 import pytest
 from httpx import AsyncClient
@@ -11,6 +13,15 @@ from app.models import LinkCheck
 from app.i18n import LANGUAGE_CHOICES, TRANSLATIONS
 from app.locales.report_labels import LABELS as REPORT_LABELS
 from app.routers.reports import ACTION_LABELS_EN, ENTITY_LABELS_EN, FIELD_LABELS_EN, STATUSES_EN
+
+
+def test_literal_template_keys_have_translations_in_every_language():
+    templates = Path(__file__).resolve().parents[1] / 'app' / 'templates'
+    pattern = re.compile(r"\b(?:t|tf)\(request,\s*['\"]([^'\"]+)['\"]\s*(?:,|\))")
+    for template in templates.rglob('*.html'):
+        for key in pattern.findall(template.read_text()):
+            for language, catalog in TRANSLATIONS.items():
+                assert key in catalog, (template.name, language, key)
 
 
 def test_complete_translation_catalogs_and_report_labels():
@@ -157,7 +168,7 @@ async def test_english_admin_pages_render_from_the_shared_setting(
         "/panel": "Overview and site statistics",
         "/panel/site-health": "Technical checks",
         "/panel/downloads": "Search by title",
-        "/panel/downloads/new": "Add New Download",
+        "/panel/downloads/new": "New application",
         "/panel/categories": "New Category",
         "/panel/tags": "New Tag",
         "/panel/media": "All images and files uploaded",

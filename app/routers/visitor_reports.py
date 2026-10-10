@@ -36,7 +36,7 @@ async def report_download(
     download = await crud.get_download_by_slug(session, slug)
     if download is None:
         raise HTTPException(404)
-    if target == "publisher" and (download.publisher is None or not download.publisher.is_active or download.publisher.deleted_at is not None):
+    if target == "publisher" and (download.publisher is None or download.publisher.role != 'editor' or not download.publisher.is_active or download.publisher.deleted_at is not None):
         raise HTTPException(404)
     # Coalesce identical retained reports; no free text, IP address, or contact data is stored.
     label = "detail_report_" + reason

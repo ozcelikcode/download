@@ -115,7 +115,7 @@ async def test_gallery_form_public_tabs_and_media_usage(admin_client, db_session
 
 
 async def test_gallery_ownership_paths_and_limits(client, db_session):
-    user = await editor(client, db_session)
+    await editor(client, db_session)
     data = {'title': 'Rejected gallery', 'description': 'Useful application documentation. ' * 10, 'file_type': 'external', 'external_url': 'https://example.com', 'submission_intent': 'publish'}
     foreign = '/static/uploads/gallery/' + 'a' * 32 + '.webp'
     db_session.add(MediaAsset(path=foreign, owner_id=1))

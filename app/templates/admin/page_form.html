@@ -3,7 +3,7 @@
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/quill/2.0.3/quill.snow.css">
 <script src="/static/vendor/quill/2.0.3/quill.js" defer></script>
-<script src="/static/js/rich_text.js" defer></script>
+<script src="/static/js/rich_text.js?v={{ css_asset_v }}" defer></script>
 {% endblock %}
 {% block content %}
 {% from "admin/_page_heading.html" import render as page_heading %}

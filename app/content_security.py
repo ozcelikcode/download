@@ -22,6 +22,8 @@ _INLINE_CLASSES = {"ql-size-small", "ql-size-large", "ql-size-huge"}
 
 
 def _filter_attribute(tag: str, attribute: str, value: str) -> str | None:
+    if tag == 'li' and attribute == 'data-list':
+        return value if value in {'bullet', 'ordered'} else None
     if tag == "a" and attribute == "target":
         return "_blank" if value == "_blank" else None
     return value
@@ -33,6 +35,7 @@ _RICH_TEXT_CLEANER = nh3.Cleaner(
     attributes={
         "a": {"href", "target", "title"},
         "img": {"alt", "height", "src", "title", "width"},
+        "li": {"data-list"},
     },
     allowed_classes={
         "blockquote": _BLOCK_CLASSES,

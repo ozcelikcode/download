@@ -125,7 +125,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
     "tr": {
         "admin_title": "Admin Paneli", "go_to_site": "Siteye Git", "sign_out": "Çıkış",
         "menu": "Menü", "management": "Yönetim", "dashboard": "Genel Bakış",
-        "contents": "İçerikler", "new_file": "Yeni Dosya", "media_archive": "Medya Arşivi",
+        "contents": "İçerikler", "new_file": "Yeni uygulama", "media_archive": "Medya Arşivi",
         "link_report": "Bağlantı Raporu", "audit_history": "İşlem Geçmişi", "settings": "Ayarlar",
         "confirm_action": "İşlemi onayla", "continue": "Devam et", "notice": "Bilgi", "ok": "Tamam",
         "notifications": "Bildirimler", "dismiss_notification": "Bildirimi kapat",
@@ -251,7 +251,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "hidden_on_site": "Sitede gizli", "background": "Arka plan", "soft": "Yumuşak", "mesh": "Renk geçişi", "lines": "İnce çizgiler",
         "image": "Resim", "hero_background_image": "Hero arka plan resmi", "components": "Bileşenler", "eyebrow": "Üst etiket",
         "stats": "İstatistik", "stats_auto": "Sayılar içeriklerden otomatik hesaplanır.", "remove_component": "Bileşeni kaldır", "save_appearance": "Görünümü Kaydet",
-        "back": "Geri", "add_download": "Yeni İndirme Ekle", "basic_information": "Temel Bilgiler", "latest_link": "Güncel sürüm bağlantısı",
+        "back": "Geri", "add_download": "Yeni uygulama", "basic_information": "Temel Bilgiler", "latest_link": "Güncel sürüm bağlantısı",
         "latest_link_help": "Sürüm numarası yerine dış kaynağın her zaman güncel bağlantısı gösterilir.", "icon_type": "İkon Türü",
         "automatic": "Otomatik (Tahmin Et)", "web_link": "Web Bağlantısı", "extension_icon": "Uzantı İkonu", "choose_icon_help": "İndirme listesinde gösterilecek ikonu seçin.",
         "classification": "Sınıflandırma", "choose": "Seçiniz", "no_tags_add": "Henüz etiket yok.",
@@ -332,7 +332,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
         "admin_title": "Admin Panel", "go_to_site": "View Site", "sign_out": "Sign Out",
         "menu": "Menu", "management": "Management", "dashboard": "Dashboard",
-        "contents": "Content", "new_file": "New File", "categories": "Categories", "tags": "Tags",
+        "contents": "Content", "new_file": "New application", "categories": "Categories", "tags": "Tags",
         "media_archive": "Media Library", "link_report": "Link Report", "audit_history": "Activity Log", "settings": "Settings",
         "confirm_action": "Confirm action", "continue": "Continue", "notice": "Information", "ok": "OK",
         "notifications": "Notifications", "dismiss_notification": "Dismiss notification",
@@ -458,7 +458,7 @@ ADMIN_TRANSLATIONS: dict[str, dict[str, str]] = {
         "hidden_on_site": "Hidden on site", "background": "Background", "soft": "Soft", "mesh": "Gradient", "lines": "Fine lines",
         "image": "Image", "hero_background_image": "Hero background image", "components": "Components", "eyebrow": "Eyebrow",
         "stats": "Statistics", "stats_auto": "Numbers are calculated from content automatically.", "remove_component": "Remove component", "save_appearance": "Save Appearance",
-        "back": "Back", "add_download": "Add New Download", "basic_information": "Basic Information", "latest_link": "Latest version link",
+        "back": "Back", "add_download": "New application", "basic_information": "Basic Information", "latest_link": "Latest version link",
         "latest_link_help": "Shows the external source's always-current link instead of a version number.", "icon_type": "Icon Type",
         "automatic": "Automatic (Detect)", "web_link": "Web Link", "extension_icon": "Extension Icon", "choose_icon_help": "Choose the icon shown in download lists.",
         "classification": "Classification", "choose": "Choose", "no_tags_add": "No tags yet.",
@@ -788,6 +788,13 @@ _SYSTEM_MESSAGE_KEYS['Invalid version relationship'] = 'version_relationship_inv
 _SYSTEM_MESSAGE_KEYS['Editor submissions are disabled'] = 'publication_locked'
 _SYSTEM_MESSAGE_KEYS['Gallery image limit'] = 'gallery_limit'
 _SYSTEM_MESSAGE_KEYS['Publisher report threshold reached'] = 'publisher_report_alert'
+
+
+from app.locales.final_polish import STRINGS as FINAL_POLISH_STRINGS
+for language, strings in FINAL_POLISH_STRINGS.items():
+    TRANSLATIONS[language].update(strings)
+_SYSTEM_MESSAGE_KEYS['A title is required to publish'] = 'publish_title_required'
+_SYSTEM_MESSAGE_KEYS['Staff sent an editor note'] = 'editor_note'
 
 
 def system_message(request: Request | None, message: str) -> str:

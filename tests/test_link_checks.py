@@ -2,7 +2,6 @@ import socket
 
 import httpx
 import pytest
-from sqlalchemy import select
 
 from app import crud, link_checks
 from app.models import LinkCheck

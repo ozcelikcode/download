@@ -31,7 +31,7 @@
       <div class="editor-recent-meta">
         {% if item.category %}<span><i data-lucide="folder" aria-hidden="true"></i>{{ item.category.name }}</span>{% endif %}
         {% if item.version or item.is_latest_version %}<span><i data-lucide="git-branch" aria-hidden="true"></i>{{ t(request, 'latest_release') if item.is_latest_version else item.version }}</span>{% endif %}
-        <span><i data-lucide="download" aria-hidden="true"></i>{{ item.download_count | thousands }} {{ t(request, 'downloads') }}</span>
+        <span><i data-lucide="download" aria-hidden="true"></i>{{ item.download_count | thousands }} {{ t(request, 'download_unit' if item.download_count == 1 else 'downloads') }}</span>
         <span><i data-lucide="clock" aria-hidden="true"></i>{{ t(request, 'updated') }}: {{ item.updated_at | format_date('%d.%m.%Y') }}</span>
       </div>
     </div>

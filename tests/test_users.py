@@ -151,6 +151,6 @@ async def test_user_actions_have_no_password_fields(admin_client, db_session):
 async def test_panel_toolbar_has_consistent_order(admin_client):
     page = await admin_client.get('/panel/users')
     toolbar = page.text.split('class="panel-toolbar"', 1)[1].split('</header>', 1)[0]
-    controls = ['aria-label="Siteye Git"', 'id="theme-toggle-btn"', 'id="panel-messages-toggle"', 'class="btn-secondary panel-account-link"', 'action="/panel/logout"']
+    controls = ['id="theme-toggle-btn"', 'aria-label="Siteye Git"', 'id="panel-messages-toggle"', 'class="btn-secondary panel-account-link"', 'action="/panel/logout"']
     positions = [toolbar.index(control) for control in controls]
     assert positions == sorted(positions)

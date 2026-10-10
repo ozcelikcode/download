@@ -12,7 +12,6 @@ from app import crud
 from app.config import settings
 from app.dependencies import SESSION_COOKIE, create_admin_session_token, hash_admin_password
 from app.lifecycle import RequestGate, finish_pending_reset, get_lifecycle, reset_site, reset_storage_roots, single_worker_guard
-from app.main import app
 from app.models import AuditLog, Category, Download, MediaAsset, User
 from app.schemas import DownloadCreate
 
