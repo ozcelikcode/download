@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.content_security import normalize_http_url, normalize_navigation_url, sanitize_rich_text
 from app.models import FileType, IconType
+from app.validation import RecordId
 
 
 # ===========================================================================
@@ -327,8 +328,8 @@ class DownloadBase(BaseModel):
     icon_image_url: Optional[str] = Field(None, max_length=2000)
     icon_extension: Optional[str] = Field(None, max_length=20)
     os_compatibility: List[str] = Field(default_factory=list)
-    category_id: Optional[int] = None
-    parent_id: Optional[int] = None
+    category_id: Optional[RecordId] = None
+    parent_id: Optional[RecordId] = None
     is_active: bool = True
     is_draft: bool = False
     is_hidden: bool = False
@@ -362,7 +363,7 @@ class DownloadCreate(DownloadBase):
         max_length=220,
         description="Boş bırakılırsa title'dan otomatik üretilir.",
     )
-    tag_ids: List[int] = Field(default_factory=list)
+    tag_ids: List[RecordId] = Field(default_factory=list)
 
 
 class DownloadUpdate(BaseModel):
@@ -383,14 +384,14 @@ class DownloadUpdate(BaseModel):
     icon_image_url: Optional[str] = Field(None, max_length=2000)
     icon_extension: Optional[str] = Field(None, max_length=20)
     os_compatibility: Optional[List[str]] = None
-    category_id: Optional[int] = None
-    parent_id: Optional[int] = None
+    category_id: Optional[RecordId] = None
+    parent_id: Optional[RecordId] = None
     is_active: Optional[bool] = None
     is_draft: Optional[bool] = None
     is_hidden: Optional[bool] = None
     is_featured: Optional[bool] = None
     is_official_source: Optional[bool] = None
-    tag_ids: Optional[List[int]] = None
+    tag_ids: Optional[List[RecordId]] = None
 
     @field_validator("description", mode="before")
     @classmethod

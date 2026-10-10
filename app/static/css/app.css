@@ -830,6 +830,14 @@ input[type="radio"]:not(.sr-only):not(.choice-input):checked { background-color:
 .editor-recent-status { font-size: .75rem; padding: .375rem .5rem; background: var(--theme-panel-muted); border-radius: 2px; }
 .report-empty { display: flex; align-items: center; gap: .75rem; padding: 1.5rem; font-size: .875rem; color: var(--admin-nav-muted, #71717a); }
 .media-image-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.media-list-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .75rem; }
+.media-list-links, .media-list-actions { grid-column: 1 / -1; min-width: 0; }
+.media-list-links { display: flex; flex-wrap: wrap; gap: .25rem; }
+.media-list-links > * { max-width: 100%; overflow-wrap: anywhere; }
+@media (min-width: 1024px) {
+  .media-list-row { grid-template-columns: auto minmax(0, 1fr) minmax(0, .6fr) auto; }
+  .media-list-links, .media-list-actions { grid-column: auto; }
+}
 .media-image-search { flex: 1 1 16rem; max-width: 28rem; min-width: 0; }
 .media-image-toolbar select.form-input { width: auto; flex: 0 0 auto; max-width: 100%; }
 .media-toolbar-spacer { flex: 1 1 0; }

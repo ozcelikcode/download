@@ -50,3 +50,14 @@ async def test_disabled_hero_is_absent_from_html(client, db_session):
     page = await client.get('/')
     assert page.status_code == 200
     assert 'Hidden hero sentinel' not in page.text and 'id="hero"' not in page.text
+
+
+async def test_statistics_long_titles_remain_inside_bounded_cards(admin_client, db_session):
+    title = 'Long application title ' * 20
+    db_session.add(Download(title=title, slug='long-statistics-title', download_count=10))
+    await db_session.commit()
+    page = await admin_client.get('/panel/site-information')
+    assert page.status_code == 200
+    assert 'class="min-w-0 flex-1 truncate hover:underline"' in page.text
+    assert f'title="{title}"' in page.text
+    assert 'p-5 bg-white dark:bg-slate-900 min-w-0' in page.text

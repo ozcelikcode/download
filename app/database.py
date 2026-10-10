@@ -1,5 +1,5 @@
 """
-Async SQLAlchemy engine ve session factory.
+Async SQLAlchemy engine and session factory.
 """
 
 import logging
@@ -24,16 +24,17 @@ logger = logging.getLogger(__name__)
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
-    # aiosqlite için check_same_thread gerekli değil ama zararlı da değil
+    # SQL parameters can contain credentials and private account data.
+    hide_parameters=True,
+    # Retain compatibility with SQLite connections used by worker threads.
     connect_args={"check_same_thread": False},
-    # SQLite single-writer: pool_size anlamsız, NullPool daha temiz
     pool_pre_ping=True,
 )
 
 
 @event.listens_for(engine.sync_engine, "connect")
 def _set_sqlite_pragmas(dbapi_conn, _):
-    """Her yeni SQLite bağlantısında WAL + performans PRAGMA'larını ayarla."""
+    """Configure WAL, integrity and performance settings on each connection."""
     cursor = dbapi_conn.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")

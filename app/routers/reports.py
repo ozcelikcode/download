@@ -20,8 +20,10 @@ from app.locales.storage import STRINGS as STORAGE_STRINGS
 from app.locales.report_labels import LABELS as LOCALIZED_REPORT_LABELS
 from app.locales.workflows import STRINGS as WORKFLOW_STRINGS
 from app.models import AuditLog, Download, FileType, LinkCheck
+from app.pagination import PageNumber
 from app.security import require_csrf
 from app.templating import templates
+from app.validation import RecordId
 
 router = APIRouter(prefix="/panel", tags=["reports"], dependencies=[Depends(require_csrf), Depends(require_admin)])
 PAGE_SIZE = 20
@@ -112,7 +114,7 @@ async def _check_downloads(session: AsyncSession, items: list[tuple[int, str]]) 
 
 
 @router.get("/links", name="admin_links")
-async def links(request: Request, page: int = Query(1, ge=1), state: str = Query("all", pattern="^(all|unchecked|ok|broken|restricted|error|blocked)$"), session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
+async def links(request: Request, page: PageNumber = 1, state: str = Query("all", pattern="^(all|unchecked|ok|broken|restricted|error|blocked)$"), session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
     query = select(Download, LinkCheck).outerjoin(LinkCheck, and_(LinkCheck.download_id == Download.id, LinkCheck.url == Download.external_url)).where(Download.file_type == FileType.external, Download.deleted_at.is_(None))
     if state != "all":
         query = query.where(func.coalesce(LinkCheck.status, "unchecked") == state)
@@ -125,7 +127,7 @@ async def links(request: Request, page: int = Query(1, ge=1), state: str = Query
 
 
 @router.post("/links/check", name="admin_links_check")
-async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)) -> RedirectResponse:
+async def check_page(page: PageNumber = 1, session: AsyncSession = Depends(get_db)) -> RedirectResponse:
     rows = (await session.execute(select(Download.id, Download.external_url).where(Download.file_type == FileType.external, Download.deleted_at.is_(None)).order_by(Download.id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE))).all()
     await session.rollback()  # Ağ kontrolü sırasında SQLite okuma işlemi açık tutulmaz.
     await _check_downloads(session, [(r.id, r.external_url or "") for r in rows])
@@ -135,7 +137,7 @@ async def check_page(page: int = Query(1, ge=1), session: AsyncSession = Depends
 @router.get("/links/reports", response_model=None)
 async def visitor_reports(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     session: AsyncSession = Depends(get_db),
 ) -> HTMLResponse | RedirectResponse:
     filters = (AuditLog.entity == "visitor_reports", AuditLog.action == "report")
@@ -160,7 +162,7 @@ async def visitor_reports(
 
 
 @router.post("/links/{download_id}/check", name="admin_link_check")
-async def check_one(download_id: int, session: AsyncSession = Depends(get_db)) -> RedirectResponse:
+async def check_one(download_id: RecordId, session: AsyncSession = Depends(get_db)) -> RedirectResponse:
     row = (await session.execute(select(Download.id, Download.external_url).where(Download.id == download_id, Download.file_type == FileType.external, Download.deleted_at.is_(None)))).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Dış bağlantı bulunamadı.")
@@ -170,7 +172,7 @@ async def check_one(download_id: int, session: AsyncSession = Depends(get_db)) -
 
 
 @router.get("/audit", name="admin_audit")
-async def audit_view(request: Request, page: int = Query(1, ge=1), entity: str = "", level: str = "", session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
+async def audit_view(request: Request, page: PageNumber = 1, entity: str = "", level: str = "", session: AsyncSession = Depends(get_db), admin: str = Depends(require_admin)) -> HTMLResponse:
     query = select(AuditLog)
     if entity:
         query = query.where(AuditLog.entity == entity)

@@ -13,14 +13,18 @@ from starlette.types import Scope
 
 from app.config import settings
 
-STAGING_PREFIXES = (".upload-", ".replace-", ".remote-", ".crop-")
+STAGING_PREFIXES = (".upload-", ".replace-", ".remote-", ".crop-", ".delete-")
 
 
 class UploadSafeStaticFiles(StaticFiles):
     """Never expose hidden staging files in the public uploads tree."""
 
+    def __init__(self, directory: str | os.PathLike[str], *, uploads_only: bool = False) -> None:
+        super().__init__(directory=directory)
+        self.uploads_only = uploads_only
+
     async def get_response(self, path: str, scope: Scope) -> Response:
-        if path.startswith("uploads/") and any(part.startswith(".") for part in PurePosixPath(path).parts):
+        if (self.uploads_only or path.startswith("uploads/")) and any(part.startswith(".") for part in PurePosixPath(path).parts):
             raise HTTPException(404)
         return await super().get_response(path, scope)
 

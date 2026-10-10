@@ -23,7 +23,7 @@
       <span id="media-upload-percent" class="text-xs text-slate-400 dark:text-slate-500 shrink-0">0%</span>
     </div>
     <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-sm overflow-hidden">
-      <div id="media-upload-bar" class="h-full bg-blue-600 dark:bg-blue-500 rounded-sm transition-[width] duration-150" style="width:0%"></div>
+      <div id="media-upload-bar" role="progressbar" aria-label="{{ t(request, 'uploading') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" class="h-full bg-blue-600 dark:bg-blue-500 rounded-sm transition-[width] duration-150" style="width:0%"></div>
     </div>
   </div>
 </div>
@@ -251,12 +251,14 @@
           <i data-lucide="maximize" class="w-3.5 h-3.5 text-white"></i>
         </button>
         <div class="context-actions absolute bottom-0 inset-x-0 flex items-center justify-center gap-0.5 p-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+          {% if img.can_crop %}
           <button type="button" data-action="edit" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'edit') }}">
             <i data-lucide="pencil" class="w-3.5 h-3.5 text-white"></i>
           </button>
           <button type="button" data-action="autocrop" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'set_as_icon') }}">
             <i data-lucide="wand-2" class="w-3.5 h-3.5 text-white"></i>
           </button>
+          {% endif %}
           <button type="button" data-action="copy" class="p-1.5 rounded-sm hover:bg-white/20 transition-colors" title="{{ t(request, 'copy_link') }}">
             <i data-lucide="link" class="w-3.5 h-3.5 text-white"></i>
           </button>
@@ -286,7 +288,7 @@
   {# Liste #}
   <div id="images-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for img in images.results %}
-    <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
+    <div class="media-card media-list-row px-4 py-2.5" data-media-path="{{ img.url }}" data-media-kind="image" data-display-name="{{ img.display_name }}">
       <button type="button" data-action="preview" class="relative shrink-0 group/thumb" title="{{ t(request, 'enlarge') }}">
         <img src="{{ img.url }}" alt="" class="w-9 h-9 object-contain rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-0.5">
         <span class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/thumb:bg-black/40 rounded-sm transition-colors">
@@ -298,11 +300,12 @@
         <p class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 flex-wrap">
           <span>{{ img.size_human }}</span> ·
           <span>{{ img.modified | format_date('%d.%m.%Y %H:%M') }}</span>
-          {% if img.uploaded_by %}· <span class="flex items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3"></i>{{ img.uploaded_by }}</span>{% endif %}
+          {% if img.uploaded_by %}· <span class="flex min-w-0 items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3 shrink-0"></i><span class="min-w-0 break-words">{{ img.uploaded_by }}</span></span>{% endif %}
         </p>
       </div>
-      {{ linked_badge(img, 'xs') }}
-      <div class="flex items-center gap-1 shrink-0">
+      <div class="media-list-links">{{ linked_badge(img, 'xs') }}</div>
+      <div class="media-list-actions flex items-center justify-end gap-1 flex-wrap">
+        {% if img.can_crop %}
         <button type="button" data-action="edit"
           class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="{{ t(request, 'edit') }}">
           <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
@@ -311,6 +314,7 @@
           class="p-1.5 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="{{ t(request, 'set_as_icon') }}">
           <i data-lucide="wand-2" class="w-3.5 h-3.5"></i>
         </button>
+        {% endif %}
         <button type="button" data-action="copy"
           class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-400
                  border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -472,7 +476,7 @@
   {# Liste #}
   <div id="files-list-view" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-sm divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
     {% for f in files.results %}
-    <div class="media-card flex items-center gap-3 px-4 py-2.5" data-media-path="{{ f.url }}" data-media-kind="file" data-display-name="{{ f.display_name }}">
+    <div class="media-card media-list-row px-4 py-2.5" data-media-path="{{ f.url }}" data-media-kind="file" data-display-name="{{ f.display_name }}">
       <div class="w-9 h-9 rounded-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
         {% if f.is_image %}
         <img src="{{ f.url }}" alt="" class="w-full h-full object-contain p-0.5">
@@ -486,12 +490,12 @@
           <span class="uppercase font-semibold text-slate-500 dark:text-slate-400">.{{ f.ext or '?' }}</span> ·
           <span>{{ f.size_human }}</span> ·
           <span>{{ f.modified | format_date('%d.%m.%Y %H:%M') }}</span>
-          {% if f.uploaded_by %}· <span class="flex items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3"></i>{{ f.uploaded_by }}</span>{% endif %}
+          {% if f.uploaded_by %}· <span class="flex min-w-0 items-center gap-0.5"><i data-lucide="user-circle" class="w-3 h-3 shrink-0"></i><span class="min-w-0 break-words">{{ f.uploaded_by }}</span></span>{% endif %}
           {% if f.linked_download and f.linked_download.os_compatibility %}· {{ os_badges(f) }}{% endif %}
         </p>
       </div>
-      {{ linked_badge(f, 'xs') }}
-      <div class="flex items-center gap-1 shrink-0">
+      <div class="media-list-links">{{ linked_badge(f, 'xs') }}</div>
+      <div class="media-list-actions flex items-center justify-end gap-1 flex-wrap">
         <button type="button" data-action="edit"
           class="p-1.5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="{{ t(request, 'edit') }}">
           <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
@@ -725,6 +729,7 @@
     function setUploadProgress(pct) {
       pct = Math.max(0, Math.min(100, Math.round(pct)));
       uploadBar.style.width = pct + '%';
+      uploadBar.setAttribute('aria-valuenow', String(pct));
       uploadPercent.textContent = pct + '%';
     }
     function hideUploadProgress() {
@@ -736,45 +741,32 @@
         showUploadProgress(label);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', url);
+        xhr.timeout = 120000;
         xhr.setRequestHeader("X-CSRF-Token", document.querySelector('meta[name="csrf-token"]').content);
 
-        // İkon görselleri (yalnızca fresh upload'ta) sunucuda sıkıştırılır;
-        // yanıt gelene kadar çubuk boş görünmesin diye %85-97 arasında
-        // yavaşça ilerleyen bir "sıkıştırılıyor" aşaması gösterilir.
+        // Reserve completion for a successful server response, not network transfer.
         const willCompress = url === '/panel/upload/icon-image' && !(extraFields && extraFields.replace_path);
-        let compressTimer = null;
-        function startCompressPhase() {
-          if (compressTimer || !willCompress) return;
-          uploadLabel.textContent = window.mediaMessages.imageCompressing;
-          let fakePct = 85;
-          compressTimer = setInterval(function () {
-            fakePct = Math.min(fakePct + 2, 97);
-            setUploadProgress(fakePct);
-          }, 150);
-        }
-        function stopCompressPhase() {
-          if (compressTimer) { clearInterval(compressTimer); compressTimer = null; }
-        }
-
         xhr.upload.onprogress = function (e) {
-          if (!e.lengthComputable) return;
-          setUploadProgress((e.loaded / e.total) * (willCompress ? 85 : 100));
-          if (e.loaded >= e.total) startCompressPhase();
+          if (!e.lengthComputable || e.total <= 0) return;
+          setUploadProgress((e.loaded / e.total) * 95);
+          if (e.loaded >= e.total && willCompress) uploadLabel.textContent = window.mediaMessages.imageCompressing;
         };
         xhr.onload = function () {
-          stopCompressPhase();
-          setUploadProgress(100);
           if (xhr.status >= 200 && xhr.status < 300) {
-            try { resolve(JSON.parse(xhr.responseText)); }
+            try {
+              const result = JSON.parse(xhr.responseText);
+              setUploadProgress(100);
+              resolve(result);
+            }
             catch (err) { reject(err); }
           } else {
             reject(new Error(window.mediaMessages.actionFailed + ' (' + xhr.status + ')'));
           }
         };
         xhr.onerror = function () {
-          stopCompressPhase();
           reject(new Error(window.mediaMessages.networkUploadFailed));
         };
+        xhr.onabort = xhr.ontimeout = xhr.onerror;
         const fd = new FormData();
         fd.append('file', file);
         if (extraFields) {
@@ -881,6 +873,7 @@
       modal.classList.add('flex');
       if (cropper) { cropper.destroy(); cropper = null; }
       cropImg.onload = function () {
+        if (cropTargetPath !== path || modal.classList.contains('hidden')) return;
         cropper = new Cropper(cropImg, {
           viewMode: 1,
           dragMode: 'move',
@@ -902,6 +895,7 @@
     }
 
     function closeCropModal() {
+      cropImg.onload = null;
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       if (cropper) { cropper.destroy(); cropper = null; }
@@ -959,13 +953,14 @@
 
     cropSave.addEventListener('click', function () {
       if (!cropper || !cropTargetPath) return;
-      const canvas = cropper.getCroppedCanvas();
+      const path = cropTargetPath;
+      const canvas = cropper.getCroppedCanvas({ maxWidth: 4096, maxHeight: 4096 });
       if (!canvas) { window.showAdminNotice(window.mediaMessages.imageProcessFailed); return; }
       canvas.toBlob(function (blob) {
-        if (!blob) return;
+        if (!blob || cropTargetPath !== path || modal.classList.contains('hidden')) return;
         const file = new File([blob], 'cropped.png', { type: 'image/png' });
         // replace_path: aynı link üzerine yazılır, sıkıştırma uygulanmaz.
-        uploadOne('/panel/upload/icon-image', file, window.mediaMessages.croppedImageSaving, { replace_path: cropTargetPath })
+        uploadOne('/panel/upload/icon-image', file, window.mediaMessages.croppedImageSaving, { replace_path: path })
           .then(function () {
             hideUploadProgress();
             closeCropModal();

@@ -117,6 +117,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Static files
 # ---------------------------------------------------------------------------
+app.mount("/static/uploads", UploadSafeStaticFiles(directory=settings.upload_path, uploads_only=True), name="uploads")
 app.mount("/static", UploadSafeStaticFiles(directory="app/static"), name="static")
 
 # ---------------------------------------------------------------------------

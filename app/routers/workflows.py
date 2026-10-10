@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 import secrets
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,8 +13,10 @@ from app.database import get_db
 from app.dependencies import SESSION_COOKIE, require_admin
 from app.i18n import translate
 from app.models import Download, EditorMessage
+from app.pagination import PageNumber
 from app.security import require_csrf
 from app.templating import templates
+from app.validation import RecordId
 
 router = APIRouter(prefix="/panel", dependencies=[Depends(require_csrf), Depends(require_admin)])
 
@@ -43,7 +45,7 @@ def _context(request: Request) -> dict:
 
 
 @router.get("/review")
-async def review_list(request: Request, session: AsyncSession = Depends(get_db), page: int = Query(1, ge=1)):
+async def review_list(request: Request, session: AsyncSession = Depends(get_db), page: PageNumber = 1):
     _staff(request)
     filters = (Download.publication_pending.is_(True), Download.deleted_at.is_(None))
     count = await session.scalar(select(func.count()).select_from(Download).where(*filters)) or 0
@@ -58,7 +60,7 @@ async def review_list(request: Request, session: AsyncSession = Depends(get_db),
 
 @router.post("/review/{download_id}")
 async def review_content(
-    download_id: int, request: Request, action: str = Form(...), reason: str = Form("", max_length=1000),
+    download_id: RecordId, request: Request, action: str = Form(...), reason: str = Form("", max_length=1000),
     revision: str = Form(..., max_length=40),
     session: AsyncSession = Depends(get_db),
 ):
@@ -82,7 +84,7 @@ async def review_content(
 
 
 @router.get("/contact")
-async def contact_list(request: Request, session: AsyncSession = Depends(get_db), page: int = Query(1, ge=1)):
+async def contact_list(request: Request, session: AsyncSession = Depends(get_db), page: PageNumber = 1):
     query = select(EditorMessage)
     count_query = select(func.count()).select_from(EditorMessage)
     if request.state.admin_role == "editor":
@@ -125,7 +127,7 @@ async def send_message(
 
 @router.post("/contact/{message_id}/reply")
 async def reply_message(
-    message_id: int, request: Request, response: str = Form(..., max_length=5000),
+    message_id: RecordId, request: Request, response: str = Form(..., max_length=5000),
     session: AsyncSession = Depends(get_db),
 ):
     await _lock(request, session)

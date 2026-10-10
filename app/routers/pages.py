@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -19,9 +19,11 @@ from app.dependencies import SESSION_COOKIE, authenticated_user, get_db, require
 from app.i18n import translate
 from app.models import MenuItem, Page
 from app.page_schemas import PageInput
+from app.pagination import PageNumber
 from app.routers.public import _sidebar_context
 from app.security import require_csrf
 from app.templating import templates
+from app.validation import RecordId
 
 
 public_router = APIRouter(tags=["pages"])
@@ -80,7 +82,7 @@ async def view_page(
 @admin_router.get("")
 async def list_pages(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     session: AsyncSession = Depends(get_db),
 ):
     allowed = [Page.deleted_at.is_(None)]
@@ -148,7 +150,7 @@ async def create_page(
 
 @admin_router.get("/{page_id}/edit")
 async def edit_page(
-    page_id: int, request: Request, session: AsyncSession = Depends(get_db)
+    page_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
     if page is None or page.deleted_at is not None or (page.visibility == "private" and request.state.admin_role != "admin"):
@@ -158,7 +160,7 @@ async def edit_page(
 
 @admin_router.post("/{page_id}/edit")
 async def update_page(
-    page_id: int,
+    page_id: RecordId,
     request: Request,
     title: str = Form(...),
     slug: str = Form(""),
@@ -200,7 +202,7 @@ async def update_page(
 
 @admin_router.post("/{page_id}/delete")
 async def delete_page(
-    page_id: int, request: Request, session: AsyncSession = Depends(get_db)
+    page_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
     if page is None or page.deleted_at is not None or (page.visibility == "private" and request.state.admin_role != "admin"):
@@ -218,7 +220,7 @@ async def delete_page(
 
 @admin_router.get("/trash")
 async def page_trash(
-    request: Request, page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)
+    request: Request, page: PageNumber = 1, session: AsyncSession = Depends(get_db)
 ):
     allowed = [Page.deleted_at.is_not(None)]
     if request.state.admin_role != "admin":
@@ -240,7 +242,7 @@ async def page_trash(
 
 @admin_router.post("/{page_id}/restore")
 async def restore_page(
-    page_id: int, request: Request, session: AsyncSession = Depends(get_db)
+    page_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
     if page is None or page.deleted_at is None or (page.visibility == "private" and request.state.admin_role != "admin"):
@@ -255,7 +257,7 @@ async def restore_page(
 
 @admin_router.post("/{page_id}/purge")
 async def purge_page(
-    page_id: int, request: Request, session: AsyncSession = Depends(get_db)
+    page_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)
 ):
     page = await session.get(Page, page_id)
     if page is None or page.deleted_at is None or (page.visibility == "private" and request.state.admin_role != "admin"):

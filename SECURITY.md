@@ -40,6 +40,10 @@ Passwords are not end-to-end encrypted: this server must verify them. They are p
 
 The supplied server commands use `app/logging.json` for English, plain-text UTC console logs. Terminal controls are escaped. Exception traces include error types and code locations, but omit exception values and source lines because those may contain submitted secrets or SQL parameters. Account mutations revalidate the acting session and role after acquiring the database write lock.
 
+SQLAlchemy also hides bound SQL parameters, including in debug query logging. HTTP pagination and record identities have explicit numeric bounds before SQLite binding, preventing oversized integers from producing internal server errors. These input checks do not replace rate limiting or deployment-level request budgets.
+
+Media-library deletion revalidates the acting account under the SQLite write lock and checks references across owners. Original bytes are moved to a private same-directory recovery file until metadata deletion commits; a transaction failure restores the original file. Hidden recovery/staging files and escaping symlinks are excluded from archive listings and public delivery. The public upload mount uses the configured upload directory, while profile-photo access protections remain separate.
+
 Stop the server with `Ctrl+C` in the terminal running `make dev`. Restart after changing `.env`.
 
 ## Encrypted backups and restore

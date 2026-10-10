@@ -17,6 +17,7 @@ from app.dependencies import SESSION_COOKIE, authenticated_user, get_request_ip,
 from app.i18n import translate
 from app.models import SiteSettings, User
 from app.storage_quota import QUOTA_CHOICES, validate_quota
+from app.validation import RecordId
 from app.security import clear_successful_attempt, require_csrf, require_secure_password_transport, reserve_login_attempt
 from app.templating import templates
 
@@ -126,7 +127,7 @@ async def update_default_quotas(
 
 @router.post("/{user_id}/media-quota")
 async def update_user_quota(
-    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db),
     quota_mb: str = Form(""),
 ):
     _forbid(request)
@@ -178,7 +179,7 @@ async def create_user(
 
 @router.post("/{user_id}/role")
 async def change_role(
-    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db),
     role: str = Form(...),
 ):
     _forbid(request)
@@ -206,7 +207,7 @@ async def change_role(
 
 @router.post("/{user_id}/verification")
 async def verify_editor(
-    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db),
     verified: bool = Form(False),
 ):
     role = request.state.admin_role
@@ -225,7 +226,7 @@ async def verify_editor(
 
 
 @router.post("/{user_id}/request-delete")
-async def request_delete(user_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+async def request_delete(user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)):
     if request.state.admin_role != "manager":
         raise HTTPException(403, detail=translate(request, "permission_denied"))
     await _lock_actor(request, session, "manager")
@@ -244,7 +245,7 @@ async def request_delete(user_id: int, request: Request, session: AsyncSession =
 
 @router.post("/{user_id}/delete")
 async def delete_user(
-    user_id: int, request: Request, session: AsyncSession = Depends(get_db),
+    user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db),
 ):
     _forbid(request)
     await _lock_actor(request, session, "admin")
@@ -266,7 +267,7 @@ async def delete_user(
 
 
 @router.post("/{user_id}/reject-delete")
-async def reject_delete(user_id: int, request: Request, session: AsyncSession = Depends(get_db)):
+async def reject_delete(user_id: RecordId, request: Request, session: AsyncSession = Depends(get_db)):
     _forbid(request)
     await _lock_actor(request, session, "admin")
     user = await session.get(User, user_id)

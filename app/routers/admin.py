@@ -81,7 +81,9 @@ from app.dependencies import (
 )
 from app.models import Download, FileType, IconType, Page, Tag, User
 from app.ownership import require_owned_media
-from app.media import ensure_unused, media_path, media_usage
+from app.media import delete_unused_media, media_path, media_usage
+from app.pagination import PageNumber
+from app.validation import MAX_RECORD_ID, RecordId
 from app.routers.public import build_download_detail_context
 from app.schemas import (
     CategoryCreate,
@@ -174,14 +176,15 @@ def _same_admin_page(request: Request, fallback: str) -> str:
 
 
 def _int_or_none(value: Optional[str]) -> Optional[int]:
-    """Form'dan gelen boş string veya None → None, geçerli sayı → int."""
+    """Parse an optional positive SQLite identity without overflowing bindings."""
     if value is None:
         return None
     s = str(value).strip()
     if not s:
         return None
     try:
-        return int(s)
+        parsed = int(s)
+        return parsed if 1 <= parsed <= MAX_RECORD_ID else None
     except (ValueError, TypeError):
         return None
 
@@ -497,13 +500,18 @@ def _media_type_category(ext: str) -> str:
 
 
 def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
-    """Bir dizindeki tüm dosyaları (alt dizinler hariç) listeler."""
+    """List ordinary visible files, tolerating concurrent removal."""
     items: List[dict] = []
     if directory.exists():
         for p in directory.iterdir():
-            if p.name == ".gitkeep" or p.name.startswith(STAGING_PREFIXES) or not p.is_file():
+            if p.name.startswith(".") or p.is_symlink():
                 continue
-            stat = p.stat()
+            try:
+                if not p.is_file():
+                    continue
+                stat = p.stat()
+            except OSError:
+                continue
             ext = p.suffix.lstrip(".").lower()
             items.append(
                 {
@@ -515,6 +523,7 @@ def _list_media_files(directory: Path, url_prefix: str) -> List[dict]:
                     "icon": _guess_media_icon(ext),
                     "is_image": ext in _IMAGE_EXTS,
                     "type_category": _media_type_category(ext),
+                    "can_crop": url_prefix == "/static/uploads/icons",
                 }
             )
     items.sort(key=lambda x: x["modified"], reverse=True)
@@ -608,8 +617,10 @@ async def media_view(
     upload_root = settings.upload_path
     icons_dir = upload_root / "icons"
 
-    images = _list_media_files(icons_dir, "/static/uploads/icons")
-    files = _list_media_files(settings.download_path, "/panel/media/files")
+    images = await run_in_threadpool(_list_media_files, icons_dir, "/static/uploads/icons")
+    images += await run_in_threadpool(_list_media_files, upload_root / "gallery", "/static/uploads/gallery")
+    images.sort(key=lambda item: item["modified"], reverse=True)
+    files = await run_in_threadpool(_list_media_files, settings.download_path, "/panel/media/files")
     usage = await media_usage(session, str(request.base_url))
     for item in images + files:
         item["used_by"] = usage.get(media_path(item["url"]), [])
@@ -758,15 +769,8 @@ async def media_delete_file(
     session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
-    """Dosya Arşivi'ndeki bir dosyayı (uploads kök dizininden) siler."""
-    full = await ensure_unused(session, path, str(request.base_url))
-    if full.is_file():
-        try:
-            full.unlink()
-        except OSError as exc:
-            logger.exception("File deletion failed")
-            raise HTTPException(status_code=500, detail="Dosya silinemedi.") from exc
-    await crud.delete_media_asset(session, path)
+    """Delete unused library media with transactional filesystem recovery."""
+    await delete_unused_media(session, path, str(request.base_url))
     return {"deleted": True}
 
 
@@ -848,14 +852,7 @@ async def delete_icon_image(
     session: AsyncSession = Depends(get_db),
     path: str = Form(...),
 ):
-    full = await ensure_unused(session, path, str(request.base_url))
-    if full.is_file():
-        try:
-            full.unlink()
-        except OSError as exc:
-            logger.exception("Icon deletion failed")
-            raise HTTPException(status_code=500, detail="Görsel silinemedi.") from exc
-    await crud.delete_media_asset(session, path)
+    await delete_unused_media(session, path, str(request.base_url))
     return {"deleted": True}
 
 
@@ -996,7 +993,7 @@ async def site_health(
 @router.get("/downloads", name="admin_content_list")
 async def content_list(
     request: Request,
-    page: int = 1,
+    page: PageNumber = 1,
     q: Optional[str] = None,
     category_id: Optional[str] = None,
     status_filter: Optional[str] = None,
@@ -1102,7 +1099,7 @@ async def content_list(
 async def download_bulk(
     request: Request,
     action: str = Form(...),
-    download_ids: List[int] = Form(...),
+    download_ids: List[RecordId] = Form(...),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1118,7 +1115,7 @@ async def download_bulk(
 @router.get("/downloads/trash", name="admin_download_trash")
 async def download_trash(
     request: Request,
-    page: int = 1,
+    page: PageNumber = 1,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1146,7 +1143,7 @@ async def download_trash(
 async def download_trash_bulk(
     request: Request,
     action: str = Form(...),
-    download_ids: List[int] = Form(...),
+    download_ids: List[RecordId] = Form(...),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1200,7 +1197,7 @@ async def download_new_get(
 
 @router.get("/downloads/{download_id}/preview", name="admin_download_preview")
 async def download_preview(
-    download_id: int,
+    download_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1454,7 +1451,7 @@ async def download_draft_autosave(
 
 @router.get("/downloads/{download_id}/edit", name="admin_download_edit")
 async def download_edit_get(
-    download_id: int,
+    download_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1491,7 +1488,7 @@ async def download_edit_get(
 
 @router.post("/downloads/{download_id}/edit", name="admin_download_edit_post")
 async def download_edit_post(
-    download_id: int,
+    download_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1662,7 +1659,7 @@ async def download_edit_post(
 
 @router.post("/downloads/{download_id}/delete", name="admin_download_delete")
 async def download_delete(
-    download_id: int,
+    download_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1685,8 +1682,8 @@ async def download_delete(
     name="admin_version_history_edit",
 )
 async def version_history_edit(
-    download_id: int,
-    entry_id: int,
+    download_id: RecordId,
+    entry_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1710,8 +1707,8 @@ async def version_history_edit(
     name="admin_version_history_delete",
 )
 async def version_history_delete(
-    download_id: int,
-    entry_id: int,
+    download_id: RecordId,
+    entry_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1783,7 +1780,7 @@ async def category_create(
 
 @router.post("/categories/{category_id}/edit", name="admin_category_edit")
 async def category_edit(
-    category_id: int,
+    category_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1812,9 +1809,9 @@ async def category_edit(
 
 @router.post("/categories/{category_id}/delete", name="admin_category_delete")
 async def category_delete(
-    category_id: int,
+    category_id: RecordId,
     request: Request,
-    target_category_id: Optional[int] = Form(None),
+    target_category_id: Optional[RecordId] = Form(None),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1836,7 +1833,7 @@ async def category_delete(
 
 @router.post("/categories/{category_id}/move", name="admin_category_move")
 async def category_move(
-    category_id: int, request: Request, target_category_id: int = Form(...),
+    category_id: RecordId, request: Request, target_category_id: RecordId = Form(...),
     session: AsyncSession = Depends(get_db), _admin: str = Depends(require_admin),
 ):
     await session.rollback()
@@ -1851,8 +1848,8 @@ async def category_move(
 @router.post("/categories/bulk-delete", name="admin_category_bulk_delete")
 async def category_bulk_delete(
     request: Request,
-    target_category_id: int = Form(...),
-    category_ids: List[int] = Form(...),
+    target_category_id: RecordId = Form(...),
+    category_ids: List[RecordId] = Form(...),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1914,7 +1911,7 @@ async def tag_create(
 
 @router.post("/tags/{tag_id}/edit", name="admin_tag_edit")
 async def tag_edit(
-    tag_id: int,
+    tag_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1947,7 +1944,7 @@ async def tag_edit(
 
 @router.post("/tags/{tag_id}/delete", name="admin_tag_delete")
 async def tag_delete(
-    tag_id: int,
+    tag_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -1967,7 +1964,7 @@ async def tag_delete(
 @router.post("/tags/bulk-delete", name="admin_tag_bulk_delete")
 async def tag_bulk_delete(
     request: Request,
-    tag_ids: List[int] = Form(...),
+    tag_ids: List[RecordId] = Form(...),
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):
@@ -1989,7 +1986,7 @@ async def tag_bulk_delete(
 # ---------------------------------------------------------------------------
 
 class _ReorderPayload(BaseModel):
-    ids: List[int]
+    ids: List[RecordId]
 
 
 class _StringOrderPayload(BaseModel):
@@ -2531,7 +2528,7 @@ async def menu_item_from_source(
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
     source_type: str = Form(...),
-    source_id: int = Form(...),
+    source_id: RecordId = Form(...),
     location: str = Form("navbar"),
 ):
     if location not in {"navbar", "footer"}:
@@ -2570,7 +2567,7 @@ async def menu_item_from_source(
 
 @router.post("/settings/menu/{item_id}/edit", name="admin_menu_item_edit")
 async def menu_item_edit(
-    item_id: int,
+    item_id: RecordId,
     request: Request,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
@@ -2600,7 +2597,7 @@ async def menu_item_edit(
 
 @router.post("/settings/menu/{item_id}/delete", name="admin_menu_item_delete")
 async def menu_item_delete(
-    item_id: int,
+    item_id: RecordId,
     session: AsyncSession = Depends(get_db),
     _admin: str = Depends(require_admin),
 ):

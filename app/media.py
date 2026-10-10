@@ -1,15 +1,20 @@
 """Medya yolları ve silmeden önce içerik kullanım kontrolü."""
 
 from html.parser import HTMLParser
+import logging
+import os
 from pathlib import Path
+import tempfile
 from urllib.parse import unquote, urlsplit
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import Download, FileType, Page, SiteSettings, User
+
+logger = logging.getLogger(__name__)
 
 
 def media_path(value: str | None, origin: str | None = None) -> Path | None:
@@ -105,10 +110,23 @@ async def media_usage(session: AsyncSession, origin: str | None = None, *, all_o
 
 
 async def ensure_unused(session: AsyncSession, value: str, origin: str | None = None) -> Path:
+    """Serialize fresh actor validation and the reference check before deletion."""
+    from app.dependencies import credential_stamp
     from app.ownership import require_owned_media
+    if session.new or session.dirty or session.deleted:
+        raise RuntimeError("Media deletion requires a clean transaction")
+    await session.rollback()
+    await session.execute(text("BEGIN IMMEDIATE"))
+    actor = await session.get(User, session.info.get("actor_id"), populate_existing=True) if session.info.get("actor_id") else None
+    account = await session.scalar(select(SiteSettings).execution_options(populate_existing=True))
+    if (actor is None or account is None or not actor.is_active or actor.deleted_at is not None
+            or actor.role != session.info.get("staff_role")
+            or session.info.get("authenticated_generation") != account.session_generation
+            or session.info.get("authenticated_credential") != credential_stamp(actor.username, actor.password_hash)):
+        raise HTTPException(403, "Forbidden")
     await require_owned_media(session, value)
     path = media_path(value, origin)
-    if path is None:
+    if path is None or any(part.startswith(".") for root in (settings.upload_path.resolve(), settings.download_path.resolve()) if path.is_relative_to(root) for part in path.relative_to(root).parts):
         raise HTTPException(status_code=400, detail="Geçersiz medya yolu.")
     linked = (await media_usage(session, origin, all_owners=True)).get(path, [])
     if linked:
@@ -117,3 +135,39 @@ async def ensure_unused(session: AsyncSession, value: str, origin: str | None = 
             "downloads": [] if session.info.get("editor_owner_id") is not None else linked,
         })
     return path
+
+
+async def delete_unused_media(session: AsyncSession, value: str, origin: str | None = None) -> None:
+    """Retain original bytes until metadata deletion commits successfully."""
+    from app import crud
+    from app.storage_quota import _web_path
+
+    backup: Path | None = None
+    path: Path | None = None
+    committed = False
+    try:
+        path = await ensure_unused(session, value, origin)
+        if path.is_file():
+            fd, name = tempfile.mkstemp(prefix=".delete-", suffix=".part", dir=path.parent)
+            os.close(fd)
+            backup = Path(name)
+            try:
+                path.replace(backup)
+            except BaseException:
+                backup.unlink(missing_ok=True)
+                backup = None
+                raise
+        await crud.delete_media_asset(session, _web_path(path))
+        committed = True
+    except BaseException:
+        await session.rollback()
+        if backup is not None and path is not None:
+            backup.replace(path)
+            backup = None
+        raise
+    finally:
+        if committed and backup is not None:
+            try:
+                backup.unlink(missing_ok=True)
+            except OSError:
+                logger.exception("Committed media deletion retained a private recovery file")

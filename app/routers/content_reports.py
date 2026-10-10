@@ -3,20 +3,21 @@
 import json
 import math
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_admin
 from app.models import AuditLog, Download
+from app.pagination import PageNumber
 from app.templating import templates
 
 router = APIRouter(prefix="/panel/content-reports", dependencies=[Depends(require_admin)])
 
 
 @router.get("")
-async def publisher_inbox(request: Request, page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)):
+async def publisher_inbox(request: Request, page: PageNumber = 1, session: AsyncSession = Depends(get_db)):
     query = select(AuditLog, Download).outerjoin(Download, Download.id == AuditLog.entity_id).where(
         AuditLog.entity.in_(['publisher_reports'] if request.state.admin_role == 'editor' else ['publisher_reports', 'publisher_alerts']), AuditLog.action == "report")
     if request.state.admin_role == "editor":

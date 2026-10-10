@@ -2,7 +2,7 @@
 
 import math
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,14 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.database import get_db
 from app.models import Download, User
+from app.pagination import PageNumber
 from app.profile_photos import photo_path
 from app.routers.public import _sidebar_context
 from app.templating import templates
+from app.validation import RecordId
 
 router = APIRouter(prefix="/publisher")
 
 
-async def visible_publisher(session: AsyncSession, user_id: int) -> User:
+async def visible_publisher(session: AsyncSession, user_id: RecordId) -> User:
     user = await session.get(User, user_id)
     visible = await session.scalar(select(func.count()).select_from(
         crud._download_base_query().where(Download.owner_id == user_id).subquery()))
@@ -27,7 +29,7 @@ async def visible_publisher(session: AsyncSession, user_id: int) -> User:
 
 
 @router.get("/{user_id}/photo")
-async def publisher_photo(user_id: int, session: AsyncSession = Depends(get_db)) -> FileResponse:
+async def publisher_photo(user_id: RecordId, session: AsyncSession = Depends(get_db)) -> FileResponse:
     await visible_publisher(session, user_id)
     try:
         path = photo_path(user_id)
@@ -39,7 +41,7 @@ async def publisher_photo(user_id: int, session: AsyncSession = Depends(get_db))
 
 
 @router.get("/{user_id}")
-async def publisher_catalog(request: Request, user_id: int, page: int = Query(1, ge=1),
+async def publisher_catalog(request: Request, user_id: RecordId, page: PageNumber = 1,
                             session: AsyncSession = Depends(get_db)):
     user = await visible_publisher(session, user_id)
     items, total = await crud.get_downloads_paginated(session, page=page, owner_id=user_id)

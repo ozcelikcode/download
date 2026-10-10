@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
@@ -16,10 +16,12 @@ from app.database import get_db
 from app.dependencies import get_request_ip, hash_password_async, require_admin
 from app.i18n import translate
 from app.models import RegistrationRequest, User
+from app.pagination import PageNumber
 from app.routers.users import USERNAME_PATTERN, _lock_actor
 from app.security import require_csrf, reserve_login_attempt, require_secure_password_transport
 from app.templating import templates
 from app.routers.public import _sidebar_context
+from app.validation import RecordId
 
 router = APIRouter(dependencies=[Depends(require_csrf)])
 PAGE_SIZE = 20
@@ -81,7 +83,7 @@ async def apply(request: Request, username: str = Form(...), password: str = For
 
 
 @router.get("/panel/registrations", dependencies=[Depends(require_admin)])
-async def requests(request: Request, page: int = Query(1, ge=1), session: AsyncSession = Depends(get_db)) -> Response:
+async def requests(request: Request, page: PageNumber = 1, session: AsyncSession = Depends(get_db)) -> Response:
     if request.state.admin_role not in {"admin", "manager"}:
         raise HTTPException(403)
     total = await session.scalar(select(func.count()).select_from(RegistrationRequest)) or 0
@@ -99,7 +101,7 @@ async def requests(request: Request, page: int = Query(1, ge=1), session: AsyncS
 
 
 @router.post("/panel/registrations/{request_id}", dependencies=[Depends(require_admin)])
-async def review(request_id: int, request: Request, action: str = Form(...),
+async def review(request_id: RecordId, request: Request, action: str = Form(...),
                  session: AsyncSession = Depends(get_db)) -> Response:
     role = request.state.admin_role
     if role not in {"admin", "manager"} or action not in {"approve", "reject"}:

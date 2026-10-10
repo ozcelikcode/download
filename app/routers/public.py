@@ -35,6 +35,7 @@ from app.dependencies import SESSION_COOKIE, authenticated_user, get_db, get_req
 from app.i18n import translate
 from app.link_checks import check_clicked_link
 from app.models import Category, Download, DownloadTag, FileType, Page, SiteSettings, Tag
+from app.pagination import PageNumber
 from app.seo import inspect_public_base_url
 from app.schemas import PublicDownloadFilters
 from app.templating import templates
@@ -228,7 +229,7 @@ async def _sidebar_context(
 @router.get("/", name="index")
 async def index(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
@@ -275,7 +276,7 @@ async def index(
 async def category_view(
     slug: str,
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
@@ -325,7 +326,7 @@ async def category_view(
 async def search(
     request: Request,
     q: str = Query("", alias="q"),
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):
@@ -371,7 +372,7 @@ async def search(
 async def tag_view(
     slug: str,
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageNumber = 1,
     filters: PublicDownloadFilters = Depends(_public_list_filters),
     session: AsyncSession = Depends(get_db),
 ):

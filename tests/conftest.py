@@ -36,6 +36,11 @@ def isolated_uploads(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
     monkeypatch.setattr(settings, "download_dir", str(tmp_path / "downloads"))
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
+    for route in app.routes:
+        if getattr(route, "path", None) == "/static/uploads":
+            directory = str(settings.upload_path)
+            monkeypatch.setattr(route.app, "directory", directory)
+            monkeypatch.setattr(route.app, "all_directories", [directory])
 
 
 @pytest.fixture(autouse=True)

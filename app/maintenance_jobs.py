@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 
-from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
 from app import backups
